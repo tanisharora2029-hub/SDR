@@ -4,20 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "./dist",
-    "rootDir": "./src",
-    "typeRoots": [
-      "../../node_modules/@types",
-      "./node_modules/@types"
-    ],
-    "types": [
-      "node",
-      "express",
-      "cors",
-      "jsonwebtoken",
-      "bcryptjs",
-      "nodemailer",
-      "ws"
-    ]
+    "rootDir": "./src"
   },
   "include": ["src/**/*"],
   "exclude": ["src/tests/**/*"]
