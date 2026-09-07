@@ -15,10 +15,10 @@
     "seed": "npm run seed -w apps/backend"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+    "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "typescript": "^5.3.3",
     "zod": "^3.25.76"
   }
 }
