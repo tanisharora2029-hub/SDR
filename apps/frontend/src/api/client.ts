@@ -1,4 +1,4 @@
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
@@ -61,7 +61,7 @@ export const api = {
       throw new Error("USE_BROWSER_SPEECH");
     }
     const token = localStorage.getItem("token");
-    const response = await fetch("/api/calls/tts", {
+    const response = await fetch(`${API_BASE}/calls/tts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
