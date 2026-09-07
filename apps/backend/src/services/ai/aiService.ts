@@ -2,21 +2,26 @@ import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResp
 import { MockAiProvider } from "./mockProvider.js";
 import { OllamaProvider } from "./ollamaProvider.js";
 import { OnlineGeminiProvider } from "./onlineGeminiProvider.js";
+import { GroqProvider } from "./groqProvider.js";
 import { ToneMirroringService } from "./toneMirroringService.js";
 import { CompetitorRagService } from "./competitorRagService.js";
-import { CostRouter } from "./costRouter.js";
+import { CostRouter, RoutingDecision } from "./costRouter.js";
 import { logger } from "../../lib/logger.js";
 
 class AiService {
   private primaryProvider: AiProvider;
   private fallbackProvider: AiProvider;
   private voiceProvider: AiProvider;
+  private groqProvider: AiProvider;
 
   constructor() {
     this.fallbackProvider = new MockAiProvider();
+    this.groqProvider = new GroqProvider();
 
     const providerType = process.env.AI_PROVIDER || "ollama";
-    if (providerType === "online") {
+    if (providerType === "groq") {
+      this.primaryProvider = this.groqProvider;
+    } else if (providerType === "online") {
       this.primaryProvider = new OnlineGeminiProvider();
     } else if (providerType === "ollama") {
       this.primaryProvider = new OllamaProvider();
@@ -24,15 +29,27 @@ class AiService {
       this.primaryProvider = new MockAiProvider();
     }
 
-    // Default voice pipeline to ONLINE cloud model (Gemini Flash) to decouple from local GPU during voice testing
-    const voiceProviderType = process.env.VOICE_AI_PROVIDER || "online";
-    if (voiceProviderType === "ollama") {
+    // Default voice pipeline to ONLINE cloud model (Gemini or Groq) to decouple from local GPU during voice calls
+    const voiceProviderType = process.env.VOICE_AI_PROVIDER || (providerType === "groq" ? "groq" : "online");
+    if (voiceProviderType === "groq") {
+      this.voiceProvider = this.groqProvider;
+    } else if (voiceProviderType === "ollama") {
       this.voiceProvider = new OllamaProvider();
     } else {
       this.voiceProvider = new OnlineGeminiProvider();
     }
 
     logger.info(`AI Brain Service initialized: primary=${providerType}, voice=${voiceProviderType}`);
+  }
+
+  private getProviderForDecision(decision: RoutingDecision): AiProvider {
+    if (decision.selectedProvider === "groq-online") {
+      return this.groqProvider;
+    }
+    if (decision.selectedProvider === "gemini-online") {
+      return this.voiceProvider;
+    }
+    return this.primaryProvider;
   }
 
   /**
@@ -73,7 +90,7 @@ class AiService {
     const decision = CostRouter.routeTask("EMAIL_DRAFTING");
     logger.info(`[CostRouter] generateOutreach routed to ${decision.selectedProvider} (${decision.reason})`);
 
-    const provider = decision.selectedProvider === "gemini-online" ? this.voiceProvider : this.primaryProvider;
+    const provider = this.getProviderForDecision(decision);
 
     try {
       return await provider.generateOutreach(sdr, lead);
@@ -107,7 +124,7 @@ class AiService {
       };
 
       const decision = CostRouter.routeTask("EMAIL_DRAFTING");
-      const provider = decision.selectedProvider === "gemini-online" ? this.voiceProvider : this.primaryProvider;
+      const provider = this.getProviderForDecision(decision);
 
       return await provider.respondToMessage(enhancedSdr, lead, history, latestMessage);
     } catch (err: any) {
@@ -118,7 +135,7 @@ class AiService {
 
   async qualifyLead(sdr: SdrContext, lead: LeadContext, history: ConversationTurn[]) {
     const decision = CostRouter.routeTask("LEAD_SCORING");
-    const provider = decision.selectedProvider === "gemini-online" ? this.voiceProvider : this.primaryProvider;
+    const provider = this.getProviderForDecision(decision);
 
     try {
       return await provider.qualifyLead(sdr, lead, history);
@@ -129,7 +146,7 @@ class AiService {
 
   async summarizeCall(transcript: Array<{ speaker: string; text: string }>, lead: LeadContext) {
     const decision = CostRouter.routeTask("SUMMARIZATION");
-    const provider = decision.selectedProvider === "gemini-online" ? this.voiceProvider : this.primaryProvider;
+    const provider = this.getProviderForDecision(decision);
 
     try {
       return await provider.summarizeCall(transcript, lead);

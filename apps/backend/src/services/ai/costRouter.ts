@@ -18,7 +18,7 @@ export type TaskType =
 export interface RoutingDecision {
   taskType: TaskType;
   priority: TaskPriority;
-  selectedProvider: "ollama-local" | "gemini-online";
+  selectedProvider: "ollama-local" | "gemini-online" | "groq-online";
   modelName: string;
   reason: string;
 }
@@ -33,6 +33,16 @@ export class CostRouter {
 
     // Mode can be overridden via environment variable
     const routingMode = process.env.AI_COST_ROUTING_MODE || "intelligent"; // "intelligent" | "always-local" | "always-online"
+
+    if (process.env.AI_PROVIDER === "groq") {
+      return {
+        taskType,
+        priority: isVoiceTask ? "LIVE_HIGH_PRIORITY_VOICE" : "ASYNC_CHEAP",
+        selectedProvider: "groq-online",
+        modelName: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        reason: "Routed via Groq provider abstraction for cloud deployment."
+      };
+    }
 
     if (routingMode === "always-local" && !isVoiceTask) {
       return {

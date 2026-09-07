@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "npm run prisma:generate && tsc",
     "start": "node dist/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
+    "prisma:prepare": "node scripts/prepare-prisma.js",
+    "prisma:generate": "node scripts/prepare-prisma.js && prisma generate",
+    "prisma:push": "node scripts/prepare-prisma.js && prisma db push",
     "seed": "tsx prisma/seed.ts",
     "test": "vitest run"
   },

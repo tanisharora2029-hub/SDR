@@ -25,7 +25,19 @@ const app = express();
 const server = http.createServer(app);
 
 // Enable CORS and JSON body parsing
-app.use(cors({ origin: "*" }));
+const corsOrigin = process.env.CORS_ORIGIN;
+const allowedOrigins = corsOrigin
+  ? corsOrigin.includes(",")
+    ? corsOrigin.split(",").map((o) => o.trim())
+    : corsOrigin.trim()
+  : "*";
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: allowedOrigins !== "*",
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 
 // General rate limiter for all API endpoints except health
@@ -80,9 +92,10 @@ wss.on("connection", (ws: WebSocket) => {
 });
 
 const PORT = parseInt(process.env.PORT || "5000", 10);
+const HOST = process.env.HOST || "0.0.0.0";
 
-server.listen(PORT, () => {
-  logger.info(`NexusSDR Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]`);
+server.listen(PORT, HOST, () => {
+  logger.info(`NexusSDR Server running on http://${HOST}:${PORT} [${process.env.NODE_ENV || "development"}]`);
 });
 
 export { app, server };

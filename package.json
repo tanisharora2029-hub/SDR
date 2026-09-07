@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
     "build": "npm run build -w packages/shared && npm run build -w apps/backend && npm run build -w apps/frontend",
+    "build:backend": "npm run build -w packages/shared && npm run build -w apps/backend",
+    "start:backend": "npm run prisma:push -w apps/backend && npm run start -w apps/backend",
     "test": "npm run test -w apps/backend",
     "seed": "npm run seed -w apps/backend"
   },
