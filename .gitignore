@@ -1,0 +1,17 @@
+cd D:\ai-sdr-platform
+
+@"
+node_modules/
+.env
+.env.*
+!.env.example
+
+*.db
+*.sqlite
+*.sqlite3
+
+dist/
+build/
+coverage/
+.DS_Store
+"@ | Set-Content .gitignore

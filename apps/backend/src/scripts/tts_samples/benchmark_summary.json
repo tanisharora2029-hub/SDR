@@ -1,0 +1,250 @@
+{
+  "goonj_arjun": [
+    {
+      "key": "s01_intro",
+      "text": "Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales.",
+      "latency_ms": 8604.3,
+      "file_size": 333644,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\7d23f7f583914619c78fdec58e663af2ac46665b52d24f99c2b71510797bce7e\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s02_empathy",
+      "text": "That makes sense. A lot of teams we speak with have the same problem.",
+      "latency_ms": 5582.5,
+      "file_size": 202844,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\59432c1e546d5478a7f99dbbb73abca8ec972689e11daa4be721990a02e6265b\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s03_cta",
+      "text": "Would it be useful if I showed you how this works in a quick demo?",
+      "latency_ms": 4989.7,
+      "file_size": 182444,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\61ffe6fd5a8f0a19aad432183e9045c89a96cfaf4f0da9573b5fcc1cef12882e\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s04_discovery",
+      "text": "Absolutely, I understand. What would you say is the biggest challenge with your current process?",
+      "latency_ms": 6252.9,
+      "file_size": 270044,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\10f5971669fd63ae8eb2b7007146c76bb0100c551170cf40fb03a84cbb95d73f\\audio.wav",
+      "status": "SUCCESS"
+    }
+  ],
+  "goonj_priya": [
+    {
+      "key": "s01_intro",
+      "text": "Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales.",
+      "latency_ms": 6668.5,
+      "file_size": 342044,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\1c89ef721028e5e2a2e1b91e5b24d6e2bcf564852f37dafd338b4e0e0badc4e7\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s02_empathy",
+      "text": "That makes sense. A lot of teams we speak with have the same problem.",
+      "latency_ms": 5286.8,
+      "file_size": 216044,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\0c34d0bceb98e382b6561b1ff3bf60cfe9e47d729cd05c856e261dd4832511ab\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s03_cta",
+      "text": "Would it be useful if I showed you how this works in a quick demo?",
+      "latency_ms": 5309.4,
+      "file_size": 196844,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\b5260481e815c9288a3fa5cf3a59a4cad7b481b64c75cce0217a73ef2d1b1830\\audio.wav",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s04_discovery",
+      "text": "Absolutely, I understand. What would you say is the biggest challenge with your current process?",
+      "latency_ms": 5934.4,
+      "file_size": 286844,
+      "file_path": "C:\\Users\\Tanish Arora\\AppData\\Local\\Temp\\gradio\\e5f18018bf34f935d2e80dd4ac29ebefda08a42f3711fa6361a2518296552d03\\audio.wav",
+      "status": "SUCCESS"
+    }
+  ],
+  "edge_neerja": [
+    {
+      "key": "s01_intro",
+      "text": "Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales.",
+      "latency_ms": 1891.3,
+      "file_size": 52704,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s01_intro.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s02_empathy",
+      "text": "That makes sense. A lot of teams we speak with have the same problem.",
+      "latency_ms": 1972.1,
+      "file_size": 36864,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s02_empathy.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s03_cta",
+      "text": "Would it be useful if I showed you how this works in a quick demo?",
+      "latency_ms": 1584.5,
+      "file_size": 28080,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s03_cta.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s04_discovery",
+      "text": "Absolutely, I understand. What would you say is the biggest challenge with your current process?",
+      "latency_ms": 1972.5,
+      "file_size": 45648,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s04_discovery.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s05_pricing",
+      "text": "Our standard pricing starts at $199 per month for up to 1,000 active contacts, with a 15% discount on annual commitments.",
+      "latency_ms": 2799.7,
+      "file_size": 66384,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s05_pricing.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s06_compliance",
+      "text": "We are SOC2 Type II certified and support native bi-directional CRM sync with Salesforce and HubSpot.",
+      "latency_ms": 1616.2,
+      "file_size": 48096,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s06_compliance.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s07_dates",
+      "text": "Are you free this Thursday, September 10th at 2:30 PM IST, or would Friday afternoon work better?",
+      "latency_ms": 2170.9,
+      "file_size": 52704,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s07_dates.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s08_names",
+      "text": "Can I check if Vikram from Tata Digital or Priya from Infosys is also involved in this evaluation?",
+      "latency_ms": 1975.5,
+      "file_size": 45216,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s08_names.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s09_contact",
+      "text": "You can reach our solutions desk at sales@nexussdr.ai or visit our portal at nexussdr.ai/demo.",
+      "latency_ms": 2441.9,
+      "file_size": 59616,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s09_contact.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s10_hinglish",
+      "text": "Understood, haan ji bilkul, we can customize the sequence to match your pipeline requirements perfectly.",
+      "latency_ms": 1670.5,
+      "file_size": 45216,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_neerja_s10_hinglish.mp3",
+      "status": "SUCCESS"
+    }
+  ],
+  "edge_prabhat": [
+    {
+      "key": "s01_intro",
+      "text": "Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales.",
+      "latency_ms": 2573.9,
+      "file_size": 53280,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s01_intro.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s02_empathy",
+      "text": "That makes sense. A lot of teams we speak with have the same problem.",
+      "latency_ms": 1472.6,
+      "file_size": 37728,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s02_empathy.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s03_cta",
+      "text": "Would it be useful if I showed you how this works in a quick demo?",
+      "latency_ms": 1343.4,
+      "file_size": 28512,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s03_cta.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s04_discovery",
+      "text": "Absolutely, I understand. What would you say is the biggest challenge with your current process?",
+      "latency_ms": 1884.9,
+      "file_size": 46512,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s04_discovery.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s05_pricing",
+      "text": "Our standard pricing starts at $199 per month for up to 1,000 active contacts, with a 15% discount on annual commitments.",
+      "latency_ms": 2148.1,
+      "file_size": 73296,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s05_pricing.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s06_compliance",
+      "text": "We are SOC2 Type II certified and support native bi-directional CRM sync with Salesforce and HubSpot.",
+      "latency_ms": 2149.3,
+      "file_size": 50544,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s06_compliance.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s07_dates",
+      "text": "Are you free this Thursday, September 10th at 2:30 PM IST, or would Friday afternoon work better?",
+      "latency_ms": 1971.1,
+      "file_size": 55008,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s07_dates.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s08_names",
+      "text": "Can I check if Vikram from Tata Digital or Priya from Infosys is also involved in this evaluation?",
+      "latency_ms": 1973.4,
+      "file_size": 47088,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s08_names.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s09_contact",
+      "text": "You can reach our solutions desk at sales@nexussdr.ai or visit our portal at nexussdr.ai/demo.",
+      "latency_ms": 2101.4,
+      "file_size": 64944,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s09_contact.mp3",
+      "status": "SUCCESS"
+    },
+    {
+      "key": "s10_hinglish",
+      "text": "Understood, haan ji bilkul, we can customize the sequence to match your pipeline requirements perfectly.",
+      "latency_ms": 1763.3,
+      "file_size": 45360,
+      "file_path": "D:\\ai-sdr-platform\\apps\\backend\\src\\scripts\\tts_samples\\edge_prabhat_s10_hinglish.mp3",
+      "status": "SUCCESS"
+    }
+  ],
+  "chatterbox_v3": [
+    {
+      "key": "s01_intro",
+      "text": "Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales.",
+      "error": "[WinError 3] The system cannot find the path specified: '/tmp/gradio/4f9ee25ecf70c94944acf413ff231d686f52526e12c58fc66459778712aa9e93/en_f1.flac'",
+      "status": "FAILED"
+    },
+    {
+      "key": "s02_empathy",
+      "text": "That makes sense. A lot of teams we speak with have the same problem.",
+      "error": "[WinError 3] The system cannot find the path specified: '/tmp/gradio/4f9ee25ecf70c94944acf413ff231d686f52526e12c58fc66459778712aa9e93/en_f1.flac'",
+      "status": "FAILED"
+    }
+  ],
+  "chatterbox_desi_status": "RUNTIME_ERROR (BosonLab/chatterbox-desi HuggingFace space unavailable)",
+  "indic_parler_status": "Gradio schema error on ai4bharat/indic-parler-tts"
+}

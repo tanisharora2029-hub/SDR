@@ -1,0 +1,335 @@
+<USER_REQUEST>
+We have TWO critical voice bugs and I want them fixed and comprehensively tested.
+
+IMPORTANT:
+STOP using the local RTX 5050 / Ollama GPU for VOICE TESTING during this task.
+
+For this phase, the voice pipeline must use ONLINE models/services only so we can evaluate the actual production-style voice experience without GPU limitations.
+
+Do NOT remove the existing local AI architecture. Just add an online-provider testing mode and make it the default for voice testing.
+
+## BUG 1 — Voice sounds robotic / accent is not human enough
+
+Current voice calls do not sound sufficiently human.
+
+I want a natural, conversational Indian-English voice suitable for an AI SDR making sales calls.
+
+Research and test these TTS candidates:
+
+1. Chatterbox / Chatterbox Multilingual V3
+2. Chatterbox Desi
+3. Goonj / Kokoro Indian-English voices
+4. VEXYL-TTS / Indic Parler-TTS with en-IN voices
+
+Prioritize:
+
+* Natural Indian-English accent
+* Human-like prosody
+* Natural pauses
+* Conversational tone
+* Correct pronunciation
+* Low latency
+* Ability to handle short sales conversations
+* No robotic sentence endings
+* No unnatural pauses between words
+* No excessive enthusiasm
+* No fake "AI assistant" tone
+
+Do NOT simply choose the first model.
+
+Create a small provider abstraction:
+
+TTS_PROVIDER=online
+
+with provider adapters so we can switch models without changing the voice conversation logic.
+
+Test the same 10-15 representative SDR sentences through every available candidate.
+
+Example sentences:
+
+"Hi Rahul, thanks for taking the call. I just wanted to understand how you're currently handling outbound sales."
+
+"That makes sense. A lot of teams we speak with have the same problem."
+
+"Would it be useful if I showed you how this works in a quick demo?"
+
+"Absolutely, I understand. What would you say is the biggest challenge with your current process?"
+
+Also test:
+
+* Indian names
+* company names
+* numbers
+* prices
+* percentages
+* dates
+* email addresses
+* abbreviations
+* technical terminology
+* Hinglish/English code switching where supported
+
+Select the best-performing model based on actual audio quality, not marketing claims.
+
+If Goonj gives the most natural Indian-English accent, use it.
+If Chatterbox gives significantly better conversational quality, use Chatterbox.
+If another candidate wins, document why.
+
+Keep the provider configurable.
+
+## BUG 2 — SECOND VOICE TURN DOES NOT WORK
+
+This is critical.
+
+Current behavior:
+
+User speaks
+→ AI responds
+→ user tries speaking again
+→ voice input does NOT properly start/process again.
+
+Fix the entire voice state machine.
+
+It must support unlimited turns:
+
+LISTENING
+→ USER SPEAKING
+→ SILENCE DETECTED
+→ PROCESSING
+→ AI SPEAKING
+→ AI FINISHED
+→ LISTENING AGAIN
+
+The system must automatically return to LISTENING after every AI response.
+
+Do NOT require the user to press Send after the first turn.
+
+Do NOT require restarting the microphone.
+
+Do NOT require clicking the voice button again.
+
+## Test EVERY possible voice-turn failure
+
+Create automated and manual tests for:
+
+1. First user turn
+2. Second user turn
+3. Third user turn
+4. 10 consecutive turns
+5. Very short utterance
+6. Long utterance
+7. User pauses mid-sentence
+8. User speaks immediately after AI finishes
+9. User waits 5 seconds before speaking again
+10. User waits 20 seconds
+11. User interrupts AI while it is speaking
+12. User interrupts immediately after TTS starts
+13. User interrupts near the end of TTS
+14. User says "hello?" after AI finishes
+15. User says nothing
+16. Background noise
+17. Keyboard/mouse noise
+18. Multiple rapid speech turns
+19. Empty transcript
+20. STT timeout
+21. TTS timeout
+22. Network interruption
+23. STT provider error
+24. TTS provider error
+25. AI backend timeout
+26. Browser microphone permission denied
+27. Microphone disconnected
+28. Microphone device changed
+29. User switches browser tab and returns
+30. User ends call
+31. User starts a new call after ending the previous call
+32. User refreshes the page during a call
+
+For every case, the system must recover gracefully.
+
+## IMPORTANT — VOICE SESSION STATE
+
+Do not rely only on React UI state.
+
+Create a reliable voice session controller with explicit states and transitions.
+
+Every completed AI response MUST have a deterministic transition back to LISTENING unless:
+
+* call ended
+* user explicitly stopped voice mode
+* fatal microphone error
+* unrecoverable provider failure
+
+Log every transition during testing:
+
+VOICE_STATE:
+IDLE
+LISTENING
+SPEAKING_DETECTED
+PROCESSING
+AI_SPEAKING
+INTERRUPTED
+LISTENING
+
+Also log:
+
+sessionId
+turnId
+timestamp
+STT start/end
+LLM start/end
+TTS start/end
+audio playback start/end
+VAD start/end
+reason for transition
+
+This will allow us to find exactly where the second-turn failure occurs.
+
+## ONLINE STT
+
+For voice testing, use an online STT provider.
+
+Prefer a provider with:
+
+* streaming support
+* good English accent recognition
+* Indian-English robustness
+* low latency
+* free developer/testing allowance
+
+Deepgram is a candidate because its current developer offering provides $200 free credit and real-time speech models. Also test another free/rate-limited provider such as hosted Whisper where practical.
+
+Do NOT use browser Web Speech API as the primary STT engine for this test.
+
+Keep browser Web Speech only as an optional fallback.
+
+## VOICE CONVERSATION QUALITY
+
+The AI voice agent must behave like a real SDR.
+
+Rules:
+
+* 1–2 short spoken sentences
+* maximum one question at a time
+* no markdown
+* no bullet points
+* no JSON
+* no tool names
+* no "As an AI..."
+* no robotic filler
+* no repeated greeting
+* no unnecessary explanations
+* natural acknowledgements
+* natural interruptions
+* natural pauses
+* remember previous turns
+* never restart the conversation after each turn
+
+Example:
+
+USER:
+"We already use Salesforce."
+
+AI:
+"That makes sense. What part of your outbound process still feels manual today?"
+
+USER:
+"Mostly follow-ups."
+
+AI:
+"Got it. That's actually one of the areas we can automate. How are you handling those follow-ups today?"
+
+The second response must be generated from the SECOND user turn, not from the original conversation state.
+
+## IMPORTANT — DO NOT FAKE SUCCESS
+
+Do not tell me the voice system works merely because TypeScript/build/tests pass.
+
+Actually execute the voice pipeline.
+
+Run:
+
+* automated backend tests
+* frontend tests
+* provider connectivity tests
+* STT tests
+* TTS tests
+* multi-turn voice tests
+* interruption tests
+* recovery tests
+
+Then perform real browser testing.
+
+## REQUIRED FINAL TEST MATRIX
+
+Produce a report:
+
+| Test                     | Result    | Latency | Notes |
+| ------------------------ | --------- | ------: | ----- |
+| First turn               | PASS/FAIL |      ms |       |
+| Second turn              | PASS/FAIL |      ms |       |
+| Third turn               | PASS/FAIL |      ms |       |
+| 10-turn conversation     | PASS/FAIL |      ms |       |
+| Barge-in                 | PASS/FAIL |      ms |       |
+| VAD recovery             | PASS/FAIL |      ms |       |
+| STT failure recovery     | PASS/FAIL |      ms |       |
+| TTS failure recovery     | PASS/FAIL |      ms |       |
+| Network failure recovery | PASS/FAIL |      ms |       |
+| Mic reconnect            | PASS/FAIL |      ms |       |
+
+Also report:
+
+* Best TTS model
+* Best STT model
+* Why it was selected
+* Average STT latency
+* Average LLM latency
+* Average TTS latency
+* Time to first audio
+* Full turn latency
+* Second-turn latency
+* 10-turn success rate
+* Barge-in success rate
+* Error recovery rate
+
+## GPU TESTING
+
+For this entire voice-testing task:
+
+DO NOT use:
+
+* local Ollama
+* RTX 5050
+* local Qwen inference
+
+Use ONLINE models/providers.
+
+The objective is to test the application architecture independently of the local GPU.
+
+Keep the local GPU integration intact for later fallback/deployment testing.
+
+## FINAL REQUIREMENT
+
+Do not stop after fixing the obvious second-turn bug.
+
+Find the ROOT CAUSE.
+
+Explain:
+
+1. Why the first response works.
+2. Why the second voice input currently fails.
+3. Which state/event/listener is getting stuck or disconnected.
+4. Exactly what was changed.
+5. Why the new architecture supports unlimited turns.
+6. Which online TTS model was selected and why.
+7. Which online STT model was selected and why.
+8. What tests were executed.
+9. Which tests passed.
+10. Which tests failed.
+11. Any remaining limitations.
+
+Do not claim production readiness until the multi-turn browser voice tests actually pass.
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-07T21:57:56+05:30.
+</ADDITIONAL_METADATA>

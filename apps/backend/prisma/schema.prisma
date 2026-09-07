@@ -1,0 +1,263 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id               String   @id @default(uuid())
+  name             String
+  industry         String?
+  website          String?
+  valueProposition String?
+  targetCustomerIcp String?
+  knowledgeBase    String?
+  objectionRules   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users            User[]
+  sdrProfiles      SdrProfile[]
+  leads            Lead[]
+  conversations    Conversation[]
+  callSessions     CallSession[]
+  followUpRules    FollowUpRule[]
+  followUpTasks    FollowUpTask[]
+  appointments     Appointment[]
+  activityLogs     ActivityLog[]
+  subscriptions    Subscription[]
+  usageRecords     UsageRecord[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           String       @default("OWNER")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model SdrProfile {
+  id                    String       @id @default(uuid())
+  organizationId        String
+  personaName           String       @default("Alex Rivers")
+  avatarUrl             String?
+  title                 String       @default("Sales Development Representative")
+  tone                  String       @default("Professional, consultative, and concise")
+  qualificationFramework String      @default("BANT")
+  customInstructions    String?
+  maxFollowUps          Int          @default(4)
+  autoHandoffBudget     Boolean      @default(true)
+  autoHandoffMeeting    Boolean      @default(true)
+  isActive              Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("sdr_profiles")
+}
+
+model Lead {
+  id             String         @id @default(uuid())
+  organizationId String
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  companyName    String
+  jobTitle       String?
+  industry       String?
+  location       String?
+  status         String         @default("NEW")
+  intentScore    Int            @default(0)
+  isOptedOut     Boolean        @default(false)
+  bantScorecard  String?
+  customData     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+  callSessions   CallSession[]
+  followUpTasks  FollowUpTask[]
+  appointments   Appointment[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@map("leads")
+}
+
+model Conversation {
+  id               String       @id @default(uuid())
+  organizationId   String
+  leadId           String
+  channel          String       @default("EMAIL")
+  subject          String?
+  isAiActive       Boolean      @default(true)
+  isEscalated      Boolean      @default(false)
+  escalationReason String?
+  escalatedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead             Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages         Message[]
+
+  @@index([organizationId, leadId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  channel        String       @default("EMAIL")
+  direction      String       @default("OUTBOUND")
+  content        String
+  senderName     String
+  status         String       @default("SENT")
+  aiReasoning    String?
+  toolCallName   String?
+  toolCallArgs   String?
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model CallSession {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  leadId             String
+  callSid            String       @unique
+  direction          String       @default("OUTBOUND")
+  status             String       @default("INITIATED")
+  durationSeconds    Int          @default(0)
+  recordingUrl       String?
+  transcriptJson     String       @default("[]")
+  aiSummary          String?
+  qualificationScore Int?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead               Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, leadId])
+  @@map("call_sessions")
+}
+
+model FollowUpRule {
+  id             String       @id @default(uuid())
+  organizationId String
+  stepNumber     Int
+  channel        String       @default("EMAIL")
+  delayDays      Int          @default(3)
+  condition      String?      @default("NO_REPLY")
+  templatePrompt String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("follow_up_rules")
+}
+
+model FollowUpTask {
+  id             String       @id @default(uuid())
+  organizationId String
+  leadId         String
+  stepNumber     Int
+  channel        String       @default("EMAIL")
+  scheduledFor   DateTime
+  status         String       @default("SCHEDULED")
+  executedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, scheduledFor])
+  @@map("follow_up_tasks")
+}
+
+model Appointment {
+  id              String       @id @default(uuid())
+  organizationId  String
+  leadId          String
+  title           String
+  scheduledAt     DateTime
+  durationMinutes Int          @default(30)
+  attendeeEmail   String
+  notes           String?
+  status          String       @default("CONFIRMED")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lead            Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, leadId])
+  @@map("appointments")
+}
+
+model ActivityLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  action         String
+  category       String
+  detailsJson    String?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, category])
+  @@map("activity_logs")
+}
+
+model Subscription {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  tier           String       @default("FREE")
+  status         String       @default("ACTIVE")
+  currentPeriodEnd DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model UsageRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  metricType     String
+  quantity       Int          @default(1)
+  recordedAt     DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, metricType])
+  @@map("usage_records")
+}

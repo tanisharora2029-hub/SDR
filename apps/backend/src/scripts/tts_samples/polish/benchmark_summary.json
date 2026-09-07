@@ -1,0 +1,230 @@
+{
+  "en-IN-NeerjaNeural": {
+    "label": "Neerja Neural (Demo Winner)",
+    "samples": [
+      {
+        "index": 1,
+        "sentence": "Hi Rahul, thanks for taking the call.",
+        "latencyMs": 1416,
+        "bytes": 21168,
+        "file": "en-IN-NeerjaNeural_s1.mp3"
+      },
+      {
+        "index": 2,
+        "sentence": "I wanted to understand how you're currently handling outbound sales.",
+        "latencyMs": 1477,
+        "bytes": 29808,
+        "file": "en-IN-NeerjaNeural_s2.mp3"
+      },
+      {
+        "index": 3,
+        "sentence": "That makes sense. A lot of teams we speak with have the same challenge.",
+        "latencyMs": 1487,
+        "bytes": 37584,
+        "file": "en-IN-NeerjaNeural_s3.mp3"
+      },
+      {
+        "index": 4,
+        "sentence": "Would it be useful if I showed you how this works?",
+        "latencyMs": 1464,
+        "bytes": 23184,
+        "file": "en-IN-NeerjaNeural_s4.mp3"
+      },
+      {
+        "index": 5,
+        "sentence": "Our pricing depends on the number of users and the level of automation you need.",
+        "latencyMs": 1524,
+        "bytes": 33696,
+        "file": "en-IN-NeerjaNeural_s5.mp3"
+      },
+      {
+        "index": 6,
+        "sentence": "We already use Salesforce.",
+        "latencyMs": 1237,
+        "bytes": 16992,
+        "file": "en-IN-NeerjaNeural_s6.mp3"
+      },
+      {
+        "index": 7,
+        "sentence": "Can you send me the information by tomorrow?",
+        "latencyMs": 1524,
+        "bytes": 20880,
+        "file": "en-IN-NeerjaNeural_s7.mp3"
+      },
+      {
+        "index": 8,
+        "sentence": "I'm not ready to buy yet.",
+        "latencyMs": 1480,
+        "bytes": 15840,
+        "file": "en-IN-NeerjaNeural_s8.mp3"
+      },
+      {
+        "index": 9,
+        "sentence": "Can you schedule a demo for next Tuesday at three PM?",
+        "latencyMs": 1764,
+        "bytes": 25632,
+        "file": "en-IN-NeerjaNeural_s9.mp3"
+      },
+      {
+        "index": 10,
+        "sentence": "Actually, I have one more question.",
+        "latencyMs": 1456,
+        "bytes": 20736,
+        "file": "en-IN-NeerjaNeural_s10.mp3"
+      }
+    ],
+    "averageLatencyMs": 1483
+  },
+  "en-IN-NeerjaExpressiveNeural": {
+    "label": "Neerja Expressive (Conversational)",
+    "samples": [
+      {
+        "index": 1,
+        "sentence": "Hi Rahul, thanks for taking the call.",
+        "latencyMs": 1415,
+        "bytes": 21888,
+        "file": "en-IN-NeerjaExpressiveNeural_s1.mp3"
+      },
+      {
+        "index": 2,
+        "sentence": "I wanted to understand how you're currently handling outbound sales.",
+        "latencyMs": 1609,
+        "bytes": 28368,
+        "file": "en-IN-NeerjaExpressiveNeural_s2.mp3"
+      },
+      {
+        "index": 3,
+        "sentence": "That makes sense. A lot of teams we speak with have the same challenge.",
+        "latencyMs": 1600,
+        "bytes": 36144,
+        "file": "en-IN-NeerjaExpressiveNeural_s3.mp3"
+      },
+      {
+        "index": 4,
+        "sentence": "Would it be useful if I showed you how this works?",
+        "latencyMs": 1398,
+        "bytes": 22320,
+        "file": "en-IN-NeerjaExpressiveNeural_s4.mp3"
+      },
+      {
+        "index": 5,
+        "sentence": "Our pricing depends on the number of users and the level of automation you need.",
+        "latencyMs": 1480,
+        "bytes": 33408,
+        "file": "en-IN-NeerjaExpressiveNeural_s5.mp3"
+      },
+      {
+        "index": 6,
+        "sentence": "We already use Salesforce.",
+        "latencyMs": 1366,
+        "bytes": 16848,
+        "file": "en-IN-NeerjaExpressiveNeural_s6.mp3"
+      },
+      {
+        "index": 7,
+        "sentence": "Can you send me the information by tomorrow?",
+        "latencyMs": 1429,
+        "bytes": 19872,
+        "file": "en-IN-NeerjaExpressiveNeural_s7.mp3"
+      },
+      {
+        "index": 8,
+        "sentence": "I'm not ready to buy yet.",
+        "latencyMs": 1604,
+        "bytes": 15408,
+        "file": "en-IN-NeerjaExpressiveNeural_s8.mp3"
+      },
+      {
+        "index": 9,
+        "sentence": "Can you schedule a demo for next Tuesday at three PM?",
+        "latencyMs": 1526,
+        "bytes": 26064,
+        "file": "en-IN-NeerjaExpressiveNeural_s9.mp3"
+      },
+      {
+        "index": 10,
+        "sentence": "Actually, I have one more question.",
+        "latencyMs": 1812,
+        "bytes": 20016,
+        "file": "en-IN-NeerjaExpressiveNeural_s10.mp3"
+      }
+    ],
+    "averageLatencyMs": 1524
+  },
+  "en-IN-PrabhatNeural": {
+    "label": "Prabhat Neural (Male)",
+    "samples": [
+      {
+        "index": 1,
+        "sentence": "Hi Rahul, thanks for taking the call.",
+        "latencyMs": 1477,
+        "bytes": 20736,
+        "file": "en-IN-PrabhatNeural_s1.mp3"
+      },
+      {
+        "index": 2,
+        "sentence": "I wanted to understand how you're currently handling outbound sales.",
+        "latencyMs": 1731,
+        "bytes": 30960,
+        "file": "en-IN-PrabhatNeural_s2.mp3"
+      },
+      {
+        "index": 3,
+        "sentence": "That makes sense. A lot of teams we speak with have the same challenge.",
+        "latencyMs": 1648,
+        "bytes": 37872,
+        "file": "en-IN-PrabhatNeural_s3.mp3"
+      },
+      {
+        "index": 4,
+        "sentence": "Would it be useful if I showed you how this works?",
+        "latencyMs": 1582,
+        "bytes": 23184,
+        "file": "en-IN-PrabhatNeural_s4.mp3"
+      },
+      {
+        "index": 5,
+        "sentence": "Our pricing depends on the number of users and the level of automation you need.",
+        "latencyMs": 1963,
+        "bytes": 37152,
+        "file": "en-IN-PrabhatNeural_s5.mp3"
+      },
+      {
+        "index": 6,
+        "sentence": "We already use Salesforce.",
+        "latencyMs": 1363,
+        "bytes": 18144,
+        "file": "en-IN-PrabhatNeural_s6.mp3"
+      },
+      {
+        "index": 7,
+        "sentence": "Can you send me the information by tomorrow?",
+        "latencyMs": 1306,
+        "bytes": 21744,
+        "file": "en-IN-PrabhatNeural_s7.mp3"
+      },
+      {
+        "index": 8,
+        "sentence": "I'm not ready to buy yet.",
+        "latencyMs": 1438,
+        "bytes": 15840,
+        "file": "en-IN-PrabhatNeural_s8.mp3"
+      },
+      {
+        "index": 9,
+        "sentence": "Can you schedule a demo for next Tuesday at three PM?",
+        "latencyMs": 1807,
+        "bytes": 28080,
+        "file": "en-IN-PrabhatNeural_s9.mp3"
+      },
+      {
+        "index": 10,
+        "sentence": "Actually, I have one more question.",
+        "latencyMs": 1364,
+        "bytes": 20592,
+        "file": "en-IN-PrabhatNeural_s10.mp3"
+      }
+    ],
+    "averageLatencyMs": 1568
+  }
+}

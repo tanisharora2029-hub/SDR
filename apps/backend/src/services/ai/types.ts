@@ -1,0 +1,61 @@
+import { SdrToolDecision, SdrToolName, AiAction } from "@ai-sdr/shared";
+
+export interface SdrContext {
+  organizationName: string;
+  industry?: string | null;
+  valueProposition?: string | null;
+  targetCustomerIcp?: string | null;
+  knowledgeBase?: string | null;
+  objectionRules?: string | null;
+  personaName: string;
+  personaTitle: string;
+  tone: string;
+  qualificationFramework: string;
+  customInstructions?: string | null;
+}
+
+export interface LeadContext {
+  leadId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  companyName: string;
+  jobTitle?: string | null;
+  industry?: string | null;
+  status: string;
+  intentScore: number;
+}
+
+export interface ConversationTurn {
+  speaker: "lead" | "sdr";
+  channel: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface AiCompletionResponse {
+  content: string; // Guaranteed clean natural language reply - never raw JSON
+  action: AiAction;
+  toolDecision?: SdrToolDecision | null;
+  latencyMs: number;
+  tokensUsed?: number;
+  provider: string;
+}
+
+export interface AiProvider {
+  generateOutreach(sdr: SdrContext, lead: LeadContext): Promise<AiCompletionResponse>;
+  respondToMessage(sdr: SdrContext, lead: LeadContext, history: ConversationTurn[], latestMessage: string): Promise<AiCompletionResponse>;
+  qualifyLead(sdr: SdrContext, lead: LeadContext, history: ConversationTurn[]): Promise<{
+    status: "QUALIFIED" | "UNQUALIFIED" | "IN_CONVERSATION";
+    budget?: string;
+    authority?: string;
+    need?: string;
+    timeline?: string;
+    notes: string;
+  }>;
+  summarizeCall(transcript: Array<{ speaker: string; text: string }>, lead: LeadContext): Promise<{
+    summary: string;
+    qualificationScore: number;
+    recommendedAction: string;
+  }>;
+}
