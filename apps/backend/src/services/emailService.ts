@@ -13,6 +13,10 @@ export interface SendEmailOptions {
   organizationId?: string;
   senderName?: string;
   forceProvider?: EmailProviderChoice;
+  replyTo?: string;
+  inReplyTo?: string;
+  references?: string;
+  headers?: Record<string, string>;
 }
 
 export interface EmailSendResult {
@@ -88,7 +92,11 @@ export class EmailService {
           html: options.html,
           senderName: options.senderName,
           leadId: options.leadId,
-          organizationId: options.organizationId
+          organizationId: options.organizationId,
+          replyTo: options.replyTo,
+          inReplyTo: options.inReplyTo,
+          references: options.references,
+          headers: options.headers
         });
 
         if (resendRes.success) {
@@ -131,13 +139,19 @@ export class EmailService {
       const plainContent = (options.text || options.html?.replace(/<[^>]*>?/gm, "") || "") + optOutText;
       const htmlContent = (options.html || `<div style="font-family:sans-serif;font-size:14px;line-height:1.6;color:#111827;">${plainContent.replace(/\n/g, "<br/>")}</div>`) + optOutHtml;
 
-      const info = await transporter.sendMail({
+      const mailPayload: any = {
         from: fromAddress,
         to: options.to,
         subject: options.subject,
         text: plainContent,
         html: htmlContent
-      });
+      };
+      if (options.replyTo) mailPayload.replyTo = options.replyTo;
+      if (options.inReplyTo) mailPayload.inReplyTo = options.inReplyTo;
+      if (options.references) mailPayload.references = options.references;
+      if (options.headers) mailPayload.headers = options.headers;
+
+      const info = await transporter.sendMail(mailPayload);
 
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {

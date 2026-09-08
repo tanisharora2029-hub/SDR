@@ -8,6 +8,10 @@ export interface ChannelSendOptions {
   leadId?: string;
   organizationId: string;
   metadata?: Record<string, any>;
+  headers?: Record<string, string>;
+  replyTo?: string;
+  inReplyTo?: string;
+  references?: string;
 }
 
 export interface ChannelSendResult {

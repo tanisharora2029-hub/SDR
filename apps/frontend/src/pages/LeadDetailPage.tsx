@@ -341,10 +341,17 @@ export const LeadDetailPage: React.FC = () => {
                           </span>
                         )}
                         {isLead && (
-                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
-                            <User className="w-2.5 h-2.5" />
-                            PROSPECT ({lead.firstName})
-                          </span>
+                          <>
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                              <User className="w-2.5 h-2.5" />
+                              PROSPECT ({lead.firstName})
+                            </span>
+                            {(m.status === "REAL_INBOUND" || m.toolCallArgs?.includes("REAL_INBOUND")) && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
+                                REAL INBOUND
+                              </span>
+                            )}
+                          </>
                         )}
                         <span className="text-slate-300 font-medium">{m.senderName}</span>
                         <span>•</span>

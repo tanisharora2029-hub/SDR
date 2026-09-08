@@ -18,13 +18,14 @@ import { handoffRouter } from "./routes/handoff.routes.js";
 import { appointmentRouter } from "./routes/appointment.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
+import { webhookRouter } from "./routes/webhook.routes.js";
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 
-// Enable CORS and JSON body parsing
+// Enable CORS and JSON body parsing with raw body capture for webhook signature verification
 const corsOrigin = process.env.CORS_ORIGIN;
 const allowedOrigins = corsOrigin
   ? corsOrigin.includes(",")
@@ -38,7 +39,14 @@ app.use(
     credentials: allowedOrigins !== "*",
   })
 );
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })
+);
 
 // General rate limiter for all API endpoints except health
 app.use("/api", apiLimiter);
@@ -65,6 +73,7 @@ app.use("/api/handoff", handoffRouter);
 app.use("/api/appointments", appointmentRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/webhooks", webhookRouter);
 
 // Global Error Handler
 app.use(errorHandler);

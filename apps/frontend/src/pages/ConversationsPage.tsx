@@ -253,8 +253,22 @@ export const ConversationsPage: React.FC = () => {
                           <>
                             <User className="w-3 h-3 text-emerald-400" />
                             <span className="font-semibold text-emerald-300">
-                              {m.senderName || `${activeConv.lead?.firstName} ${activeConv.lead?.lastName}`.trim() || "Lead"} (Prospect)
+                              {m.senderName || `${activeConv.lead?.firstName} ${activeConv.lead?.lastName}`.trim() || "Lead"}
                             </span>
+                            {m.status === "REAL_INBOUND" || m.toolCallArgs?.includes("REAL_INBOUND") ? (
+                              <>
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                  REAL INBOUND
+                                </span>
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                  EMAIL
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">
+                                (Prospect)
+                              </span>
+                            )}
                           </>
                         ) : isHuman ? (
                           <>

@@ -28,7 +28,20 @@ export class ConversationService {
     });
   }
 
-  static async ingestLeadReply(organizationId: string, leadId: string, channel: string, replyText: string) {
+  static async ingestLeadReply(
+    organizationId: string,
+    leadId: string,
+    channel: string,
+    replyText: string,
+    options?: {
+      subject?: string;
+      externalMessageId?: string;
+      isRealInbound?: boolean;
+      replyTo?: string;
+      inReplyTo?: string;
+      references?: string;
+    }
+  ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
 
     // 1. Verify lead ownership under organization
@@ -89,7 +102,10 @@ export class ConversationService {
             recipientId: null,
             content: replyText,
             senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
-            status: "DELIVERED"
+            status: options?.isRealInbound ? "REAL_INBOUND" : "DELIVERED",
+            toolCallArgs: options?.externalMessageId
+              ? JSON.stringify({ source: options?.isRealInbound ? "REAL_INBOUND" : "SIMULATED", externalMessageId: options.externalMessageId })
+              : null
           }
         });
 
@@ -114,7 +130,12 @@ export class ConversationService {
     });
     if (!conv) {
       conv = await prisma.conversation.create({
-        data: { organizationId, leadId, channel }
+        data: { organizationId, leadId, channel, subject: options?.subject || undefined }
+      });
+    } else if (options?.subject && !conv.subject) {
+      await prisma.conversation.update({
+        where: { id: conv.id },
+        data: { subject: options.subject }
       });
     }
 
@@ -129,7 +150,10 @@ export class ConversationService {
         recipientId: null,
         content: replyText,
         senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
-        status: "DELIVERED"
+        status: options?.isRealInbound ? "REAL_INBOUND" : "DELIVERED",
+        toolCallArgs: options?.externalMessageId
+          ? JSON.stringify({ source: options?.isRealInbound ? "REAL_INBOUND" : "SIMULATED", externalMessageId: options.externalMessageId })
+          : null
       }
     });
 
@@ -237,9 +261,13 @@ export class ConversationService {
         await ChannelManager.dispatch(channel, {
           to: targetLead.email || targetLead.phone || "",
           content: askDateMsg,
+          subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
           senderName: sdr.personaName,
           leadId: targetLead.id,
-          organizationId
+          organizationId,
+          inReplyTo: options?.inReplyTo || options?.externalMessageId,
+          references: options?.references || options?.externalMessageId,
+          replyTo: options?.replyTo
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -277,9 +305,13 @@ export class ConversationService {
         await ChannelManager.dispatch(channel, {
           to: targetLead.email || targetLead.phone || "",
           content: askTimeMsg,
+          subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
           senderName: sdr.personaName,
           leadId: targetLead.id,
-          organizationId
+          organizationId,
+          inReplyTo: options?.inReplyTo || options?.externalMessageId,
+          references: options?.references || options?.externalMessageId,
+          replyTo: options?.replyTo
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -370,9 +402,13 @@ export class ConversationService {
             await ChannelManager.dispatch(channel, {
               to: targetLead.email || targetLead.phone || "",
               content: confirmMsg,
+              subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
               senderName: sdr.personaName,
               leadId: targetLead.id,
-              organizationId
+              organizationId,
+              inReplyTo: options?.inReplyTo || options?.externalMessageId,
+              references: options?.references || options?.externalMessageId,
+              replyTo: options?.replyTo
             }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
             return {
@@ -430,9 +466,13 @@ export class ConversationService {
           await ChannelManager.dispatch(channel, {
             to: targetLead.email || targetLead.phone || "",
             content: conflictMsg,
+            subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
             senderName: sdr.personaName,
             leadId: targetLead.id,
-            organizationId
+            organizationId,
+            inReplyTo: options?.inReplyTo || options?.externalMessageId,
+            references: options?.references || options?.externalMessageId,
+            replyTo: options?.replyTo
           }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
           return {
@@ -535,9 +575,13 @@ export class ConversationService {
       await ChannelManager.dispatch(channel, {
         to: targetLead.email || targetLead.phone || "",
         content: confirmFollowUpMsg,
+        subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
         senderName: sdr.personaName,
         leadId: targetLead.id,
-        organizationId
+        organizationId,
+        inReplyTo: options?.inReplyTo || options?.externalMessageId,
+        references: options?.references || options?.externalMessageId,
+        replyTo: options?.replyTo
       }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
       return {
@@ -679,9 +723,13 @@ export class ConversationService {
     await ChannelManager.dispatch(channel, {
       to: targetLead.email || targetLead.phone || "",
       content: aiCompletion.content,
+      subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
       senderName: sdr.personaName,
       leadId: targetLead.id,
-      organizationId
+      organizationId,
+      inReplyTo: options?.inReplyTo || options?.externalMessageId,
+      references: options?.references || options?.externalMessageId,
+      replyTo: options?.replyTo
     }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
     // Record ActivityLog for AI SDR reply

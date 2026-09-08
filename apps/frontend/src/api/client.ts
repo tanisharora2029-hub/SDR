@@ -119,5 +119,10 @@ export const api = {
   testEmailConnection: (provider?: "RESEND" | "ETHEREAL") =>
     apiRequest("/organization/test-email-connection", { method: "POST", body: JSON.stringify({ provider }) }),
   sendTestEmail: (to?: string, provider?: "RESEND" | "ETHEREAL") =>
-    apiRequest("/organization/send-test-email", { method: "POST", body: JSON.stringify({ to, provider }) })
+    apiRequest("/organization/send-test-email", { method: "POST", body: JSON.stringify({ to, provider }) }),
+
+  // Inbound Email Webhooks (Resend)
+  getInboundWebhookStatus: () => apiRequest("/webhooks/resend/inbound/status"),
+  testInboundWebhook: (payload: any) =>
+    apiRequest("/webhooks/resend/inbound/test", { method: "POST", body: JSON.stringify({ payload }) })
 };

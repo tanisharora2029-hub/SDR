@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { logger } from "../lib/logger.js";
 
 export interface ResendSendOptions {
@@ -8,6 +9,10 @@ export interface ResendSendOptions {
   senderName?: string;
   leadId?: string;
   organizationId?: string;
+  replyTo?: string;
+  inReplyTo?: string;
+  references?: string;
+  headers?: Record<string, string>;
 }
 
 export interface ResendSendResult {
@@ -101,7 +106,7 @@ export class ResendService {
   }
 
   /**
-   * Send live outbound email via Resend API with CAN-SPAM opt-out footer
+   * Send live outbound email via Resend API with CAN-SPAM opt-out footer and threading headers
    */
   static async sendEmail(options: ResendSendOptions, apiKeyOverride?: string): Promise<ResendSendResult> {
     const key = apiKeyOverride || process.env.RESEND_API_KEY;
@@ -132,6 +137,30 @@ export class ResendService {
     const plainContent = (options.text || options.html?.replace(/<[^>]*>?/gm, "") || "") + optOutText;
     const htmlContent = (options.html || `<div style="font-family:sans-serif;font-size:14px;line-height:1.6;color:#111827;">${plainContent.replace(/\n/g, "<br/>")}</div>`) + optOutHtml;
 
+    // RFC 2822 / 5322 Threading Headers
+    const outboundHeaders: Record<string, string> = { ...(options.headers || {}) };
+    if (options.inReplyTo) {
+      outboundHeaders["In-Reply-To"] = options.inReplyTo;
+    }
+    if (options.references) {
+      outboundHeaders["References"] = options.references;
+    }
+
+    const payload: any = {
+      from: fromAddress,
+      to: [options.to],
+      subject: options.subject,
+      text: plainContent,
+      html: htmlContent
+    };
+
+    if (Object.keys(outboundHeaders).length > 0) {
+      payload.headers = outboundHeaders;
+    }
+    if (options.replyTo) {
+      payload.reply_to = options.replyTo;
+    }
+
     try {
       logger.info(`[ResendService] Sending live email to ${options.to} via Resend API...`);
       const response = await fetch(this.API_URL, {
@@ -140,13 +169,7 @@ export class ResendService {
           "Authorization": `Bearer ${key.trim()}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: [options.to],
-          subject: options.subject,
-          text: plainContent,
-          html: htmlContent
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -179,6 +202,137 @@ export class ResendService {
         error: err.message || "Failed to reach Resend API",
         statusCode: 500
       };
+    }
+  }
+
+  /**
+   * Fetch full content of an inbound received email by emailId
+   */
+  static async getReceivedEmail(emailId: string, apiKeyOverride?: string): Promise<{
+    success: boolean;
+    data?: {
+      id: string;
+      from: string;
+      to: string[];
+      subject: string;
+      text?: string;
+      html?: string;
+      messageId?: string;
+      headers?: Record<string, any>;
+      createdAt?: string;
+    };
+    error?: string;
+  }> {
+    const key = apiKeyOverride || process.env.RESEND_API_KEY;
+    if (!key || key.trim().length === 0) {
+      return { success: false, error: "RESEND_API_KEY is not configured" };
+    }
+
+    try {
+      // First try receiving endpoint, then fallback to standard emails endpoint
+      let res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${key.trim()}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        res = await fetch(`https://api.resend.com/emails/${emailId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${key.trim()}`,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      if (res.ok) {
+        const data: any = await res.json();
+        return {
+          success: true,
+          data: {
+            id: data.id || emailId,
+            from: data.from || "",
+            to: Array.isArray(data.to) ? data.to : [data.to || ""],
+            subject: data.subject || "",
+            text: data.text || "",
+            html: data.html || "",
+            messageId: data.message_id || data.messageId || data.headers?.["message-id"],
+            headers: data.headers || {},
+            createdAt: data.created_at || new Date().toISOString()
+          }
+        };
+      }
+
+      const errJson: any = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.message || `Failed to fetch email (${res.status})` };
+    } catch (err: any) {
+      return { success: false, error: err.message || "Network error fetching received email" };
+    }
+  }
+
+  /**
+   * Verify Svix webhook signature for Resend inbound webhooks using Node.js crypto
+   */
+  static verifyWebhookSignature(
+    rawBody: string | Buffer,
+    headers: Record<string, any>,
+    secretOverride?: string
+  ): { valid: boolean; error?: string } {
+    const secret = secretOverride || process.env.RESEND_WEBHOOK_SECRET;
+
+    // If no webhook secret is configured in environment, allow with notice (dev/testing mode)
+    if (!secret || secret.trim().length === 0) {
+      return { valid: true };
+    }
+
+    const svixId = headers["svix-id"] || headers["webhook-id"];
+    const svixTimestamp = headers["svix-timestamp"] || headers["webhook-timestamp"];
+    const svixSignature = headers["svix-signature"] || headers["webhook-signature"];
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return { valid: false, error: "Missing Svix webhook signature headers" };
+    }
+
+    // Check timestamp freshness (within 5 minutes to prevent replay attacks)
+    const timestampSec = parseInt(svixTimestamp, 10);
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (isNaN(timestampSec) || Math.abs(nowSec - timestampSec) > 300) {
+      return { valid: false, error: "Webhook signature timestamp expired or invalid" };
+    }
+
+    try {
+      const cleanSecret = secret.trim().startsWith("whsec_") ? secret.trim().slice(6) : secret.trim();
+      const secretBytes = Buffer.from(cleanSecret, "base64");
+      const bodyStr = typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
+      const signedPayload = `${svixId}.${svixTimestamp}.${bodyStr}`;
+
+      const expectedHmac = crypto
+        .createHmac("sha256", secretBytes)
+        .update(signedPayload)
+        .digest("base64");
+
+      // Signatures in header can be multiple: "v1,signature1 v1,signature2"
+      const passedSignatures = String(svixSignature).split(" ").map((s: string) => {
+        const parts = s.split(",");
+        return parts.length === 2 ? parts[1] : parts[0];
+      });
+
+      const matched = passedSignatures.some((sig: string) => {
+        const expectedBuf = Buffer.from(expectedHmac);
+        const actualBuf = Buffer.from(sig);
+        return expectedBuf.length === actualBuf.length && crypto.timingSafeEqual(expectedBuf, actualBuf);
+      });
+
+      if (!matched) {
+        return { valid: false, error: "Signature mismatch" };
+      }
+
+      return { valid: true };
+    } catch (err: any) {
+      return { valid: false, error: `Signature verification error: ${err.message}` };
     }
   }
 }
