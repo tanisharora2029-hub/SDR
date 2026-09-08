@@ -25,21 +25,33 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Enable CORS and JSON body parsing with raw body capture for webhook signature verification
-const corsOrigin = process.env.CORS_ORIGIN;
-const defaultOrigins = [
+// Production allowed origins for NexSDR
+export const PRODUCTION_CORS_ORIGINS = [
   "https://nexsdr.in",
   "https://www.nexsdr.in",
-  "https://ai-sdr-frontend-n07e.onrender.com",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000"
+  "https://ai-sdr-frontend-n07e.onrender.com"
 ];
 
-const allowedOrigins = corsOrigin
-  ? corsOrigin.includes(",")
-    ? corsOrigin.split(",").map((o) => o.trim())
-    : corsOrigin.trim()
-  : defaultOrigins;
+// Helper to parse allowed origins from CORS_ORIGIN (accepts comma-separated list)
+export const parseCorsOrigins = (
+  rawOrigin?: string,
+  isProduction: boolean = process.env.NODE_ENV === "production"
+): string[] => {
+  if (rawOrigin && rawOrigin.trim()) {
+    const parsed = rawOrigin
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/+$/, ""))
+      .filter(Boolean);
+    if (parsed.length > 0) return parsed;
+  }
+
+  // Fallback defaults
+  return isProduction
+    ? [...PRODUCTION_CORS_ORIGINS]
+    : [...PRODUCTION_CORS_ORIGINS, "http://localhost:3000", "http://127.0.0.1:3000"];
+};
+
+const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
 
 app.use(
   cors({
