@@ -109,4 +109,34 @@ export class EmailService {
       };
     }
   }
+
+  static async getSenderInfo(): Promise<{
+    provider: string;
+    mode: string;
+    status: string;
+    senderName: string;
+    senderEmail: string;
+    isSandbox: boolean;
+  }> {
+    await this.getTransporter();
+    const senderEmail = this.etherealAccount?.user || process.env.SMTP_FROM_EMAIL || "alex.rivers@sandbox.nexus-sdr.internal";
+    return {
+      provider: "Ethereal Sandbox",
+      mode: "SANDBOX",
+      status: "Connected/Ready",
+      senderName: "Alex Rivers",
+      senderEmail,
+      isSandbox: true
+    };
+  }
+
+  static async verifyConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      const transporter = await this.getTransporter();
+      await transporter.verify();
+      return { success: true, message: "Ethereal SMTP connection verified successfully (Ready)" };
+    } catch (err: any) {
+      return { success: false, message: err.message || "Failed to verify Ethereal SMTP connection" };
+    }
+  }
 }

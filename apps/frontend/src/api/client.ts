@@ -110,5 +110,10 @@ export const api = {
   getBilling: () => apiRequest("/billing"),
   createCheckout: (targetTier: string) => apiRequest("/billing/checkout", { method: "POST", body: JSON.stringify({ targetTier }) }),
   verifyPayment: (tier: string, paymentId?: string) =>
-    apiRequest("/billing/verify-payment", { method: "POST", body: JSON.stringify({ tier, paymentId }) })
+    apiRequest("/billing/verify-payment", { method: "POST", body: JSON.stringify({ tier, paymentId }) }),
+
+  // Email Integration Settings (Ethereal Sandbox)
+  getEmailSettings: () => apiRequest("/organization/email-settings"),
+  testEmailConnection: () => apiRequest("/organization/test-email-connection", { method: "POST" }),
+  sendTestEmail: (to?: string) => apiRequest("/organization/send-test-email", { method: "POST", body: JSON.stringify({ to }) })
 };
