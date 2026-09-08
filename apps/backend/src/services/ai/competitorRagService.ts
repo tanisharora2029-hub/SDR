@@ -31,23 +31,23 @@ export class LocalVerifiedCompetitorProvider implements CompetitorRagProvider {
   private knownCompetitors: Record<string, { summary: string; differentiation: string }> = {
     salesforce: {
       summary: "Salesforce is an enterprise CRM system of record.",
-      differentiation: "NexusSDR integrates natively with Salesforce as an autonomous execution layer, enriching CRM leads rather than replacing the CRM."
+      differentiation: "NexSDR integrates natively with Salesforce as an autonomous execution layer, enriching CRM leads rather than replacing the CRM."
     },
     hubspot: {
       summary: "HubSpot provides inbound marketing, sales CRM, and basic email sequences.",
-      differentiation: "NexusSDR provides fully autonomous two-way multi-turn conversational qualification (Email & Voice) with native bi-directional HubSpot sync."
+      differentiation: "NexSDR provides fully autonomous two-way multi-turn conversational qualification (Email & Voice) with native bi-directional HubSpot sync."
     },
     outreach: {
       summary: "Outreach.io is a sales execution platform built for human reps to execute manual tasks.",
-      differentiation: "NexusSDR is fully autonomous: it handles the initial qualification, objection handling, and appointment booking autonomously without requiring human SDR labor."
+      differentiation: "NexSDR is fully autonomous: it handles the initial qualification, objection handling, and appointment booking autonomously without requiring human SDR labor."
     },
     salesloft: {
       summary: "Salesloft coordinates human rep outreach cadence.",
-      differentiation: "NexusSDR acts as an autonomous virtual team member that qualifies leads around the clock across email and live phone voice."
+      differentiation: "NexSDR acts as an autonomous virtual team member that qualifies leads around the clock across email and live phone voice."
     },
     apollo: {
       summary: "Apollo.io is a B2B database and basic sequencing tool.",
-      differentiation: "NexusSDR focuses on deep autonomous multi-turn voice & email qualification rather than purely bulk email blasts."
+      differentiation: "NexSDR focuses on deep autonomous multi-turn voice & email qualification rather than purely bulk email blasts."
     }
   };
 

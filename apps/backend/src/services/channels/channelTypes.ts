@@ -5,6 +5,8 @@ export interface ChannelSendOptions {
   content: string;
   subject?: string;
   senderName: string;
+  senderEmail?: string;
+  from?: string;
   leadId?: string;
   organizationId: string;
   metadata?: Record<string, any>;

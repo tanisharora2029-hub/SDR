@@ -263,11 +263,12 @@ export class ConversationService {
           content: askDateMsg,
           subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
           senderName: sdr.personaName,
+          senderEmail: (sdr as any).email || "alex@nexsdr.in",
           leadId: targetLead.id,
           organizationId,
           inReplyTo: options?.inReplyTo || options?.externalMessageId,
           references: options?.references || options?.externalMessageId,
-          replyTo: options?.replyTo
+          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -307,11 +308,12 @@ export class ConversationService {
           content: askTimeMsg,
           subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
           senderName: sdr.personaName,
+          senderEmail: (sdr as any).email || "alex@nexsdr.in",
           leadId: targetLead.id,
           organizationId,
           inReplyTo: options?.inReplyTo || options?.externalMessageId,
           references: options?.references || options?.externalMessageId,
-          replyTo: options?.replyTo
+          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -404,11 +406,12 @@ export class ConversationService {
               content: confirmMsg,
               subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
               senderName: sdr.personaName,
+              senderEmail: (sdr as any).email || "alex@nexsdr.in",
               leadId: targetLead.id,
               organizationId,
               inReplyTo: options?.inReplyTo || options?.externalMessageId,
               references: options?.references || options?.externalMessageId,
-              replyTo: options?.replyTo
+              replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
             }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
             return {
@@ -468,11 +471,12 @@ export class ConversationService {
             content: conflictMsg,
             subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
             senderName: sdr.personaName,
+            senderEmail: (sdr as any).email || "alex@nexsdr.in",
             leadId: targetLead.id,
             organizationId,
             inReplyTo: options?.inReplyTo || options?.externalMessageId,
             references: options?.references || options?.externalMessageId,
-            replyTo: options?.replyTo
+            replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
           }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
           return {
@@ -577,11 +581,12 @@ export class ConversationService {
         content: confirmFollowUpMsg,
         subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
         senderName: sdr.personaName,
+        senderEmail: (sdr as any).email || "alex@nexsdr.in",
         leadId: targetLead.id,
         organizationId,
         inReplyTo: options?.inReplyTo || options?.externalMessageId,
         references: options?.references || options?.externalMessageId,
-        replyTo: options?.replyTo
+        replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
       }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
       return {
@@ -725,11 +730,12 @@ export class ConversationService {
       content: aiCompletion.content,
       subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
       senderName: sdr.personaName,
+      senderEmail: (sdr as any).email || "alex@nexsdr.in",
       leadId: targetLead.id,
       organizationId,
       inReplyTo: options?.inReplyTo || options?.externalMessageId,
       references: options?.references || options?.externalMessageId,
-      replyTo: options?.replyTo
+      replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
     }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
     // Record ActivityLog for AI SDR reply

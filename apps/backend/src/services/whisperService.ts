@@ -77,7 +77,7 @@ export class WhisperService {
     if (compEvidence) {
       talkingPoints.push(`Highlight ${compEvidence.differentiationAngle}`);
       talkingPoints.push("Clarify that we complement rather than abruptly displace their current stack");
-      suggestedResponse = `I completely understand you're using ${compEvidence.competitorName}. A lot of teams we work with do as well, but use NexusSDR to automate the manual follow-up layer. Would it make sense to review a 10-minute workflow map?`;
+      suggestedResponse = `I completely understand you're using ${compEvidence.competitorName}. A lot of teams we work with do as well, but use NexSDR to automate the manual follow-up layer. Would it make sense to review a 10-minute workflow map?`;
     } else if (isPricing) {
       talkingPoints.push("Reiterate transparent tiers: Starter $79/mo, Growth $199/mo");
       talkingPoints.push("Emphasize ROI and immediate pipeline efficiency within 14 days");

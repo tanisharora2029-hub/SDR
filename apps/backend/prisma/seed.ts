@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database with canonical Nexus SDR business identities...");
+  console.log("Seeding database with canonical NexSDR business identities...");
 
   // Clean existing tables in reverse dependency order
   await prisma.activityLog.deleteMany();
@@ -61,12 +61,14 @@ Offer a low-friction 10-minute discovery demo call without pressure.`
     }
   });
 
-  // 3. AI SDR Persona: Alex
+  // 3. AI SDR Persona: Alex Rivers
   const sdr = await prisma.sdrProfile.create({
     data: {
       organizationId: org.id,
-      personaName: "Alex",
-      title: "Sales Development Representative",
+      personaName: "Alex Rivers",
+      email: "alex@nexsdr.in",
+      replyTo: "alex@nexsdr.in",
+      title: "AI Sales Development Representative",
       tone: "Professional, consultative, and concise",
       qualificationFramework: "BANT",
       customInstructions: "Always qualify for authority and current workflow pain points before scheduling deep technical demos.",

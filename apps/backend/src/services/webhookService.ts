@@ -176,7 +176,7 @@ export class WebhookService {
         success: true,
         duplicate: false,
         matched: false,
-        message: `Inbound email safely recorded, but sender '${senderEmail}' does not match any existing lead in Nexus SDR.`
+        message: `Inbound email safely recorded, but sender '${senderEmail}' does not match any existing lead in NexSDR.`
       };
     }
 

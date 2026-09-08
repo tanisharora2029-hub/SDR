@@ -251,9 +251,9 @@ export const ConversationsPage: React.FC = () => {
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1">
                         {isLead ? (
                           <>
-                            <User className="w-3 h-3 text-emerald-400" />
-                            <span className="font-semibold text-emerald-300">
-                              {m.senderName || `${activeConv.lead?.firstName} ${activeConv.lead?.lastName}`.trim() || "Lead"}
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+                              <span>👤</span>
+                              <span>LEAD — {m.senderName || `${activeConv.lead?.firstName} ${activeConv.lead?.lastName}`.trim() || "Lead"}</span>
                             </span>
                             {m.status === "REAL_INBOUND" || m.toolCallArgs?.includes("REAL_INBOUND") ? (
                               <>
@@ -265,24 +265,25 @@ export const ConversationsPage: React.FC = () => {
                                 </span>
                               </>
                             ) : (
-                              <span className="text-[10px] text-slate-400">
-                                (Prospect)
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                ({activeConv.lead?.email || "Prospect"})
                               </span>
                             )}
                           </>
                         ) : isHuman ? (
                           <>
-                            <span className="font-semibold text-amber-300">
-                              {m.senderName || user?.name || "Human Operator"} (Workspace Owner)
+                            <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                              <span>👨</span>
+                              <span>HUMAN — {m.senderName || user?.name || "Operator"} (Workspace Owner)</span>
                             </span>
-                            <User className="w-3 h-3 text-amber-400" />
                           </>
                         ) : (
                           <>
-                            <span className="font-semibold text-indigo-300">
-                              {m.senderName || "Alex"} (AI SDR)
+                            <span className="inline-flex items-center gap-1 font-semibold text-indigo-300">
+                              <span>🤖</span>
+                              <span>AI SDR — {m.senderName || "Alex Rivers"}</span>
                             </span>
-                            <Bot className="w-3 h-3 text-indigo-400" />
+                            <span className="text-[10px] text-slate-400 font-mono">(&lt;alex@nexsdr.in&gt;)</span>
                           </>
                         )}
                         <span>•</span>

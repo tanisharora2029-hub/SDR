@@ -31,7 +31,10 @@ export const UpdateSdrProfileSchema = z.object({
   maxFollowUps: z.number().int().min(1).max(10).optional(),
   autoHandoffBudget: z.boolean().optional(),
   autoHandoffMeeting: z.boolean().optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  replyTo: z.string().email().optional().or(z.literal("")),
+  signature: z.string().optional()
 });
 
 export const CreateLeadSchema = z.object({

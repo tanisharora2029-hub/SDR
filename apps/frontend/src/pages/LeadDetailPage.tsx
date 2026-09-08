@@ -329,22 +329,25 @@ export const LeadDetailPage: React.FC = () => {
                       {/* Sender Meta Badges */}
                       <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mb-1">
                         {isHuman && (
-                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1">
-                            <User className="w-2.5 h-2.5" />
-                            HUMAN TAKEOVER
+                          <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                            <span>👨</span>
+                            <span>HUMAN — {m.senderName || "Operator"} (Workspace Owner)</span>
                           </span>
                         )}
                         {isAi && (
-                          <span className="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 flex items-center gap-1">
-                            <Bot className="w-2.5 h-2.5" />
-                            AI SDR (Alex)
-                          </span>
+                          <>
+                            <span className="inline-flex items-center gap-1 font-semibold text-indigo-300">
+                              <span>🤖</span>
+                              <span>AI SDR — {m.senderName || "Alex Rivers"}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">(&lt;alex@nexsdr.in&gt;)</span>
+                          </>
                         )}
                         {isLead && (
                           <>
-                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
-                              <User className="w-2.5 h-2.5" />
-                              PROSPECT ({lead.firstName})
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+                              <span>👤</span>
+                              <span>LEAD — {m.senderName || `${lead.firstName} ${lead.lastName}`.trim() || "Lead"}</span>
                             </span>
                             {(m.status === "REAL_INBOUND" || m.toolCallArgs?.includes("REAL_INBOUND")) && (
                               <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
@@ -353,7 +356,6 @@ export const LeadDetailPage: React.FC = () => {
                             )}
                           </>
                         )}
-                        <span className="text-slate-300 font-medium">{m.senderName}</span>
                         <span>•</span>
                         <span>{new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                         {m.channel && (

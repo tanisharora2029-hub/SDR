@@ -27,16 +27,24 @@ const server = http.createServer(app);
 
 // Enable CORS and JSON body parsing with raw body capture for webhook signature verification
 const corsOrigin = process.env.CORS_ORIGIN;
+const defaultOrigins = [
+  "https://nexsdr.in",
+  "https://www.nexsdr.in",
+  "https://ai-sdr-frontend-n07e.onrender.com",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000"
+];
+
 const allowedOrigins = corsOrigin
   ? corsOrigin.includes(",")
     ? corsOrigin.split(",").map((o) => o.trim())
     : corsOrigin.trim()
-  : "*";
+  : defaultOrigins;
 
 app.use(
   cors({
     origin: allowedOrigins,
-    credentials: allowedOrigins !== "*",
+    credentials: true,
   })
 );
 app.use(
@@ -55,8 +63,9 @@ app.use("/api", apiLimiter);
 app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
-    service: "NexusSDR Core API",
+    service: "NexSDR Core API",
     version: "1.0.0",
+    domain: "https://nexsdr.in",
     timestamp: new Date().toISOString()
   });
 });
@@ -104,7 +113,7 @@ const PORT = parseInt(process.env.PORT || "5000", 10);
 const HOST = process.env.HOST || "0.0.0.0";
 
 server.listen(PORT, HOST, () => {
-  logger.info(`NexusSDR Server running on http://${HOST}:${PORT} [${process.env.NODE_ENV || "development"}]`);
+  logger.info(`NexSDR Server running on http://${HOST}:${PORT} [${process.env.NODE_ENV || "development"}]`);
 });
 
 export { app, server };

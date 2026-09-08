@@ -7,6 +7,8 @@ export interface ResendSendOptions {
   text?: string;
   html?: string;
   senderName?: string;
+  senderEmail?: string;
+  from?: string;
   leadId?: string;
   organizationId?: string;
   replyTo?: string;
@@ -47,7 +49,7 @@ export class ResendService {
     isConfigured: boolean;
   } {
     const configured = this.isConfigured();
-    const senderEmail = process.env.RESEND_FROM_EMAIL || "Alex Rivers <onboarding@resend.dev>";
+    const senderEmail = process.env.RESEND_FROM_EMAIL || "Alex Rivers <alex@nexsdr.in>";
     return {
       provider: "Resend",
       mode: "LIVE",
@@ -121,7 +123,12 @@ export class ResendService {
       };
     }
 
-    const fromAddress = process.env.RESEND_FROM_EMAIL || "Alex Rivers <onboarding@resend.dev>";
+    const defaultSender = "Alex Rivers <alex@nexsdr.in>";
+    const fromAddress =
+      options.from ||
+      (options.senderEmail
+        ? `${options.senderName || "Alex Rivers"} <${options.senderEmail}>`
+        : process.env.RESEND_FROM_EMAIL || defaultSender);
 
     // Add CAN-SPAM / GDPR compliant opt-out footer
     const optOutText = "\n\n---\nTo unsubscribe from these communications, reply STOP.";

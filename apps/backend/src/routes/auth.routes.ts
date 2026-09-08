@@ -25,8 +25,8 @@ authRouter.post("/register", validateBody(RegisterSchema), async (req, res, next
           name: organizationName,
           valueProposition: "Autonomous AI Sales Development Representative platform that prospects, qualifies, and books meetings 24/7.",
           targetCustomerIcp: "B2B tech companies, revenue leaders, and sales teams looking to scale qualified pipeline.",
-          knowledgeBase: "NexusSDR delivers autonomous AI sales outreach, multi-channel lead qualification (BANT/MEDDIC), RFC 5545 calendar booking, and consultative objection handling.",
-          objectionRules: "Acknowledge the prospect's current provider respectfully, inquire about what they like and wish could be improved, and highlight verified NexusSDR automation capabilities without attacking competitors."
+          knowledgeBase: "NexSDR delivers autonomous AI sales outreach, multi-channel lead qualification (BANT/MEDDIC), RFC 5545 calendar booking, and consultative objection handling.",
+          objectionRules: "Acknowledge the prospect's current provider respectfully, inquire about what they like and wish could be improved, and highlight verified NexSDR automation capabilities without attacking competitors."
         }
       });
 

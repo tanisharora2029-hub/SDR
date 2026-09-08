@@ -160,6 +160,8 @@ export class LeadService {
       content: aiResult.content,
       subject: `Introducing ${org.name}`,
       senderName: sdr.personaName,
+      senderEmail: (sdr as any).email || "alex@nexsdr.in",
+      replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
       leadId: lead.id,
       organizationId
     }).catch((err) => logger.warn(`Outreach email dispatch failed: ${err.message}`));

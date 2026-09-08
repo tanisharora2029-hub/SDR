@@ -26,6 +26,8 @@ export class EmailChannelProvider implements IChannelProvider {
         leadId: options.leadId,
         organizationId: options.organizationId,
         senderName: options.senderName,
+        senderEmail: options.senderEmail,
+        from: options.from,
         replyTo: options.replyTo,
         inReplyTo: options.inReplyTo,
         references: options.references,

@@ -94,7 +94,9 @@ export class ToolExecutor {
 
           // Real email dispatch through EmailService
           const sdrProfile = await prisma.sdrProfile.findFirst({ where: { organizationId } });
-          const sdrName = sdrProfile?.personaName || "Alex";
+          const sdrName = sdrProfile?.personaName || "Alex Rivers";
+          const sdrEmail = (sdrProfile as any)?.email || "alex@nexsdr.in";
+          const sdrReplyTo = (sdrProfile as any)?.replyTo || sdrEmail;
 
           let emailSendResult = { success: true, messageId: `msg_${Date.now()}`, previewUrl: undefined as string | undefined, isSimulated: true };
           if (leadRecord?.email) {
@@ -104,7 +106,9 @@ export class ToolExecutor {
               text: body,
               leadId,
               organizationId,
-              senderName: sdrName
+              senderName: sdrName,
+              senderEmail: sdrEmail,
+              replyTo: sdrReplyTo
             });
             if (sendRes.success) {
               emailSendResult = {

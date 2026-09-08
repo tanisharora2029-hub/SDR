@@ -37,7 +37,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            Nexus SDR acts on behalf of your company. In this demo workspace, your organization is preconfigured as:
+            NexSDR acts on behalf of your company. In this demo workspace, your organization is preconfigured as:
           </p>
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <div className="flex justify-between">

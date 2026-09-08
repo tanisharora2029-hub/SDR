@@ -10,7 +10,14 @@ import {
   ExternalLink,
   RefreshCw,
   Radio,
-  Zap
+  Zap,
+  Bot,
+  Globe,
+  Check,
+  Clock,
+  Sparkles,
+  HelpCircle,
+  FileText
 } from "lucide-react";
 
 export const SettingsPage: React.FC = () => {
@@ -22,6 +29,21 @@ export const SettingsPage: React.FC = () => {
   const [valueProp, setValueProp] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // AI SDR Sender Identity States
+  const [sdrProfile, setSdrProfile] = useState<any>(null);
+  const [sdrName, setSdrName] = useState("Alex Rivers");
+  const [sdrEmail, setSdrEmail] = useState("alex@nexsdr.in");
+  const [sdrReplyTo, setSdrReplyTo] = useState("alex@nexsdr.in");
+  const [sdrTitle, setSdrTitle] = useState("AI Sales Development Representative");
+  const [sdrTone, setSdrTone] = useState("Professional, consultative, and concise");
+  const [sdrSignature, setSdrSignature] = useState("Alex Rivers\nAI Sales Development Representative | NexSDR\nalex@nexsdr.in • https://nexsdr.in");
+  const [savingSdr, setSavingSdr] = useState(false);
+  const [savedSdr, setSavedSdr] = useState(false);
+
+  // Domain & DNS Checklist States
+  const [dnsData, setDnsData] = useState<any>(null);
+  const [loadingDns, setLoadingDns] = useState(true);
 
   // Email Integration States
   const [activeProvider, setActiveProvider] = useState<"RESEND" | "ETHEREAL">("ETHEREAL");
@@ -38,7 +60,7 @@ export const SettingsPage: React.FC = () => {
     provider?: string;
     fallbackUsed?: boolean;
   } | null>(null);
-  const [testRecipient, setTestRecipient] = useState("prospect-test@sandbox.nexus-sdr.internal");
+  const [testRecipient, setTestRecipient] = useState("prospect-test@sandbox.nexsdr.in");
 
   // Inbound Email States
   const [inboundStatus, setInboundStatus] = useState<any>(null);
@@ -47,14 +69,32 @@ export const SettingsPage: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const [orgRes, emailRes, webhookRes] = await Promise.all([
+      const [orgRes, emailRes, webhookRes, sdrRes, dnsRes] = await Promise.all([
         api.getOrg().catch(() => ({ organization: null })),
         api.getEmailSettings().catch(() => ({ activeProvider: "ETHEREAL", providers: {} })),
-        api.getInboundWebhookStatus().catch(() => null)
+        api.getInboundWebhookStatus().catch(() => null),
+        api.getSdr().catch(() => null),
+        api.getDomainDns().catch(() => null)
       ]);
 
       if (webhookRes) {
         setInboundStatus(webhookRes);
+      }
+
+      if (dnsRes) {
+        setDnsData(dnsRes);
+      }
+
+      if (sdrRes?.sdrProfile) {
+        setSdrProfile(sdrRes.sdrProfile);
+        setSdrName(sdrRes.sdrProfile.personaName || "Alex Rivers");
+        setSdrEmail(sdrRes.sdrProfile.email || "alex@nexsdr.in");
+        setSdrReplyTo(sdrRes.sdrProfile.replyTo || "alex@nexsdr.in");
+        setSdrTitle(sdrRes.sdrProfile.title || "AI Sales Development Representative");
+        setSdrTone(sdrRes.sdrProfile.tone || "Professional, consultative, and concise");
+        if (sdrRes.sdrProfile.signature) {
+          setSdrSignature(sdrRes.sdrProfile.signature);
+        }
       }
 
       if (orgRes?.organization) {
@@ -74,6 +114,7 @@ export const SettingsPage: React.FC = () => {
       console.error("Failed to load settings:", err);
     } finally {
       setLoadingEmail(false);
+      setLoadingDns(false);
     }
   };
 
@@ -99,6 +140,29 @@ export const SettingsPage: React.FC = () => {
       alert(err.message || "Failed to update settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveSdr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSdr(true);
+    setSavedSdr(false);
+    try {
+      await api.updateSdr({
+        personaName: sdrName,
+        email: sdrEmail,
+        replyTo: sdrReplyTo,
+        title: sdrTitle,
+        tone: sdrTone,
+        signature: sdrSignature
+      });
+      setSavedSdr(true);
+      setTimeout(() => setSavedSdr(false), 3000);
+      await loadSettings();
+    } catch (err: any) {
+      alert(err.message || "Failed to update AI SDR identity");
+    } finally {
+      setSavingSdr(false);
     }
   };
 
@@ -135,8 +199,8 @@ export const SettingsPage: React.FC = () => {
     setWebhookTestResult(null);
     try {
       const res = await api.testInboundWebhook({
-        from: "Alex Rivers <alex.rivers@sandbox.nexus-sdr.internal>",
-        to: ["inbound@yourdomain.com"],
+        from: "Alex Rivers <alex@nexsdr.in>",
+        to: ["inbound@nexsdr.in"],
         subject: "Webhook Connectivity Ping",
         text: "Testing inbound reply loop processing and webhook verification.",
         message_id: `test_ping_${Date.now()}`
@@ -182,14 +246,15 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto min-w-0">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Settings className="w-6 h-6 text-slate-400 shrink-0" />
-            <span>Organization & Integration Settings</span>
+            <span>NexSDR Configuration & Sender Architecture</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Configure company profile, target ICP, and outbound email providers (Resend LIVE & Ethereal Sandbox).
+            Configure official domain (<a href="https://nexsdr.in" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">https://nexsdr.in</a>), AI SDR sender identity, DNS records, and outbound/inbound email pipeline.
           </p>
         </div>
 
@@ -200,7 +265,257 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Email Integration Section: Ethereal Sandbox + Resend LIVE */}
+      {/* SECTION 1: AI SDR SENDER IDENTITY MODEL */}
+      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+                AI SDR Sender Identity (Autonomous Outreach Profile)
+              </h2>
+              <span className="text-[10px] px-2.5 py-0.5 rounded font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                PRODUCT IDENTITY
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              NexSDR enforces a strict 3-tier separation: <strong>Workspace Owner (Human Operator)</strong> vs <strong>AI SDR (Alex Rivers)</strong> vs <strong>Prospect (External Lead)</strong>.
+            </p>
+          </div>
+
+          {savedSdr && (
+            <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
+              <CheckCircle2 className="w-4 h-4" /> AI SDR Identity Saved!
+            </span>
+          )}
+        </div>
+
+        {/* Identity Architecture Callout */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <span className="text-[11px] font-semibold text-amber-300 flex items-center gap-1.5">
+              <span>👨</span> CUSTOMER / OWNER
+            </span>
+            <p className="text-slate-300 font-medium">{org?.users?.[0]?.name || "Tanish"} ({org?.name || "CloudFlow AI"})</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Workspace operator. Configures knowledge base and monitors conversations. Personal email is <strong>never</strong> used as the AI sender.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-1 ring-1 ring-indigo-500/20">
+            <span className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
+              <span>🤖</span> AI SDR SENDER
+            </span>
+            <p className="text-indigo-200 font-medium">{sdrName} &lt;{sdrEmail}&gt;</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Autonomous outbound engine. Dispatches cold emails, handles replies, answers objections, and qualifies prospects via Resend LIVE.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1.5">
+              <span>👤</span> LEAD / PROSPECT
+            </span>
+            <p className="text-slate-300 font-medium">External B2B Prospect</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Recipient of outreach. Replies from their real external mailbox (e.g. Gmail) loop back into NexSDR automatically.
+            </p>
+          </div>
+        </div>
+
+        {/* AI SDR Identity Form */}
+        <form onSubmit={handleSaveSdr} className="space-y-4 pt-2 border-t border-slate-800/80">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="text-slate-300 font-medium block mb-1">AI SDR Persona Name</label>
+              <input
+                type="text"
+                value={sdrName}
+                onChange={(e) => setSdrName(e.target.value)}
+                placeholder="Alex Rivers"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-medium block mb-1">AI SDR Sender Email</label>
+              <input
+                type="email"
+                value={sdrEmail}
+                onChange={(e) => setSdrEmail(e.target.value)}
+                placeholder="alex@nexsdr.in"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-medium block mb-1">Reply-To Address</label>
+              <input
+                type="email"
+                value={sdrReplyTo}
+                onChange={(e) => setSdrReplyTo(e.target.value)}
+                placeholder="alex@nexsdr.in"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 font-mono focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="text-slate-300 font-medium block mb-1">Job Title / Role</label>
+              <input
+                type="text"
+                value={sdrTitle}
+                onChange={(e) => setSdrTitle(e.target.value)}
+                placeholder="AI Sales Development Representative"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-medium block mb-1">Communication Tone</label>
+              <input
+                type="text"
+                value={sdrTone}
+                onChange={(e) => setSdrTone(e.target.value)}
+                placeholder="Professional, consultative, and concise"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div className="text-xs">
+            <label className="text-slate-300 font-medium block mb-1">Email Signature</label>
+            <textarea
+              rows={3}
+              value={sdrSignature}
+              onChange={(e) => setSdrSignature(e.target.value)}
+              placeholder="Alex Rivers&#10;AI Sales Development Representative | NexSDR&#10;alex@nexsdr.in • https://nexsdr.in"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 font-mono leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={savingSdr}
+              className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm"
+            >
+              {savingSdr ? "Saving AI Profile..." : "Update AI SDR Identity"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* SECTION 2: OFFICIAL DOMAIN & DNS CHECKLIST FOR nexsdr.in */}
+      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+                Official Domain & DNS Verification Checklist
+              </h2>
+              <span className="text-[10px] px-2.5 py-0.5 rounded font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                nexsdr.in
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Production domain DNS configuration. Distinguishes <strong>Outbound Domain Verified</strong> from <strong>Inbound Receiving Configured</strong>.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] px-2.5 py-1 rounded font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              <span>REGISTRAR DNS PENDING</span>
+            </span>
+          </div>
+        </div>
+
+        {/* DNS Status Distinction Banner */}
+        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-2">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-slate-200">DNS Setup Verification Status</p>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Outbound email sending operates via Resend LIVE. In order for real prospects to receive emails from <code className="text-indigo-300">alex@nexsdr.in</code> with 100% deliverability and for their replies to route back into NexSDR, the following 4 DNS records must be added to your domain registrar (e.g. Cloudflare, GoDaddy, Namecheap):
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* DNS Records Checklist Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border border-slate-800 rounded-xl overflow-hidden">
+            <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-mono border-b border-slate-800">
+              <tr>
+                <th className="p-3">Purpose</th>
+                <th className="p-3">Type</th>
+                <th className="p-3">Host / Name</th>
+                <th className="p-3">Value / Target</th>
+                <th className="p-3">Architecture Role</th>
+                <th className="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px] text-slate-300 bg-slate-950/40">
+              <tr>
+                <td className="p-3 font-sans font-semibold text-slate-200">SPF Record</td>
+                <td className="p-3 text-indigo-400">TXT</td>
+                <td className="p-3">@</td>
+                <td className="p-3 text-slate-400">v=spf1 include:resend.com ~all</td>
+                <td className="p-3 font-sans text-[11px] text-slate-400">Outbound Authorisation</td>
+                <td className="p-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Pending Registrar
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 font-sans font-semibold text-slate-200">DKIM Record</td>
+                <td className="p-3 text-indigo-400">TXT / CNAME</td>
+                <td className="p-3">resend._domainkey</td>
+                <td className="p-3 text-slate-400 truncate max-w-[200px]" title="p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQ...">
+                  resend._domainkey.resend.com
+                </td>
+                <td className="p-3 font-sans text-[11px] text-slate-400">Outbound Cryptographic Signature</td>
+                <td className="p-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Pending Registrar
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 font-sans font-semibold text-slate-200">MX Inbound Route</td>
+                <td className="p-3 text-indigo-400">MX (Priority 10)</td>
+                <td className="p-3">@ / inbound</td>
+                <td className="p-3 text-slate-400">feedback-smtp.us-east-1.amazonses.com</td>
+                <td className="p-3 font-sans text-[11px] text-emerald-300">Inbound Receiving to Resend</td>
+                <td className="p-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Pending Registrar
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 font-sans font-semibold text-slate-200">Resend Domain Verification</td>
+                <td className="p-3 text-indigo-400">REST API</td>
+                <td className="p-3">nexsdr.in</td>
+                <td className="p-3 text-slate-400">https://api.resend.com/domains</td>
+                <td className="p-3 font-sans text-[11px] text-slate-400">Delivery Account Linkage</td>
+                <td className="p-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Resend Configured
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SECTION 3: EMAIL INTEGRATION (Resend LIVE + Ethereal Sandbox) */}
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
@@ -305,12 +620,12 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
                 <span className="text-slate-400">Sender Persona:</span>
-                <span className="text-slate-200 font-medium">{ethereal?.senderName || "Alex Rivers"}</span>
+                <span className="text-slate-200 font-medium">{sdrName}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
                 <span className="text-slate-400">Sender Address:</span>
                 <span className="font-mono text-slate-300 truncate max-w-[190px]" title={ethereal?.senderEmail}>
-                  {ethereal?.senderEmail || "Resolving..."}
+                  {ethereal?.senderEmail || "alex@nexsdr.in"}
                 </span>
               </div>
             </div>
@@ -372,12 +687,12 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
                 <span className="text-slate-400">Sender Persona:</span>
-                <span className="text-slate-200 font-medium">{resend?.senderName || "Alex Rivers"}</span>
+                <span className="text-slate-200 font-medium">{sdrName}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/80">
                 <span className="text-slate-400">Sender Address:</span>
                 <span className="font-mono text-slate-300 truncate max-w-[190px]" title={resend?.senderEmail}>
-                  {resend?.senderEmail || "Alex Rivers <onboarding@resend.dev>"}
+                  {resend?.senderEmail || "Alex Rivers <alex@nexsdr.in>"}
                 </span>
               </div>
             </div>
@@ -410,18 +725,42 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Test Email Form & Actions */}
+        {/* SECTION 4: EXPLICIT DISTINCTION - TEST EMAIL vs AI SDR COLD OUTREACH */}
+        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              Understanding Email Execution Modes: Test Email vs. AI SDR Cold Outreach
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-slate-400">
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+              <span className="font-semibold text-slate-200 block">1. TEST EMAIL (Manual Diagnostic)</span>
+              <p className="leading-relaxed">
+                Executed directly below from this Settings page to confirm that SMTP or Resend API transport connectivity is healthy. Sends a diagnostic ping message to verify inbox delivery. Does not alter CRM lead stages or schedule multi-turn cadences.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+              <span className="font-semibold text-indigo-300 block">2. AI SDR COLD OUTREACH (Production Outreach)</span>
+              <p className="leading-relaxed">
+                Executed per lead on the <strong>CRM Leads</strong> page. Alex analyzes the company's ICP, value proposition, and prospect attributes to synthesize an individualized, multi-turn sales email with CAN-SPAM compliance and RFC 2822 threading.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Test Email Dispatch Form */}
         <div className="pt-2 border-t border-slate-800/80 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
               <label className="text-slate-400 block text-[11px] font-medium mb-1">
-                Recipient for Test Email Dispatch
+                Recipient for Test Email Dispatch (Manual Diagnostic)
               </label>
               <input
                 type="text"
                 value={testRecipient}
                 onChange={(e) => setTestRecipient(e.target.value)}
-                placeholder="prospect@example.com"
+                placeholder="prospect-test@sandbox.nexsdr.in"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
               />
             </div>
@@ -461,37 +800,47 @@ export const SettingsPage: React.FC = () => {
               ) : (
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               )}
-              <span>[{connResult.provider}] {connResult.message}</span>
+              <span>{connResult.message}</span>
             </div>
           )}
 
           {/* Test Email Result Feedback */}
           {testEmailResult && (
             <div
-              className={`p-3.5 rounded-lg text-xs space-y-1.5 ${
+              className={`p-3.5 rounded-xl border text-xs space-y-2 ${
                 testEmailResult.success
-                  ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                  ? "bg-slate-950 border-emerald-500/30 text-slate-200"
                   : "bg-rose-500/10 border border-rose-500/20 text-rose-300"
               }`}
             >
-              <div className="flex items-center gap-2">
-                {testEmailResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="flex items-center justify-between">
+                <span className="font-semibold flex items-center gap-1.5">
+                  {testEmailResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-400" />
+                  )}
+                  <span>{testEmailResult.message}</span>
+                </span>
+                {testEmailResult.provider && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                    Provider: {testEmailResult.provider}
+                  </span>
                 )}
-                <span className="font-semibold">{testEmailResult.message}</span>
               </div>
 
               {testEmailResult.previewUrl && (
-                <div className="pt-1">
+                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-slate-400 text-[11px]">
+                    Sandbox Ethereal Message Captured:
+                  </span>
                   <a
                     href={testEmailResult.previewUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2"
+                    className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-semibold underline text-[11px]"
                   >
-                    <span>View Sent Email in Ethereal Sandbox</span>
+                    <span>View Test Email in Web Browser</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
@@ -501,7 +850,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Inbound Email Section (Resend Webhook & Reply Loop) */}
+      {/* SECTION 5: INBOUND EMAIL (Resend Webhook & Reply Loop) */}
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
@@ -519,7 +868,7 @@ export const SettingsPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Automatically capture real replies sent from prospect mailboxes (Gmail, Outlook) via Resend Webhooks and process them with Alex (AI SDR).
+              Capture real replies sent from prospect mailboxes (Gmail, Outlook) via Resend Webhooks and process them automatically with Alex (AI SDR).
             </p>
           </div>
 
@@ -548,7 +897,7 @@ export const SettingsPage: React.FC = () => {
               </code>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              Set this endpoint URL in your Resend Dashboard under Webhooks to receive email.received events.
+              Production URL: <code className="text-slate-300">https://sdr-backend-6o2x.onrender.com/api/webhooks/resend/inbound</code>
             </p>
           </div>
 
@@ -574,23 +923,23 @@ export const SettingsPage: React.FC = () => {
         <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3 text-xs text-slate-300">
           <p className="font-semibold text-slate-200 flex items-center gap-1.5">
             <AlertCircle className="w-4 h-4 text-indigo-400" />
-            <span>Manual Setup Required in Resend for Live Inbound Email Delivery</span>
+            <span>Manual Steps Required in Resend for Live Inbound Email Delivery</span>
           </p>
           <ol className="list-decimal list-inside space-y-1.5 text-slate-400 text-[11px] leading-relaxed">
             <li>
-              <strong className="text-slate-300">Domain Verification:</strong> In your Resend Dashboard, go to <span className="text-indigo-300">Domains</span> and verify your sender domain (or subdomain like mail.yourdomain.com).
+              <strong className="text-slate-300">Domain Verification:</strong> In Resend Dashboard, verify <code className="text-indigo-300">nexsdr.in</code> by adding SPF & DKIM records.
             </li>
             <li>
-              <strong className="text-slate-300">Inbound MX DNS Record:</strong> In your DNS provider, add the MX record provided by Resend pointing to their inbound mail processing servers.
+              <strong className="text-slate-300">Inbound MX DNS Record:</strong> In your domain registrar, add the MX record pointing to Resend inbound mail servers.
             </li>
             <li>
-              <strong className="text-slate-300">Add Webhook:</strong> In Resend Dashboard &rarr; <span className="text-indigo-300">Webhooks</span> &rarr; click <span className="text-indigo-300">Add Webhook</span>. Enter your live backend URL: <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded">https://&lt;your-render-domain&gt;/api/webhooks/resend/inbound</code>.
+              <strong className="text-slate-300">Add Webhook:</strong> In Resend Dashboard &rarr; <span className="text-indigo-300">Webhooks</span> &rarr; click <span className="text-indigo-300">Add Webhook</span>. Enter: <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded">https://sdr-backend-6o2x.onrender.com/api/webhooks/resend/inbound</code>.
             </li>
             <li>
               <strong className="text-slate-300">Event Selection:</strong> Select the <code className="text-slate-200">email.received</code> event.
             </li>
             <li>
-              <strong className="text-slate-300">Optional Secret:</strong> Copy the signing secret (<code className="text-slate-300">whsec_...</code>) and save it as <code className="text-slate-300">RESEND_WEBHOOK_SECRET</code> in Render environment variables.
+              <strong className="text-slate-300">Secret:</strong> Copy the signing secret (<code className="text-slate-300">whsec_...</code>) and save as <code className="text-slate-300">RESEND_WEBHOOK_SECRET</code> in Render backend environment variables.
             </li>
           </ol>
         </div>
@@ -614,7 +963,7 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Company Profile & ICP Settings Form */}
+      {/* SECTION 6: COMPANY PROFILE & ICP SETTINGS FORM */}
       <form onSubmit={handleSave} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
         <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
           Company Profile & ICP

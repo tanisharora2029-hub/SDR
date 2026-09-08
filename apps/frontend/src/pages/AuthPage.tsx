@@ -55,7 +55,7 @@ export const AuthPage: React.FC = () => {
           <Sparkles className="w-5 h-5" />
         </div>
         <span className="font-bold text-2xl tracking-tight">
-          Nexus<span className="text-indigo-400">SDR</span>
+          Nex<span className="text-indigo-400">SDR</span>
         </span>
       </Link>
 

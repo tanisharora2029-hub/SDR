@@ -57,6 +57,9 @@ export interface SdrProfileDto {
   autoHandoffBudget: boolean;
   autoHandoffMeeting: boolean;
   isActive: boolean;
+  email?: string | null;
+  replyTo?: string | null;
+  signature?: string | null;
 }
 
 export interface LeadDto {

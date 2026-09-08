@@ -18,7 +18,7 @@ import { SUBSCRIPTION_PLANS } from "@ai-sdr/shared";
 export const LandingPage: React.FC = () => {
   const [demoInput, setDemoInput] = useState("Your pricing seems high compared to basic automation tools.");
   const [demoOutput, setDemoOutput] = useState<string | null>(
-    "I appreciate you sharing that! While basic tools automate simple webhooks, NexusSDR includes enterprise SOC2 governance, automated compliance audit trails, and multi-channel voice synthesis. Clients typically save over $40,000 annually in manual SDR overhead. What does your current compliance workflow look like?"
+    "I appreciate you sharing that! While basic tools automate simple webhooks, NexSDR includes enterprise SOC2 governance, automated compliance audit trails, and multi-channel voice synthesis. Clients typically save over $40,000 annually in manual SDR overhead. What does your current compliance workflow look like?"
   );
 
   const handleSimulateDemo = () => {
@@ -47,7 +47,7 @@ export const LandingPage: React.FC = () => {
               <Sparkles className="w-4 h-4" />
             </div>
             <span className="font-bold text-lg tracking-tight">
-              Nexus<span className="text-indigo-400">SDR</span>
+              Nex<span className="text-indigo-400">SDR</span>
             </span>
           </div>
 
@@ -84,7 +84,7 @@ export const LandingPage: React.FC = () => {
         </h1>
 
         <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Teach NexusSDR your product, ICP, and objection playbooks. It personalizes cold emails, conducts conversational phone calls, qualifies BANT criteria, and hands off enterprise deals to humans.
+          Teach NexSDR your product, ICP, and objection playbooks. It personalizes cold emails, conducts conversational phone calls, qualifies BANT criteria, and hands off enterprise deals to humans.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -259,7 +259,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-850 py-8 px-6 text-center text-xs text-slate-400">
-        <p>© 2026 NexusSDR Inc. Production-ready autonomous sales infrastructure.</p>
+        <p>© 2026 NexSDR Inc. Production-ready autonomous sales infrastructure • <a href="https://nexsdr.in" className="hover:text-slate-300 transition">nexsdr.in</a></p>
       </footer>
     </div>
   );

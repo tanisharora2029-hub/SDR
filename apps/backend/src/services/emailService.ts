@@ -12,6 +12,8 @@ export interface SendEmailOptions {
   leadId?: string;
   organizationId?: string;
   senderName?: string;
+  senderEmail?: string;
+  from?: string;
   forceProvider?: EmailProviderChoice;
   replyTo?: string;
   inReplyTo?: string;
@@ -91,6 +93,8 @@ export class EmailService {
           text: options.text,
           html: options.html,
           senderName: options.senderName,
+          senderEmail: options.senderEmail,
+          from: options.from,
           leadId: options.leadId,
           organizationId: options.organizationId,
           replyTo: options.replyTo,
@@ -188,7 +192,7 @@ export class EmailService {
     isSandbox: boolean;
   }> {
     await this.getTransporter();
-    const senderEmail = this.etherealAccount?.user || process.env.SMTP_FROM_EMAIL || "alex.rivers@sandbox.nexus-sdr.internal";
+    const senderEmail = this.etherealAccount?.user || process.env.SMTP_FROM_EMAIL || "alex@nexsdr.in";
     return {
       provider: "Ethereal Sandbox",
       mode: "SANDBOX",

@@ -1,6 +1,6 @@
-# NexusSDR — Autonomous AI Sales Development Representative Platform
+# NexSDR — Autonomous AI Sales Development Representative Platform
 
-NexusSDR is a production-grade, multi-tenant AI SDR platform built from scratch. It allows businesses to onboard, train an autonomous AI SDR on their verified product knowledge and ICP, manage leads, automate multi-channel outreach (Email, Phone Voice Studio, WhatsApp), execute BANT qualification conversations, run follow-up cadences, and escalate high-value enterprise accounts to human sales representatives with full 360-degree dossiers.
+NexSDR (Official Domain: [https://nexsdr.in](https://nexsdr.in)) is a production-grade, multi-tenant AI SDR platform built from scratch. It allows businesses to onboard, train an autonomous AI SDR (Alex Rivers, `alex@nexsdr.in`) on their verified product knowledge and ICP, manage leads, automate multi-channel outreach (Email, Phone Voice Studio, WhatsApp), execute BANT qualification conversations, run follow-up cadences, and escalate high-value enterprise accounts to human sales representatives with full 360-degree dossiers.
 
 ---
 

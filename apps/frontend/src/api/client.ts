@@ -124,5 +124,8 @@ export const api = {
   // Inbound Email Webhooks (Resend)
   getInboundWebhookStatus: () => apiRequest("/webhooks/resend/inbound/status"),
   testInboundWebhook: (payload: any) =>
-    apiRequest("/webhooks/resend/inbound/test", { method: "POST", body: JSON.stringify({ payload }) })
+    apiRequest("/webhooks/resend/inbound/test", { method: "POST", body: JSON.stringify({ payload }) }),
+
+  // Domain & DNS Checklist
+  getDomainDns: () => apiRequest("/organization/domain-dns")
 };

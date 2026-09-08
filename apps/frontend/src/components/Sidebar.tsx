@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
           </div>
           <div className="min-w-0">
             <h1 className="font-bold text-slate-100 text-lg tracking-tight flex items-center gap-1.5">
-              Nexus<span className="text-indigo-400">SDR</span>
+              Nex<span className="text-indigo-400">SDR</span>
             </h1>
             <p className="text-xs text-slate-400 truncate max-w-[140px]">
               {organization?.name || "AI Sales Org"}
@@ -113,8 +113,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
           <div className="text-xs min-w-0">
-            <p className="font-medium text-slate-300">AI SDR Active</p>
-            <p className="text-slate-400 text-[11px] truncate">Qwen 2.5 3B (Low Latency)</p>
+            <p className="font-medium text-slate-300">Alex Rivers (AI SDR)</p>
+            <p className="text-slate-400 text-[11px] truncate">alex@nexsdr.in</p>
           </div>
         </div>
       </div>

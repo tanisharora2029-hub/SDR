@@ -113,15 +113,18 @@ export const LeadSimulatorPage: React.FC = () => {
           <FlaskConical className="w-6 h-6 text-indigo-400 shrink-0 mt-0.5" />
           <div>
             <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                [DEV]
+              </span>
               <h1 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
-                Development / Test Lead Simulator
+                Lead Simulator (Testing Tool)
               </h1>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
                 EXTERNAL PROSPECT PERSPECTIVE
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              This sandbox isolates the external prospect experience. You are viewing and interacting with the system as a real lead (e.g. Rahul Sharma). Messages sent from here enter Nexus SDR as genuine <span className="font-semibold text-emerald-400">INBOUND LEAD</span> replies.
+              This sandbox isolates the external prospect experience for testing. You are viewing and interacting with the system as a real lead (e.g. Rahul Sharma). Messages sent from here enter NexSDR as genuine <span className="font-semibold text-emerald-400">INBOUND LEAD</span> replies. Production inbound uses real email mailboxes via Resend.
             </p>
           </div>
         </div>
@@ -357,7 +360,7 @@ export const LeadSimulatorPage: React.FC = () => {
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
                   <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Inbound reply ingested into Nexus SDR as LEAD</span>
+                    <span>Inbound reply ingested into NexSDR as LEAD</span>
                   </div>
                   {lastResult.outboundMsg && (
                     <p className="text-slate-300 text-[11px] pt-1 border-t border-slate-800">

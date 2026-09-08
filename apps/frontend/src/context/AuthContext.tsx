@@ -70,7 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginAsDemo = async () => {
-    await login("demo@nexus-sdr.com", "password123");
+    try {
+      await login("demo@nexsdr.in", "password123");
+    } catch {
+      await login("demo@nexus-sdr.com", "password123");
+    }
   };
 
   const register = async (name: string, email: string, password: string, organizationName: string) => {
