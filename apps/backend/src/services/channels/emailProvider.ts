@@ -1,18 +1,22 @@
 import { IChannelProvider, ChannelProviderStatus, ChannelSendOptions, ChannelSendResult } from "./channelTypes.js";
 import { EmailService } from "../emailService.js";
+import { ResendService } from "../resendService.js";
 import { logger } from "../../lib/logger.js";
 
 export class EmailChannelProvider implements IChannelProvider {
   readonly channel = "EMAIL";
 
   getStatus(): ChannelProviderStatus {
-    const isProductionSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-    return isProductionSmtp ? "REAL" : "SANDBOX";
+    if (EmailService.getActiveProvider() === "RESEND" && ResendService.isConfigured()) {
+      return "REAL";
+    }
+    return "SANDBOX";
   }
 
   async send(options: ChannelSendOptions): Promise<ChannelSendResult> {
     const status = this.getStatus();
-    logger.info(`[EmailChannelProvider] Dispatching email to ${options.to} via mode: ${status}`);
+    const activeProvider = EmailService.getActiveProvider();
+    logger.info(`[EmailChannelProvider] Dispatching email to ${options.to} via mode: ${status} (Active: ${activeProvider})`);
 
     try {
       const res = await EmailService.sendEmail({
@@ -20,18 +24,23 @@ export class EmailChannelProvider implements IChannelProvider {
         subject: options.subject || `Message from ${options.senderName}`,
         text: options.content,
         leadId: options.leadId,
-        organizationId: options.organizationId
+        organizationId: options.organizationId,
+        senderName: options.senderName
       });
+
+      const usedStatus: ChannelProviderStatus = res.provider === "RESEND" ? "REAL" : "SANDBOX";
 
       return {
         success: res.success,
         channel: "EMAIL",
-        providerStatus: status,
+        providerStatus: usedStatus,
         externalMessageId: res.messageId,
         previewUrl: res.previewUrl || undefined,
-        notes: status === "SANDBOX"
-          ? (res.previewUrl ? `Ethereal preview link: ${res.previewUrl}` : "Ethereal sandbox SMTP")
-          : "Production SMTP transport",
+        notes: res.provider === "RESEND"
+          ? `Delivered via Resend LIVE API (ID: ${res.messageId})`
+          : (res.fallbackUsed
+              ? `Delivered via Ethereal Sandbox (Fell back from Resend). Preview link: ${res.previewUrl}`
+              : `Delivered via Ethereal Sandbox. Preview link: ${res.previewUrl}`),
         error: res.error
       };
     } catch (err: any) {

@@ -8,7 +8,9 @@ import {
   AlertCircle,
   Send,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Radio,
+  Zap
 } from "lucide-react";
 
 export const SettingsPage: React.FC = () => {
@@ -22,41 +24,51 @@ export const SettingsPage: React.FC = () => {
   const [saved, setSaved] = useState(false);
 
   // Email Integration States
-  const [emailSettings, setEmailSettings] = useState<any>(null);
+  const [activeProvider, setActiveProvider] = useState<"RESEND" | "ETHEREAL">("ETHEREAL");
+  const [providersInfo, setProvidersInfo] = useState<any>({ ethereal: null, resend: null });
   const [loadingEmail, setLoadingEmail] = useState(true);
-  const [testingConn, setTestingConn] = useState(false);
-  const [connResult, setConnResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [switchingProvider, setSwitchingProvider] = useState(false);
+  const [testingConn, setTestingConn] = useState<"RESEND" | "ETHEREAL" | null>(null);
+  const [connResult, setConnResult] = useState<{ success: boolean; message: string; provider: string } | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
-  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; previewUrl?: string } | null>(null);
+  const [testEmailResult, setTestEmailResult] = useState<{
+    success: boolean;
+    message: string;
+    previewUrl?: string;
+    provider?: string;
+    fallbackUsed?: boolean;
+  } | null>(null);
   const [testRecipient, setTestRecipient] = useState("prospect-test@sandbox.nexus-sdr.internal");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [orgRes, emailRes] = await Promise.all([
-          api.getOrg().catch(() => ({ organization: null })),
-          api.getEmailSettings().catch(() => ({ emailSettings: null }))
-        ]);
+  const loadSettings = async () => {
+    try {
+      const [orgRes, emailRes] = await Promise.all([
+        api.getOrg().catch(() => ({ organization: null })),
+        api.getEmailSettings().catch(() => ({ activeProvider: "ETHEREAL", providers: {} }))
+      ]);
 
-        if (orgRes?.organization) {
-          setOrg(orgRes.organization);
-          setName(orgRes.organization.name || "");
-          setIndustry(orgRes.organization.industry || "");
-          setWebsite(orgRes.organization.website || "");
-          setTargetIcp(orgRes.organization.targetCustomerIcp || "");
-          setValueProp(orgRes.organization.valueProposition || "");
-        }
-
-        if (emailRes?.emailSettings) {
-          setEmailSettings(emailRes.emailSettings);
-        }
-      } catch (err) {
-        console.error("Failed to load settings:", err);
-      } finally {
-        setLoadingEmail(false);
+      if (orgRes?.organization) {
+        setOrg(orgRes.organization);
+        setName(orgRes.organization.name || "");
+        setIndustry(orgRes.organization.industry || "");
+        setWebsite(orgRes.organization.website || "");
+        setTargetIcp(orgRes.organization.targetCustomerIcp || "");
+        setValueProp(orgRes.organization.valueProposition || "");
       }
+
+      if (emailRes?.providers) {
+        setProvidersInfo(emailRes.providers);
+        setActiveProvider(emailRes.activeProvider || "ETHEREAL");
+      }
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+    } finally {
+      setLoadingEmail(false);
     }
-    load();
+  };
+
+  useEffect(() => {
+    loadSettings();
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -80,45 +92,57 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleTestConnection = async () => {
-    setTestingConn(true);
-    setConnResult(null);
+  const handleSelectProvider = async (provider: "RESEND" | "ETHEREAL") => {
+    if (provider === activeProvider) return;
+    setSwitchingProvider(true);
     try {
-      const res = await api.testEmailConnection();
-      setConnResult({ success: res.success, message: res.message });
-      // Refresh sender info if needed
-      const settingsRes = await api.getEmailSettings();
-      if (settingsRes?.emailSettings) {
-        setEmailSettings(settingsRes.emailSettings);
-      }
+      await api.selectEmailProvider(provider);
+      setActiveProvider(provider);
+      await loadSettings();
     } catch (err: any) {
-      setConnResult({ success: false, message: err.message || "Connection test failed" });
+      alert(err.message || "Failed to switch email provider");
     } finally {
-      setTestingConn(false);
+      setSwitchingProvider(false);
     }
   };
 
-  const handleSendTestEmail = async () => {
+  const handleTestConnection = async (provider: "RESEND" | "ETHEREAL") => {
+    setTestingConn(provider);
+    setConnResult(null);
+    try {
+      const res = await api.testEmailConnection(provider);
+      setConnResult({ success: res.success, message: res.message, provider });
+      await loadSettings();
+    } catch (err: any) {
+      setConnResult({ success: false, message: err.message || "Connection test failed", provider });
+    } finally {
+      setTestingConn(null);
+    }
+  };
+
+  const handleSendTestEmail = async (providerToUse?: "RESEND" | "ETHEREAL") => {
     setSendingTest(true);
     setTestEmailResult(null);
+    const chosen = providerToUse || activeProvider;
     try {
-      const res = await api.sendTestEmail(testRecipient.trim());
+      const res = await api.sendTestEmail(testRecipient.trim(), chosen);
       setTestEmailResult({
         success: res.success,
         message: res.message,
-        previewUrl: res.previewUrl
+        previewUrl: res.previewUrl,
+        provider: res.provider,
+        fallbackUsed: res.fallbackUsed
       });
-      // Refresh sender email in UI
-      const settingsRes = await api.getEmailSettings();
-      if (settingsRes?.emailSettings) {
-        setEmailSettings(settingsRes.emailSettings);
-      }
+      await loadSettings();
     } catch (err: any) {
       setTestEmailResult({ success: false, message: err.message || "Failed to send test email" });
     } finally {
       setSendingTest(false);
     }
   };
+
+  const ethereal = providersInfo?.ethereal;
+  const resend = providersInfo?.resend;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto min-w-0">
@@ -129,7 +153,7 @@ export const SettingsPage: React.FC = () => {
             <span>Organization & Integration Settings</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Configure company profile, target ICP, and zero-cost sandbox email integration.
+            Configure company profile, target ICP, and outbound email providers (Resend LIVE & Ethereal Sandbox).
           </p>
         </div>
 
@@ -140,120 +164,249 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Email Integration Section (Phase 1: Ethereal Sandbox) */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
+      {/* Email Integration Section: Ethereal Sandbox + Resend LIVE */}
+      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <Mail className="w-5 h-5 text-indigo-400" />
               <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
-                Email Integration
+                Outbound Email Integration
               </h2>
-              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                SANDBOX
+              <span className={`text-[10px] px-2.5 py-0.5 rounded font-mono font-bold border ${
+                activeProvider === "RESEND"
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                  : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+              }`}>
+                ACTIVE: {activeProvider === "RESEND" ? "RESEND (LIVE)" : "ETHEREAL (SANDBOX)"}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Autonomous AI SDR email delivery pipeline powered by the existing zero-cost Ethereal test SMTP engine.
+              Select between production real-world delivery via Resend or zero-cost isolated testing via Ethereal.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Status: {emailSettings?.status || "Connected/Ready"}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Sandbox Notice Banner */}
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300/90 flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="font-semibold text-amber-200">Sandbox Mode Active — No Real Emails Sent</p>
-            <p className="text-[11px] text-amber-300/80 leading-relaxed">
-              All cold outreach, SDR automated replies, and test messages are captured inside the isolated Ethereal virtual SMTP sandbox (₹0 cost). Real prospect mailboxes are never touched in sandbox mode.
-            </p>
-          </div>
-        </div>
-
-        {/* Email Settings Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-            <span className="text-slate-400 block text-[11px] font-medium">Email Provider</span>
-            <span className="text-slate-100 font-semibold mt-1 block">
-              {emailSettings?.provider || "Ethereal Sandbox"}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-            <span className="text-slate-400 block text-[11px] font-medium">Mode</span>
-            <span className="text-indigo-400 font-semibold mt-1 block font-mono">
-              {emailSettings?.mode || "SANDBOX"}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-            <span className="text-slate-400 block text-[11px] font-medium">Sender Name</span>
-            <span className="text-slate-100 font-semibold mt-1 block">
-              {emailSettings?.senderName || "Alex Rivers"}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-            <span className="text-slate-400 block text-[11px] font-medium">Sender Email</span>
-            <span
-              className="text-slate-300 font-mono text-[11px] mt-1 block truncate"
-              title={emailSettings?.senderEmail || "Ethereal Test User"}
+          {/* Active Provider Selector Pills */}
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => handleSelectProvider("RESEND")}
+              disabled={switchingProvider}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                activeProvider === "RESEND"
+                  ? "bg-emerald-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
             >
-              {loadingEmail ? "Resolving SMTP..." : (emailSettings?.senderEmail || "alex.rivers@sandbox.nexus-sdr.internal")}
-            </span>
+              <Zap className="w-3.5 h-3.5" />
+              <span>Resend (LIVE)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelectProvider("ETHEREAL")}
+              disabled={switchingProvider}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                activeProvider === "ETHEREAL"
+                  ? "bg-indigo-600 text-white shadow"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Ethereal (SANDBOX)</span>
+            </button>
           </div>
         </div>
 
-        {/* Test Email Recipient & Actions */}
+        {/* Active Mode Notice Banner */}
+        {activeProvider === "RESEND" ? (
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-300 flex items-start gap-3">
+            <Zap className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-emerald-200">Resend LIVE Mode Active (Real Outbound Delivery)</p>
+              <p className="text-[11px] text-emerald-300/80 leading-relaxed">
+                All AI cold outreach, cadence emails, and replies are dispatched through the Resend REST API and delivered directly to prospect recipient inboxes. In the unlikely event of an authentication or provider failure, the platform automatically falls back to Ethereal Sandbox so outreach is never dropped.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-200">Ethereal Sandbox Mode Active (Zero-Cost / No Real Emails Sent)</p>
+              <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                All emails are safely captured in the isolated Ethereal virtual SMTP sandbox (₹0 cost). Real prospect mailboxes are never touched. Test preview URLs are generated for visual inspection.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Two Providers Comparison Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {/* Provider 1: Ethereal Sandbox */}
+          <div className={`p-4 rounded-xl border transition ${
+            activeProvider === "ETHEREAL"
+              ? "bg-slate-950 border-indigo-500/50 shadow-md ring-1 ring-indigo-500/20"
+              : "bg-slate-950/60 border-slate-800"
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-100 text-sm">Ethereal Sandbox</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                  SANDBOX
+                </span>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>{ethereal?.status || "Connected/Ready"}</span>
+              </span>
+            </div>
+
+            <div className="space-y-2 text-slate-300 mb-4 text-[11px]">
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Delivery Target:</span>
+                <span className="text-slate-200 font-medium">Virtual Ethereal Inbox (₹0)</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Sender Persona:</span>
+                <span className="text-slate-200 font-medium">{ethereal?.senderName || "Alex Rivers"}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Sender Address:</span>
+                <span className="font-mono text-slate-300 truncate max-w-[190px]" title={ethereal?.senderEmail}>
+                  {ethereal?.senderEmail || "Resolving..."}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => handleTestConnection("ETHEREAL")}
+                disabled={testingConn !== null || sendingTest}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 border border-slate-700 text-[11px] font-semibold transition flex items-center gap-1.5"
+              >
+                {testingConn === "ETHEREAL" ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
+                ) : (
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                )}
+                <span>Test Ethereal Connection</span>
+              </button>
+
+              {activeProvider !== "ETHEREAL" && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectProvider("ETHEREAL")}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium underline"
+                >
+                  Activate
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Provider 2: Resend LIVE */}
+          <div className={`p-4 rounded-xl border transition ${
+            activeProvider === "RESEND"
+              ? "bg-slate-950 border-emerald-500/50 shadow-md ring-1 ring-emerald-500/20"
+              : "bg-slate-950/60 border-slate-800"
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-100 text-sm">Resend</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  LIVE
+                </span>
+              </div>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                resend?.isConfigured
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${resend?.isConfigured ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                <span>{resend?.status || "Checking..."}</span>
+              </span>
+            </div>
+
+            <div className="space-y-2 text-slate-300 mb-4 text-[11px]">
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Delivery Target:</span>
+                <span className="text-emerald-300 font-medium">Real Inboxes via Resend API</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Sender Persona:</span>
+                <span className="text-slate-200 font-medium">{resend?.senderName || "Alex Rivers"}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/80">
+                <span className="text-slate-400">Sender Address:</span>
+                <span className="font-mono text-slate-300 truncate max-w-[190px]" title={resend?.senderEmail}>
+                  {resend?.senderEmail || "Alex Rivers <onboarding@resend.dev>"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => handleTestConnection("RESEND")}
+                disabled={testingConn !== null || sendingTest}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 border border-slate-700 text-[11px] font-semibold transition flex items-center gap-1.5"
+              >
+                {testingConn === "RESEND" ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />
+                ) : (
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                )}
+                <span>Test Resend Connection</span>
+              </button>
+
+              {activeProvider !== "RESEND" && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectProvider("RESEND")}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 font-medium underline"
+                >
+                  Activate
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Test Email Form & Actions */}
         <div className="pt-2 border-t border-slate-800/80 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
               <label className="text-slate-400 block text-[11px] font-medium mb-1">
-                Test Target Recipient (Simulated Inbox)
+                Recipient for Test Email Dispatch
               </label>
               <input
                 type="text"
                 value={testRecipient}
                 onChange={(e) => setTestRecipient(e.target.value)}
-                placeholder="prospect-test@sandbox.nexus-sdr.internal"
+                placeholder="prospect@example.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 sm:self-end">
+            <div className="flex flex-wrap items-center gap-2 sm:self-end">
               <button
                 type="button"
-                onClick={handleTestConnection}
-                disabled={testingConn || sendingTest}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 border border-slate-700 font-semibold text-xs transition flex items-center gap-1.5 shadow-sm"
-              >
-                {testingConn ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                ) : (
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                )}
-                <span>{testingConn ? "Testing..." : "Test Connection"}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSendTestEmail}
-                disabled={testingConn || sendingTest}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm"
+                onClick={() => handleSendTestEmail(activeProvider)}
+                disabled={sendingTest || testingConn !== null}
+                className={`px-4 py-2 rounded-xl text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm ${
+                  activeProvider === "RESEND"
+                    ? "bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+                    : "bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
+                }`}
               >
                 {sendingTest ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Send className="w-3.5 h-3.5" />
                 )}
-                <span>{sendingTest ? "Sending..." : "Send Test Email"}</span>
+                <span>Send Test Email via {activeProvider === "RESEND" ? "Resend (LIVE)" : "Ethereal"}</span>
               </button>
             </div>
           </div>
@@ -272,7 +425,7 @@ export const SettingsPage: React.FC = () => {
               ) : (
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
               )}
-              <span>{connResult.message}</span>
+              <span>[{connResult.provider}] {connResult.message}</span>
             </div>
           )}
 

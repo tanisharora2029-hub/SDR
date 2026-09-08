@@ -1,5 +1,8 @@
 import nodemailer, { Transporter } from "nodemailer";
 import { logger } from "../lib/logger.js";
+import { ResendService } from "./resendService.js";
+
+export type EmailProviderChoice = "ETHEREAL" | "RESEND";
 
 export interface SendEmailOptions {
   to: string;
@@ -9,19 +12,32 @@ export interface SendEmailOptions {
   leadId?: string;
   organizationId?: string;
   senderName?: string;
+  forceProvider?: EmailProviderChoice;
 }
 
 export interface EmailSendResult {
   success: boolean;
   messageId?: string;
   previewUrl?: string | false;
+  provider?: EmailProviderChoice;
   isSimulated: boolean;
   error?: string;
+  fallbackUsed?: boolean;
 }
 
 export class EmailService {
   private static transporter: Transporter | null = null;
   private static etherealAccount: any = null;
+  private static activeProvider: EmailProviderChoice = process.env.RESEND_API_KEY ? "RESEND" : "ETHEREAL";
+
+  static getActiveProvider(): EmailProviderChoice {
+    return this.activeProvider;
+  }
+
+  static setActiveProvider(provider: EmailProviderChoice) {
+    this.activeProvider = provider;
+    logger.info(`[EmailService] Active email provider switched to: ${provider}`);
+  }
 
   private static async getTransporter(): Promise<Transporter> {
     if (this.transporter) return this.transporter;
@@ -60,6 +76,42 @@ export class EmailService {
   }
 
   static async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
+    const targetProvider = options.forceProvider || this.activeProvider;
+
+    // 1. LIVE Outbound Provider: Resend
+    if (targetProvider === "RESEND") {
+      if (ResendService.isConfigured()) {
+        const resendRes = await ResendService.sendEmail({
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+          senderName: options.senderName,
+          leadId: options.leadId,
+          organizationId: options.organizationId
+        });
+
+        if (resendRes.success) {
+          return {
+            success: true,
+            messageId: resendRes.messageId,
+            provider: "RESEND",
+            isSimulated: false
+          };
+        }
+
+        // Authentication failure or Resend API error -> Safe fallback to Ethereal Sandbox!
+        logger.warn(
+          `[EmailService] Resend dispatch failed (${resendRes.error || "Unknown error"}). Safely falling back to Ethereal Sandbox.`
+        );
+      } else {
+        logger.warn(
+          "[EmailService] Resend requested but RESEND_API_KEY is not configured. Safely falling back to Ethereal Sandbox."
+        );
+      }
+    }
+
+    // 2. SANDBOX Outbound Provider: Ethereal (Default & Safe Fallback)
     try {
       const transporter = await this.getTransporter();
       const fromName = options.senderName || "Alex";
@@ -98,12 +150,15 @@ export class EmailService {
         success: true,
         messageId: info.messageId,
         previewUrl: previewUrl || undefined,
-        isSimulated: false
+        provider: "ETHEREAL",
+        isSimulated: false,
+        fallbackUsed: targetProvider === "RESEND"
       };
     } catch (err: any) {
       logger.error("Failed to send email via SMTP:", err);
       return {
         success: false,
+        provider: "ETHEREAL",
         isSimulated: false,
         error: err.message
       };

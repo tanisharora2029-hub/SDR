@@ -112,8 +112,12 @@ export const api = {
   verifyPayment: (tier: string, paymentId?: string) =>
     apiRequest("/billing/verify-payment", { method: "POST", body: JSON.stringify({ tier, paymentId }) }),
 
-  // Email Integration Settings (Ethereal Sandbox)
+  // Email Integration Settings (Ethereal Sandbox & Resend LIVE)
   getEmailSettings: () => apiRequest("/organization/email-settings"),
-  testEmailConnection: () => apiRequest("/organization/test-email-connection", { method: "POST" }),
-  sendTestEmail: (to?: string) => apiRequest("/organization/send-test-email", { method: "POST", body: JSON.stringify({ to }) })
+  selectEmailProvider: (provider: "RESEND" | "ETHEREAL") =>
+    apiRequest("/organization/select-email-provider", { method: "POST", body: JSON.stringify({ provider }) }),
+  testEmailConnection: (provider?: "RESEND" | "ETHEREAL") =>
+    apiRequest("/organization/test-email-connection", { method: "POST", body: JSON.stringify({ provider }) }),
+  sendTestEmail: (to?: string, provider?: "RESEND" | "ETHEREAL") =>
+    apiRequest("/organization/send-test-email", { method: "POST", body: JSON.stringify({ to, provider }) })
 };

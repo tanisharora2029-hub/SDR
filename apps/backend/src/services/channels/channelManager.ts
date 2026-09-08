@@ -3,6 +3,8 @@ import { EmailChannelProvider } from "./emailProvider.js";
 import { SmsChannelProvider } from "./smsProvider.js";
 import { WhatsAppChannelProvider } from "./whatsappProvider.js";
 import { VoiceChannelProvider } from "./voiceProvider.js";
+import { EmailService } from "../emailService.js";
+import { ResendService } from "../resendService.js";
 
 export class ChannelManager {
   private static providers: Map<string, IChannelProvider> = new Map<string, IChannelProvider>([
@@ -17,11 +19,15 @@ export class ChannelManager {
   }
 
   static getChannelStatuses(): Record<string, { status: ChannelProviderStatus; label: string; description: string }> {
+    const isResendActive = EmailService.getActiveProvider() === "RESEND" && ResendService.isConfigured();
+
     return {
       EMAIL: {
-        status: this.providers.get("EMAIL")?.getStatus() || "SANDBOX",
-        label: "Email (Ethereal Sandbox / SMTP)",
-        description: "Zero-cost Ethereal test SMTP inbox with preview links. Live production SMTP can be connected via environment variables."
+        status: isResendActive ? "REAL" : "SANDBOX",
+        label: isResendActive ? "Email (Resend LIVE API)" : "Email (Ethereal Sandbox / SMTP)",
+        description: isResendActive
+          ? "Live outbound email delivery via Resend REST API to real prospect inboxes."
+          : "Zero-cost Ethereal test SMTP inbox with preview links. Live delivery can be enabled via Resend API."
       },
       SMS: {
         status: "MOCK",
