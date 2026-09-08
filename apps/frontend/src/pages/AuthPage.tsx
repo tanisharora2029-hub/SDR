@@ -49,7 +49,7 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 text-slate-100">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-100">
       <Link to="/" className="flex items-center gap-3 mb-8">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
           <Sparkles className="w-5 h-5" />
@@ -59,7 +59,7 @@ export const AuthPage: React.FC = () => {
         </span>
       </Link>
 
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-8 shadow-2xl">
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-slate-100">
             {isSignUp ? "Create your AI SDR Account" : "Sign in to your Dashboard"}

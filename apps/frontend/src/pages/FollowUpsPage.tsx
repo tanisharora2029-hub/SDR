@@ -38,11 +38,11 @@ export const FollowUpsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <Repeat className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+            <Repeat className="w-6 h-6 text-indigo-400 shrink-0" />
             <span>Follow-up Cadence Engine</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -53,7 +53,7 @@ export const FollowUpsPage: React.FC = () => {
         <button
           onClick={handleRunPending}
           disabled={executing}
-          className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm"
+          className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm self-start sm:self-auto shrink-0"
         >
           <Play className="w-3.5 h-3.5" />
           <span>{executing ? "Processing Cadences..." : "Run Due Tasks Now"}</span>

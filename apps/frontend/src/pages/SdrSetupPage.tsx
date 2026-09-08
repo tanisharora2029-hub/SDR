@@ -96,11 +96,11 @@ export const SdrSetupPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-xs text-slate-400">Loading AI SDR configuration...</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+            <Brain className="w-6 h-6 text-indigo-400 shrink-0" />
             <span>AI SDR Brain Configuration</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -109,7 +109,7 @@ export const SdrSetupPage: React.FC = () => {
         </div>
 
         {savedSuccess && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold shrink-0">
             <CheckCircle2 className="w-4 h-4" />
             <span>Configuration saved!</span>
           </div>
@@ -119,12 +119,12 @@ export const SdrSetupPage: React.FC = () => {
       <form onSubmit={handleSave} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Persona Settings */}
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
             <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
               SDR Persona & Voice
             </h2>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-slate-300 block mb-1">Persona Name</label>
                 <input
@@ -249,7 +249,7 @@ export const SdrSetupPage: React.FC = () => {
           <h2 className="text-sm font-bold text-slate-100">Live SDR Sandbox Test</h2>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={testInput}

@@ -13,9 +13,15 @@ import {
   Settings,
   ShieldCheck,
   Repeat,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
+
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -32,24 +38,36 @@ const navItems = [
   { name: "Admin Area", path: "/admin", icon: ShieldCheck }
 ];
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const { organization } = useAuth();
 
-  return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen select-none">
+  const renderNav = (isMobile: boolean) => (
+    <>
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-          <Sparkles className="w-5 h-5" />
+      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-bold text-slate-100 text-lg tracking-tight flex items-center gap-1.5">
+              Nexus<span className="text-indigo-400">SDR</span>
+            </h1>
+            <p className="text-xs text-slate-400 truncate max-w-[140px]">
+              {organization?.name || "AI Sales Org"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-bold text-slate-100 text-lg tracking-tight flex items-center gap-1.5">
-            Nexus<span className="text-indigo-400">SDR</span>
-          </h1>
-          <p className="text-xs text-slate-400 truncate max-w-[140px]">
-            {organization?.name || "AI Sales Org"}
-          </p>
-        </div>
+
+        {isMobile && (
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -60,6 +78,9 @@ export const Sidebar: React.FC = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => {
+                if (isMobile && onClose) onClose();
+              }}
               className={({ isActive }) =>
                 `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
@@ -69,7 +90,7 @@ export const Sidebar: React.FC = () => {
               }
             >
               <div className="flex items-center gap-3">
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4 shrink-0" />
                 <span>{item.name}</span>
               </div>
               {item.badge && (
@@ -85,16 +106,44 @@ export const Sidebar: React.FC = () => {
       {/* Status Footer */}
       <div className="p-4 border-t border-slate-800 bg-slate-950/40">
         <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2.5 w-2.5">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
-          <div className="text-xs">
+          <div className="text-xs min-w-0">
             <p className="font-medium text-slate-300">AI SDR Active</p>
-            <p className="text-slate-400 text-[11px]">Qwen 2.5 3B (Low Latency)</p>
+            <p className="text-slate-400 text-[11px] truncate">Qwen 2.5 3B (Low Latency)</p>
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col h-screen select-none shrink-0">
+        {renderNav(false)}
+      </aside>
+
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden ${
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Mobile Drawer Aside */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:hidden shadow-2xl ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Mobile Navigation"
+      >
+        {renderNav(true)}
+      </aside>
+    </>
   );
 };

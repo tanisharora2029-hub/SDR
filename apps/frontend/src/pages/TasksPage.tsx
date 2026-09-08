@@ -22,10 +22,10 @@ export const TasksPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-          <CalendarCheck className="w-6 h-6 text-amber-400" />
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+          <CalendarCheck className="w-6 h-6 text-amber-400 shrink-0" />
           <span>Appointments & Booked Demos</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">

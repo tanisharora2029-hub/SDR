@@ -80,10 +80,10 @@ export const DashboardPage: React.FC = () => {
 
       {/* Escalation Alert Banner */}
       {escalations.length > 0 && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-amber-300">
                 {escalations.length} High-Intent Lead{escalations.length > 1 ? "s" : ""} Requiring Human Handoff
               </p>
@@ -94,7 +94,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <Link
             to="/handoff"
-            className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition"
+            className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition self-start sm:self-auto shrink-0"
           >
             Review Inbox
           </Link>
@@ -102,16 +102,16 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400">{kpi.label}</span>
-                <Icon className={`w-4 h-4 ${kpi.color}`} />
+            <div key={idx} className="p-3 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 min-w-0">
+              <div className="flex items-center justify-between mb-2 gap-1">
+                <span className="text-[11px] sm:text-xs text-slate-400 truncate">{kpi.label}</span>
+                <Icon className={`w-4 h-4 shrink-0 ${kpi.color}`} />
               </div>
-              <p className="text-2xl font-bold text-slate-100">{kpi.value}</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-100">{kpi.value}</p>
             </div>
           );
         })}

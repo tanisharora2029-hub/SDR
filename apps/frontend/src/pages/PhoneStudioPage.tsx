@@ -419,7 +419,7 @@ export const PhoneStudioPage: React.FC = () => {
         </div>
 
         {/* Live Status Badges */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Real-time Voice State Machine Badge */}
           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
             voiceState === "LISTENING"
@@ -823,7 +823,7 @@ export const PhoneStudioPage: React.FC = () => {
                     <span className="text-[10px] text-slate-500">Auto-turn enabled</span>
                   </div>
 
-                  <form onSubmit={(e) => handleSendUtterance(undefined, e)} className="flex gap-2">
+                  <form onSubmit={(e) => handleSendUtterance(undefined, e)} className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       value={userInput}
@@ -838,7 +838,7 @@ export const PhoneStudioPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={!userInput.trim() || voiceState === "PROCESSING"}
-                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center gap-1.5"
+                      className="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shrink-0"
                       title="Optional: Click only if you prefer not to wait for 1.1s VAD silence auto-submission"
                     >
                       <span>Send (Manual Fallback)</span>

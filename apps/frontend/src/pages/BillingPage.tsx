@@ -41,18 +41,18 @@ export const BillingPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-xs text-slate-400">Loading subscription details...</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <CreditCard className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+            <CreditCard className="w-6 h-6 text-indigo-400 shrink-0" />
             <span>Billing & Subscription Plans</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
             Manage your SaaS subscription, monitor monthly AI credit limits, and scale your sales team.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-[11px] font-mono font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
             {billing?.gatewayStatus?.label || "TEST_MODE (Sandbox)"}
           </span>
@@ -60,7 +60,7 @@ export const BillingPage: React.FC = () => {
       </div>
 
       {/* Current Usage Banner */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-xs text-slate-400 font-medium">Current Active Tier:</span>
@@ -72,7 +72,7 @@ export const BillingPage: React.FC = () => {
             </h2>
           </div>
 
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <span className="text-xs text-slate-400 font-medium">Monthly AI Credits Used:</span>
             <p className="text-lg font-bold text-indigo-400">
               {billing?.creditsUsed} / {billing?.creditLimit} credits

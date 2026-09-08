@@ -3,10 +3,10 @@ import { ShieldCheck, Cpu, HardDrive, Database, Activity, CheckCircle2, Zap } fr
 
 export const AdminPage: React.FC = () => {
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-          <ShieldCheck className="w-6 h-6 text-indigo-400" />
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+          <ShieldCheck className="w-6 h-6 text-indigo-400 shrink-0" />
           <span>System Architecture & Engine Status</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">
@@ -61,11 +61,11 @@ export const AdminPage: React.FC = () => {
         <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
           Enforced AI Tool-Calling Architecture
         </h2>
-        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 space-y-2">
-          <p className="text-indigo-400 font-bold">
+        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 space-y-2 overflow-x-auto">
+          <p className="text-indigo-400 font-bold break-words">
             LLM → Structured Tool Decision → Backend Validates (Auth, Opt-Out, Rate Limits) → API Executes → Result
           </p>
-          <p className="text-slate-400">
+          <p className="text-slate-400 break-words">
             Registered Tools: send_email, read_email, check_calendar_availability, create_calendar_event, create_followup, update_lead, qualify_lead, schedule_call, log_call, human_handoff.
           </p>
         </div>

@@ -9,7 +9,8 @@ import {
   PhoneCall,
   Clock,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft
 } from "lucide-react";
 
 export const ConversationsPage: React.FC = () => {
@@ -25,7 +26,7 @@ export const ConversationsPage: React.FC = () => {
     try {
       const res = await api.getConversations();
       setConversations(res.conversations);
-      if (res.conversations.length > 0 && !selectedId) {
+      if (typeof window !== "undefined" && window.innerWidth >= 768 && res.conversations.length > 0 && !selectedId) {
         setSelectedId(res.conversations[0].id);
       }
     } catch (err) {
@@ -101,17 +102,17 @@ export const ConversationsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4 max-w-7xl mx-auto">
+    <div className="h-[calc(100vh-5.5rem)] sm:h-[calc(100vh-6rem)] flex flex-col space-y-4 max-w-7xl mx-auto min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Omnichannel Inbox</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-100">Omnichannel Inbox</h1>
         <p className="text-xs text-slate-400 mt-0.5">
           Live unified stream of autonomous SDR email, WhatsApp, and phone dialogues.
         </p>
       </div>
 
-      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex">
+      <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex min-w-0">
         {/* Left: Threads list */}
-        <div className="w-80 border-r border-slate-800 flex flex-col h-full bg-slate-950/40">
+        <div className={`${selectedId ? "hidden md:flex" : "flex"} w-full md:w-80 md:border-r border-slate-800 flex-col h-full bg-slate-950/40 shrink-0`}>
           <div className="p-3.5 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
             All Conversations ({conversations.length})
           </div>
@@ -148,18 +149,28 @@ export const ConversationsPage: React.FC = () => {
         </div>
 
         {/* Right: Active Message Thread */}
-        <div className="flex-1 flex flex-col h-full bg-slate-900/60">
+        <div className={`${selectedId ? "flex" : "hidden md:flex"} flex-1 flex-col h-full bg-slate-900/60 min-w-0`}>
           {activeConv ? (
             <>
               {/* Thread Header */}
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
-                <div>
-                  <h2 className="font-semibold text-sm text-slate-100">
-                    {activeConv.lead?.firstName} {activeConv.lead?.lastName} ({activeConv.lead?.companyName})
-                  </h2>
-                  <p className="text-xs text-slate-400">{activeConv.lead?.email}</p>
+              <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/40 gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    onClick={() => setSelectedId(null)}
+                    className="p-1.5 -ml-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg md:hidden shrink-0 transition"
+                    aria-label="Back to conversations list"
+                    title="Back to conversations"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-sm text-slate-100 truncate">
+                      {activeConv.lead?.firstName} {activeConv.lead?.lastName} ({activeConv.lead?.companyName})
+                    </h2>
+                    <p className="text-xs text-slate-400 truncate">{activeConv.lead?.email}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {activeConv.lead?.isOptedOut || activeConv.lead?.status === "OPTED_OUT" ? (
                     <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30">
                       OPTED OUT / DNC

@@ -51,11 +51,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <Settings className="w-6 h-6 text-slate-400" />
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+            <Settings className="w-6 h-6 text-slate-400 shrink-0" />
             <span>Organization & Integration Settings</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -64,7 +64,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {saved && (
-          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+          <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
             <CheckCircle2 className="w-4 h-4" /> Settings updated!
           </span>
         )}
@@ -132,7 +132,7 @@ export const SettingsPage: React.FC = () => {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+            className="w-full sm:w-auto px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
           >
             {saving ? "Saving..." : "Save Settings"}
           </button>

@@ -78,7 +78,7 @@ export const HandoffInboxPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => handleResolve(lead.id, "CONVERTED")}
                       className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition"

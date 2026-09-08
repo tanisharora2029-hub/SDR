@@ -41,7 +41,7 @@ export const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
       {/* Top Navigation */}
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
               <Sparkles className="w-4 h-4" />
@@ -120,7 +120,7 @@ export const LandingPage: React.FC = () => {
               <label className="text-xs text-slate-400 font-medium block mb-1.5">
                 Simulate Prospect Response or Objection:
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={demoInput}
@@ -130,7 +130,7 @@ export const LandingPage: React.FC = () => {
                 />
                 <button
                   onClick={handleSimulateDemo}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition shrink-0"
                 >
                   Evaluate
                 </button>

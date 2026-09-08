@@ -76,9 +76,9 @@ export const LeadDetailPage: React.FC = () => {
   const messages = conversation?.messages || [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
       {/* Back button & Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           to="/leads"
           className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 transition"
@@ -116,10 +116,10 @@ export const LeadDetailPage: React.FC = () => {
       )}
 
       {/* Header Card */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-100">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-100">
               {lead.firstName} {lead.lastName}
             </h1>
             <span
@@ -139,14 +139,14 @@ export const LeadDetailPage: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            {lead.jobTitle || "Executive"} at <span className="text-slate-200 font-semibold">{lead.companyName}</span> � {lead.email}
+            {lead.jobTitle || "Executive"} at <span className="text-slate-200 font-semibold">{lead.companyName}</span> • {lead.email}
           </p>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-right">
+        <div className="flex items-center gap-6 self-start md:self-auto">
+          <div className="text-left md:text-right">
             <p className="text-xs text-slate-400">Intent Score</p>
-            <p className="text-2xl font-bold text-indigo-400">{lead.intentScore} / 100</p>
+            <p className="text-xl sm:text-2xl font-bold text-indigo-400">{lead.intentScore} / 100</p>
           </div>
         </div>
       </div>

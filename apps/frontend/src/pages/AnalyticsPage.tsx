@@ -23,10 +23,10 @@ export const AnalyticsPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-xs text-slate-400">Loading metrics...</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-indigo-400" />
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 text-indigo-400 shrink-0" />
           <span>Pipeline Analytics & Conversion Funnel</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">
@@ -35,7 +35,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Top Conversion Funnel Bar */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
         <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
           Sales Conversion Funnel
         </h2>
