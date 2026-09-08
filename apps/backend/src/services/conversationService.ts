@@ -1,3 +1,4 @@
+import { ChannelManager } from "./channels/channelManager.js";
 import { prisma } from "../lib/prisma.js";
 import { aiService } from "./ai/aiService.js";
 import { ToolExecutor } from "./toolExecutor.js";
@@ -77,14 +78,17 @@ export class ConversationService {
           });
         }
 
-        // 4. Record the inbound STOP message so thread history is preserved
+        // 4. Record the inbound STOP message with proper LEAD role
         inboundMsg = await tx.message.create({
           data: {
             conversationId: conv.id,
             channel,
             direction: "INBOUND",
+            senderRole: "LEAD",
+            senderId: targetLead.id,
+            recipientId: null,
             content: replyText,
-            senderName: "Prospect",
+            senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
             status: "DELIVERED"
           }
         });
@@ -114,15 +118,33 @@ export class ConversationService {
       });
     }
 
-    // Record inbound prospect message
+    // Record inbound prospect message with proper LEAD role
     const inboundMsg = await prisma.message.create({
       data: {
         conversationId: conv.id,
         channel,
         direction: "INBOUND",
+        senderRole: "LEAD",
+        senderId: targetLead.id,
+        recipientId: null,
         content: replyText,
-        senderName: "Prospect",
+        senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
         status: "DELIVERED"
+      }
+    });
+
+    // Record activity log for Lead Reply
+    await prisma.activityLog.create({
+      data: {
+        organizationId,
+        category: "CONVERSATION",
+        action: "LEAD_REPLIED",
+        detailsJson: JSON.stringify({
+          leadId: targetLead.id,
+          leadName: `${targetLead.firstName} ${targetLead.lastName}`.trim(),
+          channel,
+          reply: replyText
+        })
       }
     });
 
@@ -183,7 +205,7 @@ export class ConversationService {
     };
 
     const turns: ConversationTurn[] = historyMsgs.map(m => ({
-      speaker: m.direction === "INBOUND" ? "lead" : "sdr",
+      speaker: (m.senderRole === "LEAD" || m.direction === "INBOUND") ? "lead" : "sdr",
       channel: m.channel,
       content: m.content,
       timestamp: m.createdAt.toISOString()
@@ -202,12 +224,23 @@ export class ConversationService {
             conversationId: conv.id,
             channel,
             direction: "OUTBOUND",
+            senderRole: "AI",
+            senderId: sdr.id,
+            recipientId: targetLead.id,
             content: askDateMsg,
             senderName: sdr.personaName,
             status: "SENT",
             aiReasoning: "Meeting booking: missing date - requested day from prospect"
           }
         });
+
+        await ChannelManager.dispatch(channel, {
+          to: targetLead.email || targetLead.phone || "",
+          content: askDateMsg,
+          senderName: sdr.personaName,
+          leadId: targetLead.id,
+          organizationId
+        }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
           outboundMsg,
@@ -231,12 +264,23 @@ export class ConversationService {
             conversationId: conv.id,
             channel,
             direction: "OUTBOUND",
+            senderRole: "AI",
+            senderId: sdr.id,
+            recipientId: targetLead.id,
             content: askTimeMsg,
             senderName: sdr.personaName,
             status: "SENT",
             aiReasoning: "Meeting booking: missing time - requested time from prospect"
           }
         });
+
+        await ChannelManager.dispatch(channel, {
+          to: targetLead.email || targetLead.phone || "",
+          content: askTimeMsg,
+          senderName: sdr.personaName,
+          leadId: targetLead.id,
+          organizationId
+        }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
           outboundMsg,
@@ -307,6 +351,9 @@ export class ConversationService {
                 conversationId: conv.id,
                 channel,
                 direction: "OUTBOUND",
+                senderRole: "AI",
+                senderId: sdr.id,
+                recipientId: targetLead.id,
                 content: confirmMsg,
                 senderName: sdr.personaName,
                 status: "SENT",
@@ -319,6 +366,14 @@ export class ConversationService {
                 })
               }
             });
+
+            await ChannelManager.dispatch(channel, {
+              to: targetLead.email || targetLead.phone || "",
+              content: confirmMsg,
+              senderName: sdr.personaName,
+              leadId: targetLead.id,
+              organizationId
+            }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
             return {
               inboundMsg,
@@ -362,12 +417,23 @@ export class ConversationService {
               conversationId: conv.id,
               channel,
               direction: "OUTBOUND",
+              senderRole: "AI",
+              senderId: sdr.id,
+              recipientId: targetLead.id,
               content: conflictMsg,
               senderName: sdr.personaName,
               status: "SENT",
               aiReasoning: "Calendar slot conflict - suggested alternative times"
             }
           });
+
+          await ChannelManager.dispatch(channel, {
+            to: targetLead.email || targetLead.phone || "",
+            content: conflictMsg,
+            senderName: sdr.personaName,
+            leadId: targetLead.id,
+            organizationId
+          }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
           return {
             inboundMsg,
@@ -454,6 +520,9 @@ export class ConversationService {
           conversationId: conv.id,
           channel,
           direction: "OUTBOUND",
+          senderRole: "AI",
+          senderId: sdr.id,
+          recipientId: targetLead.id,
           content: confirmFollowUpMsg,
           senderName: sdr.personaName,
           status: "SENT",
@@ -462,6 +531,14 @@ export class ConversationService {
           toolCallArgs: JSON.stringify({ lead_id: leadId, delay_days: delayDays, channel: "EMAIL" })
         }
       });
+
+      await ChannelManager.dispatch(channel, {
+        to: targetLead.email || targetLead.phone || "",
+        content: confirmFollowUpMsg,
+        senderName: sdr.personaName,
+        leadId: targetLead.id,
+        organizationId
+      }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
       return {
         inboundMsg,
@@ -580,18 +657,45 @@ export class ConversationService {
       }
     }
 
-    // Store ONLY clean natural language reply in Message table
+    // Store ONLY clean natural language reply in Message table with proper AI role
     const outboundMsg = await prisma.message.create({
       data: {
         conversationId: conv.id,
         channel,
         direction: "OUTBOUND",
+        senderRole: "AI",
+        senderId: sdr.id,
+        recipientId: targetLead.id,
         content: aiCompletion.content, // Pure conversational response - NEVER raw JSON
         senderName: sdr.personaName,
         status: "SENT",
         aiReasoning: `Intent: ${aiCompletion.action.intent} | Action: ${aiCompletion.action.action} (${aiCompletion.latencyMs}ms)`,
         toolCallName: actionName !== "reply" ? actionName : null,
         toolCallArgs: aiCompletion.toolDecision ? JSON.stringify(aiCompletion.toolDecision.arguments) : null
+      }
+    });
+
+    // Dispatch via channel abstraction to external lead
+    await ChannelManager.dispatch(channel, {
+      to: targetLead.email || targetLead.phone || "",
+      content: aiCompletion.content,
+      senderName: sdr.personaName,
+      leadId: targetLead.id,
+      organizationId
+    }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
+
+    // Record ActivityLog for AI SDR reply
+    await prisma.activityLog.create({
+      data: {
+        organizationId,
+        category: "AI",
+        action: "AI_REPLY_SENT",
+        detailsJson: JSON.stringify({
+          leadId: targetLead.id,
+          leadName: `${targetLead.firstName} ${targetLead.lastName}`.trim(),
+          reply: aiCompletion.content,
+          intent: aiCompletion.action?.intent || "reply"
+        })
       }
     });
 
@@ -630,29 +734,96 @@ export class ConversationService {
     };
   }
 
-  static async sendHumanMessage(organizationId: string, conversationId: string, content: string) {
+  static async sendHumanMessage(
+    organizationId: string,
+    conversationId: string,
+    content: string,
+    user?: { userId?: string; id?: string; name?: string }
+  ) {
     const conv = await prisma.conversation.findFirst({
-      where: { id: conversationId, organizationId }
+      where: { id: conversationId, organizationId },
+      include: { lead: true }
     });
     if (!conv) throw new Error("Conversation not found");
+
+    const senderName = user?.name || "Human Operator";
+    const senderId = user?.userId || user?.id || null;
 
     const message = await prisma.message.create({
       data: {
         conversationId,
         channel: conv.channel,
         direction: "OUTBOUND",
+        senderRole: "HUMAN",
+        senderId,
+        recipientId: conv.leadId,
         content,
-        senderName: "Sales Rep (Human)",
+        senderName,
         status: "SENT"
       }
     });
 
-    // Mark as human takeover
+    // Mark as human takeover: pause AI and clear escalation
     await prisma.conversation.update({
       where: { id: conversationId },
-      data: { isAiActive: false }
+      data: { isAiActive: false, isEscalated: false }
+    });
+
+    // Dispatch via channel abstraction to external lead
+    if (conv.lead?.email || conv.lead?.phone) {
+      await ChannelManager.dispatch(conv.channel, {
+        to: conv.lead.email || conv.lead.phone || "",
+        content,
+        senderName,
+        leadId: conv.leadId,
+        organizationId
+      }).catch((err) => logger.warn(`Channel dispatch failed for human message: ${err.message}`));
+    }
+
+    // Record activity log for human takeover
+    await prisma.activityLog.create({
+      data: {
+        organizationId,
+        category: "CONVERSATION",
+        action: "HUMAN_TAKEOVER_MESSAGE",
+        detailsJson: JSON.stringify({
+          conversationId,
+          leadId: conv.leadId,
+          leadName: conv.lead ? `${conv.lead.firstName} ${conv.lead.lastName}`.trim() : "Unknown",
+          senderName,
+          content
+        })
+      }
     });
 
     return message;
+  }
+
+  static async resumeAiHandling(organizationId: string, conversationId: string) {
+    const conv = await prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId },
+      include: { lead: true }
+    });
+    if (!conv) throw new Error("Conversation not found");
+
+    const updated = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { isAiActive: true }
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        organizationId,
+        category: "AI",
+        action: "AI_HANDLING_RESUMED",
+        detailsJson: JSON.stringify({
+          conversationId,
+          leadId: conv.leadId,
+          leadName: conv.lead ? `${conv.lead.firstName} ${conv.lead.lastName}`.trim() : "Unknown"
+        })
+      }
+    });
+
+    return updated;
   }
 }

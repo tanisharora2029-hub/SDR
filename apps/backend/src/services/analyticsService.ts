@@ -34,6 +34,12 @@ export class AnalyticsService {
       ? Math.round(((qualifiedCount + appointmentsBooked) / contactedCount) * 100)
       : 0;
 
+    const recentActivities = await prisma.activityLog.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    });
+
     return {
       totalLeads,
       contactedCount,
@@ -50,7 +56,8 @@ export class AnalyticsService {
         email: emailMessages,
         phone: calls,
         whatsapp: 0
-      }
+      },
+      recentActivities
     };
   }
 }

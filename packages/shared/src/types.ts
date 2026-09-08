@@ -12,6 +12,7 @@ export type LeadStatus =
 
 export type Channel = "EMAIL" | "PHONE" | "WHATSAPP" | "SMS";
 export type Direction = "INBOUND" | "OUTBOUND";
+export type SenderRole = "HUMAN" | "AI" | "LEAD" | "SYSTEM";
 export type MessageStatus = "QUEUED" | "SENT" | "DELIVERED" | "READ" | "FAILED";
 export type CallStatus = "INITIATED" | "RINGING" | "IN_PROGRESS" | "COMPLETED" | "BUSY" | "NO_ANSWER" | "FAILED";
 export type FollowUpStatus = "SCHEDULED" | "EXECUTED" | "CANCELLED" | "SKIPPED";
@@ -70,6 +71,9 @@ export interface LeadDto {
   industry?: string | null;
   location?: string | null;
   status: LeadStatus;
+  source?: string | null;
+  notes?: string | null;
+  tags?: string | null;
   intentScore: number;
   isOptedOut: boolean;
   bantScorecard?: {
@@ -106,6 +110,9 @@ export interface MessageDto {
   organizationId: string;
   channel: Channel;
   direction: Direction;
+  senderRole?: SenderRole;
+  senderId?: string | null;
+  recipientId?: string | null;
   content: string;
   senderName: string;
   status: MessageStatus;

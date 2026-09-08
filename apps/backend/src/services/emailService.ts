@@ -8,6 +8,7 @@ export interface SendEmailOptions {
   html?: string;
   leadId?: string;
   organizationId?: string;
+  senderName?: string;
 }
 
 export interface EmailSendResult {
@@ -61,7 +62,8 @@ export class EmailService {
   static async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
     try {
       const transporter = await this.getTransporter();
-      const fromAddress = process.env.SMTP_FROM || (this.etherealAccount ? `"AI SDR" <${this.etherealAccount.user}>` : `"AI SDR" <sdr@company.com>`);
+      const fromName = options.senderName || "Alex";
+      const fromAddress = process.env.SMTP_FROM || (this.etherealAccount ? `"${fromName}" <${this.etherealAccount.user}>` : `"${fromName}" <sdr@company.com>`);
 
       // Add CAN-SPAM / GDPR compliant opt-out footer
       const optOutText = "\n\n---\nTo unsubscribe from these communications, reply STOP.";

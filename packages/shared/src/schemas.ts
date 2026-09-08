@@ -43,6 +43,9 @@ export const CreateLeadSchema = z.object({
   jobTitle: z.string().optional(),
   industry: z.string().optional(),
   location: z.string().optional(),
+  source: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.string().optional(),
   customData: z.record(z.any()).optional()
 });
 

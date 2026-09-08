@@ -84,6 +84,9 @@ model Lead {
   industry       String?
   location       String?
   status         String         @default("NEW")
+  source         String         @default("MANUAL")
+  notes          String?
+  tags           String?
   intentScore    Int            @default(0)
   isOptedOut     Boolean        @default(false)
   bantScorecard  String?
@@ -128,6 +131,9 @@ model Message {
   conversationId String
   channel        String       @default("EMAIL")
   direction      String       @default("OUTBOUND")
+  senderRole     String       @default("AI")
+  senderId       String?
+  recipientId    String?
   content        String
   senderName     String
   status         String       @default("SENT")

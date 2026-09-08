@@ -466,6 +466,30 @@ export const PhoneStudioPage: React.FC = () => {
         </div>
       )}
 
+      {/* Test Call Role Context Banner */}
+      <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <Radio className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span className="font-semibold text-indigo-200">
+              🎙️ Test Call Mode — You are acting as the Lead
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="text-slate-400">
+              AI SDR: <strong className="text-indigo-300">Alex (CloudFlow AI)</strong>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">
+              Your Role: <strong className="text-emerald-300">Acting as {selectedLead ? `${selectedLead.firstName} ${selectedLead.lastName} (Prospect)` : "Prospect"}</strong>
+            </span>
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-400 mt-1.5">
+          Speak directly into your microphone as the prospect. The AI SDR listens, processes objections, and responds in real-time with zero carrier expense.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Call Controls, Mic Monitor, & Device Settings */}
         <div className="space-y-6">
@@ -754,11 +778,11 @@ export const PhoneStudioPage: React.FC = () => {
                       {turn.speaker === "sdr" ? (
                         <>
                           <Bot className="w-3 h-3 text-indigo-400" />
-                          <span>Alex Rivers (AI SDR)</span>
+                          <span className="text-indigo-300 font-semibold">Alex (AI SDR @ CloudFlow AI)</span>
                         </>
                       ) : (
                         <>
-                          <span>{selectedLead?.firstName || "Prospect"}</span>
+                          <span className="text-emerald-300 font-semibold">You (Acting as {selectedLead?.firstName || "Prospect"})</span>
                           <User className="w-3 h-3 text-emerald-400" />
                         </>
                       )}

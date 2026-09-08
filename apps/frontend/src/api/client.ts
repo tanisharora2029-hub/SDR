@@ -53,6 +53,10 @@ export const api = {
     apiRequest("/conversations/simulate-reply", { method: "POST", body: JSON.stringify({ leadId, content, channel }) }),
   sendHumanMessage: (conversationId: string, content: string) =>
     apiRequest(`/conversations/${conversationId}/human-message`, { method: "POST", body: JSON.stringify({ content }) }),
+  resumeAi: (conversationId: string) =>
+    apiRequest(`/conversations/${conversationId}/resume-ai`, { method: "POST" }),
+  getChannelStatuses: () => apiRequest("/conversations/channels/status"),
+  getSimulatorLeads: () => apiRequest("/conversations/simulator/leads"),
 
   // Phone Studio
   getVoices: () => apiRequest("/calls/voices"),

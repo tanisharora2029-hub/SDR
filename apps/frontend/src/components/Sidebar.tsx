@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Repeat,
   Sparkles,
+  FlaskConical,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
@@ -27,6 +28,7 @@ const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "Leads", path: "/leads", icon: Users },
   { name: "Omnichannel Inbox", path: "/conversations", icon: MessageSquare },
+  { name: "Lead Simulator", path: "/lead-simulator", icon: FlaskConical, badge: "DEV" },
   { name: "Phone Studio", path: "/phone-studio", icon: PhoneCall, badge: "Voice AI" },
   { name: "Follow-up Cadences", path: "/follow-ups", icon: Repeat },
   { name: "Appointments & Tasks", path: "/tasks", icon: CalendarCheck },
