@@ -187,8 +187,35 @@ export class CalendarService {
    */
   static parseMeetingDateTime(text: string, referenceDate: Date = new Date()): ParsedMeetingRequest {
     const raw = text.trim();
-    const meetingIntentKeywords = /\b(schedule|book|demo|meeting|call|meet|calendar|appointment|slot)\b/i;
-    const hasMeetingIntent = meetingIntentKeywords.test(raw);
+    const lower = raw.toLowerCase();
+
+    // False positive filters: words like "meet" used as satisfying a requirement, or past demos, or busy schedules
+    const isFalsePositive =
+      /\b(?:does it|to|will it|can it)\s+meet\b/i.test(lower) ||
+      /\bmeet\s+(?:our|the|your|compliance|requirements|criteria|needs|standards|goals)\b/i.test(lower) ||
+      /\b(?:saw|watched|tried|received|seen)\s+(?:a|the)\s+demo\b/i.test(lower) ||
+      /\bdemo\s+(?:video|link|account|environment|recording)\b/i.test(lower) ||
+      /\b(?:in\s+a\s+meeting|before\s+my\s+meeting|after\s+(?:the|my)\s+meeting)\b/i.test(lower) ||
+      /\b(?:too busy|not right now|next quarter|later|not ready|don'?t call|no time)\b/i.test(lower);
+
+    // Explicit scheduling agreement patterns
+    const explicitAgreement =
+      /(?:let'?s\s+(?:schedule|book|meet|set up)|book\s+(?:me|a|an)|schedule\s+(?:me|a|an)|set\s+up\s+a\s+(?:call|demo|meeting)|can\s+we\s+(?:schedule|book|meet)|happy\s+to\s+(?:meet|hop on a call|do a demo)|available\s+to\s+meet|let'?s\s+do\s+(?:tomorrow|\w+day)|works\s+for\s+me|works\s+best\s+for\s+me)/i.test(lower) ||
+      (/(?:yes|sure|sounds good|definitely|let'?s do it)[,\s]+.*(?:tomorrow|next\s+week|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b)/i.test(lower) && /\b(?:schedule|book|meet|call|demo)\b/i.test(lower));
+
+    const hasMeetingIntent = !isFalsePositive && explicitAgreement;
+
+    if (!hasMeetingIntent) {
+      return {
+        hasMeetingIntent: false,
+        missing: "both",
+        date: null,
+        formattedDate: null,
+        formattedTime: null,
+        timezone: null,
+        rawRequestedText: raw
+      };
+    }
 
     // 1. Time extraction
     // Matches "3 PM", "3:30 PM", "15:00", "2 pm", "10am"
@@ -217,6 +244,18 @@ export class CalendarService {
         extractedHours = parseInt(h24Match[1], 10);
         extractedMinutes = parseInt(h24Match[2], 10);
         rawTimePhrase = h24Match[0];
+      } else if (/\bafternoon\b/i.test(raw)) {
+        extractedHours = 14;
+        extractedMinutes = 0;
+        rawTimePhrase = "2:00 PM";
+      } else if (/\bmorning\b/i.test(raw)) {
+        extractedHours = 10;
+        extractedMinutes = 0;
+        rawTimePhrase = "10:00 AM";
+      } else if (/\bevening\b/i.test(raw)) {
+        extractedHours = 17;
+        extractedMinutes = 0;
+        rawTimePhrase = "5:00 PM";
       }
     }
 

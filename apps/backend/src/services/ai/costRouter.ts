@@ -34,13 +34,29 @@ export class CostRouter {
     // Mode can be overridden via environment variable
     const routingMode = process.env.AI_COST_ROUTING_MODE || "intelligent"; // "intelligent" | "always-local" | "always-online"
 
-    if (process.env.AI_PROVIDER === "groq") {
+    // Production cloud deployment prioritizes Groq online when configured
+    const hasGroq = Boolean(process.env.GROQ_API_KEY);
+    const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+    const isProduction = process.env.NODE_ENV === "production";
+    const explicitProvider = process.env.AI_PROVIDER;
+
+    if (explicitProvider === "groq" || (hasGroq && explicitProvider !== "ollama" && explicitProvider !== "mock")) {
       return {
         taskType,
         priority: isVoiceTask ? "LIVE_HIGH_PRIORITY_VOICE" : "ASYNC_CHEAP",
         selectedProvider: "groq-online",
         modelName: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
         reason: "Routed via Groq provider abstraction for cloud deployment."
+      };
+    }
+
+    if (isProduction && !explicitProvider && hasGroq) {
+      return {
+        taskType,
+        priority: isVoiceTask ? "LIVE_HIGH_PRIORITY_VOICE" : "ASYNC_CHEAP",
+        selectedProvider: "groq-online",
+        modelName: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        reason: "Production environment auto-routed to Groq online."
       };
     }
 

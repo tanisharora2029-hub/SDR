@@ -116,6 +116,12 @@ export class CompetitorRagService {
     objectionRules: string
   ): Promise<CompetitorEvidence | null> {
     const candidateCompetitors = [
+      "uipath",
+      "automation anywhere",
+      "blue prism",
+      "workato",
+      "power automate",
+      "zapier",
       "salesforce",
       "hubspot",
       "outreach",
@@ -130,16 +136,29 @@ export class CompetitorRagService {
     ];
 
     const lower = text.toLowerCase();
+
+    // Check for internal team / vendor objections
+    if (/\b(internal team|in-house team|internal automation|our own team|don'?t want another vendor|no more vendors)\b/i.test(lower)) {
+      return {
+        competitorName: "Internal Team / In-House Automation",
+        isVerified: true,
+        verifiedSummary: "Prospect has an internal engineering/automation team and resists adding more vendors.",
+        differentiationAngle: "Respect their internal capabilities. Explain that we augment internal teams by handling high-volume repetitive workflows so their engineers can focus on core proprietary products. Inquire about current backlog.",
+        safeFallbackStatement: "We work alongside internal engineering teams to reduce backlog rather than replace internal tools."
+      };
+    }
+
+    // Check candidate competitors list
     const found = candidateCompetitors.find(c => new RegExp(`\\b${c}\\b`, "i").test(lower));
 
     if (!found) {
-      // Check if user says generic "competitor" or "another tool"
-      if (/\b(competitor|another vendor|another tool|current provider|different platform)\b/i.test(lower)) {
+      // Check if user mentions generic competitor
+      if (/\b(competitor|another vendor|another tool|current provider|different platform|existing solution)\b/i.test(lower)) {
         return {
           competitorName: "unspecified competitor",
           isVerified: true,
           verifiedSummary: "Prospect mentioned an existing vendor.",
-          differentiationAngle: "Politely acknowledge their current workflow and ask what gaps or manual friction they experience.",
+          differentiationAngle: "Politely acknowledge their current workflow and ask what gaps, manual friction, or turnaround bottlenecks they experience.",
           safeFallbackStatement: "I don't have verified information on that specific feature yet, so I don't want to guess."
         };
       }

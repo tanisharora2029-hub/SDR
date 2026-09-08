@@ -9,9 +9,8 @@ import { AnalyticsService } from "../services/analyticsService.js";
 import { ToolExecutor } from "../services/toolExecutor.js";
 import { MockAiProvider } from "../services/ai/mockProvider.js";
 
-describe("AI SDR Platform End-to-End Suite", () => {
+describe.sequential("AI SDR Platform End-to-End Suite", () => {
   let testOrgId: string;
-  let testLeadId: string;
 
   beforeAll(async () => {
     // Setup test organization
@@ -20,7 +19,10 @@ describe("AI SDR Platform End-to-End Suite", () => {
         name: "TestCorp SaaS",
         valueProposition: "Automating accounts payable with AI",
         targetCustomerIcp: "CFOs and controllers",
-        knowledgeBase: "TestCorp saves 20 hours per week on invoice matching."
+        knowledgeBase: "TestCorp saves 20 hours per week on invoice matching. Bank-grade SOC2 compliance and guaranteed enterprise SLAs.",
+        pricingInfo: "Starter ($199/mo) and Growth ($499/mo).",
+        complianceInfo: "Bank-grade SOC2 compliance and guaranteed enterprise SLAs.",
+        competitors: "Zapier: We provide deep AI reconciliation and SOC2 compliance that consumer tools like Zapier lack."
       }
     });
     testOrgId = org.id;
@@ -33,18 +35,6 @@ describe("AI SDR Platform End-to-End Suite", () => {
         tone: "Professional and consultative"
       }
     });
-
-    const lead = await prisma.lead.create({
-      data: {
-        organizationId: testOrgId,
-        firstName: "Alice",
-        lastName: "Smith",
-        email: "alice@finco.test",
-        companyName: "FinCo Global",
-        status: "NEW"
-      }
-    });
-    testLeadId = lead.id;
   });
 
   afterAll(async () => {
@@ -52,14 +42,25 @@ describe("AI SDR Platform End-to-End Suite", () => {
   });
 
   it("1. Generates personalized cold outreach with tool decision", async () => {
-    const result = await LeadService.triggerAiOutreach(testOrgId, testLeadId);
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: testOrgId,
+        firstName: "Alice",
+        lastName: "Smith",
+        email: `alice_${Date.now()}@finco.test`,
+        companyName: "FinCo Global",
+        status: "NEW"
+      }
+    });
+
+    const result = await LeadService.triggerAiOutreach(testOrgId, lead.id);
     expect(result).toBeDefined();
 
-    const updatedLead = await prisma.lead.findUnique({ where: { id: testLeadId } });
+    const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });
     expect(updatedLead?.status).toBe("CONTACTED");
 
     const conv = await prisma.conversation.findFirst({
-      where: { leadId: testLeadId, organizationId: testOrgId }
+      where: { leadId: lead.id, organizationId: testOrgId }
     });
     expect(conv).toBeDefined();
 
@@ -69,9 +70,20 @@ describe("AI SDR Platform End-to-End Suite", () => {
   });
 
   it("2. Ingests lead reply and handles price objection professionally", async () => {
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: testOrgId,
+        firstName: "Bob",
+        lastName: "Davis",
+        email: `bob_${Date.now()}@finco.test`,
+        companyName: "FinCo Global",
+        status: "CONTACTED"
+      }
+    });
+
     const replyResult = await ConversationService.ingestLeadReply(
       testOrgId,
-      testLeadId,
+      lead.id,
       "EMAIL",
       "Your pricing seems 3x more expensive than Zapier. Why should we pay this?"
     );
@@ -80,14 +92,25 @@ describe("AI SDR Platform End-to-End Suite", () => {
     expect(replyResult.outboundMsg).toBeDefined();
     expect(replyResult.outboundMsg?.content.toLowerCase()).toContain("compliance");
 
-    const lead = await prisma.lead.findUnique({ where: { id: testLeadId } });
-    expect(lead?.status).toBe("IN_CONVERSATION");
+    const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });
+    expect(updatedLead?.status).toBe("IN_CONVERSATION");
   });
 
   it("3. Automatically schedules calendar meeting on prospect intent", async () => {
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: testOrgId,
+        firstName: "Carol",
+        lastName: "Taylor",
+        email: `carol_${Date.now()}@finco.test`,
+        companyName: "FinCo Global",
+        status: "IN_CONVERSATION"
+      }
+    });
+
     const bookingResult = await ConversationService.ingestLeadReply(
       testOrgId,
-      testLeadId,
+      lead.id,
       "EMAIL",
       "Can we schedule a 20-minute demo this Thursday afternoon? My VP will join."
     );
@@ -96,18 +119,29 @@ describe("AI SDR Platform End-to-End Suite", () => {
     expect(bookingResult.toolExecution?.tool).toBe("create_calendar_event");
 
     const appointments = await prisma.appointment.findMany({
-      where: { leadId: testLeadId, organizationId: testOrgId }
+      where: { leadId: lead.id, organizationId: testOrgId }
     });
     expect(appointments.length).toBe(1);
 
-    const lead = await prisma.lead.findUnique({ where: { id: testLeadId } });
-    expect(lead?.status).toBe("QUALIFIED");
+    const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });
+    expect(updatedLead?.status).toBe("QUALIFIED");
   });
 
   it("4. Triggers human handoff escalation when enterprise scale is requested", async () => {
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: testOrgId,
+        firstName: "David",
+        lastName: "Miller",
+        email: `david_${Date.now()}@finco.test`,
+        companyName: "FinCo Global",
+        status: "IN_CONVERSATION"
+      }
+    });
+
     const escalationResult = await ConversationService.ingestLeadReply(
       testOrgId,
-      testLeadId,
+      lead.id,
       "EMAIL",
       "We need dedicated on-prem SOC2 deployment for 10,000 corporate seats. Connect me to your enterprise sales director immediately."
     );
@@ -115,19 +149,30 @@ describe("AI SDR Platform End-to-End Suite", () => {
     expect(escalationResult.toolExecution?.success).toBe(true);
     expect(escalationResult.toolExecution?.tool).toBe("human_handoff");
 
-    const lead = await prisma.lead.findUnique({ where: { id: testLeadId } });
-    expect(lead?.status).toBe("HANDOFF_REQUIRED");
+    const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });
+    expect(updatedLead?.status).toBe("HANDOFF_REQUIRED");
 
     const escalations = await HandoffService.getEscalations(testOrgId);
     expect(escalations.length).toBeGreaterThanOrEqual(1);
   });
 
   it("5. Respects lead opt-out and blocks further automated outreach", async () => {
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: testOrgId,
+        firstName: "Emma",
+        lastName: "Watson",
+        email: `emma_${Date.now()}@finco.test`,
+        companyName: "FinCo Global",
+        status: "CONTACTED"
+      }
+    });
+
     // Schedule a pending followup
     await prisma.followUpTask.create({
       data: {
         organizationId: testOrgId,
-        leadId: testLeadId,
+        leadId: lead.id,
         stepNumber: 2,
         channel: "EMAIL",
         scheduledFor: new Date(Date.now() + 86400000),
@@ -138,25 +183,25 @@ describe("AI SDR Platform End-to-End Suite", () => {
     // Lead replies STOP
     const optOutResult = await ConversationService.ingestLeadReply(
       testOrgId,
-      testLeadId,
+      lead.id,
       "EMAIL",
       "STOP - Please unsubscribe me from your emails."
     );
 
     expect(optOutResult.optedOut).toBe(true);
 
-    const lead = await prisma.lead.findUnique({ where: { id: testLeadId } });
-    expect(lead?.isOptedOut).toBe(true);
-    expect(lead?.status).toBe("OPTED_OUT");
+    const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });
+    expect(updatedLead?.isOptedOut).toBe(true);
+    expect(updatedLead?.status).toBe("OPTED_OUT");
 
     // Verify pending followups are cancelled
     const pendingTasks = await prisma.followUpTask.findMany({
-      where: { leadId: testLeadId, status: "SCHEDULED" }
+      where: { leadId: lead.id, status: "SCHEDULED" }
     });
     expect(pendingTasks.length).toBe(0);
 
     // Attempting further outreach should be rejected
-    await expect(LeadService.triggerAiOutreach(testOrgId, testLeadId)).rejects.toThrow();
+    await expect(LeadService.triggerAiOutreach(testOrgId, lead.id)).rejects.toThrow();
   });
 
   it("6. Runs complete interactive voice phone call lifecycle", async () => {

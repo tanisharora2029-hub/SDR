@@ -207,6 +207,11 @@ export class ConversationService {
       industry: org.industry,
       valueProposition: org.valueProposition,
       targetCustomerIcp: org.targetCustomerIcp,
+      companyDescription: (org as any).companyDescription,
+      products: (org as any).products,
+      pricingInfo: (org as any).pricingInfo,
+      complianceInfo: (org as any).complianceInfo,
+      competitors: (org as any).competitors,
       knowledgeBase: org.knowledgeBase,
       objectionRules: org.objectionRules,
       personaName: sdr.personaName,
@@ -624,7 +629,7 @@ export class ConversationService {
     const isAskingDiscounts = discountKeywords.test(replyText);
     const isAskingRoi = roiKeywords.test(replyText);
 
-    const kbText = (org.knowledgeBase || "");
+    const kbText = `${org.knowledgeBase || ""} ${(org as any).pricingInfo || ""} ${(org as any).products || ""}`;
     const kbTextLower = kbText.toLowerCase();
     const hasVerifiedPricing =
       kbTextLower.includes("$") ||

@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import assert from "assert";
 import { prisma } from "../lib/prisma.js";
 import { WebhookService } from "../services/webhookService.js";
@@ -312,7 +313,8 @@ async function runNexSdrIdentityTests() {
   console.log("===================================================================\n");
 }
 
-runNexSdrIdentityTests().catch((err) => {
-  console.error("❌ TEST FAILURE:", err);
-  process.exit(1);
+describe("NexSDR Brand Identity & Domain", () => {
+  it("verifies nexsdr.in product identity and sender defaults", async () => {
+    await runNexSdrIdentityTests();
+  });
 });

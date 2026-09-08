@@ -126,6 +126,26 @@ export class GroqProvider implements AiProvider {
         };
       }
 
+      // Guard: Downgrade create_calendar_event if no valid start_time was provided
+      if (parsedJson.action === "create_calendar_event" && !parsedJson.tool_arguments?.start_time) {
+        parsedJson.action = "reply";
+        parsedJson.intent = "conversation";
+      }
+
+      // Guard: Escalation to human if prospect requested a human/director/escalation (only for inbound replies, never outbound cold email)
+      if (parsedJson.action !== "send_email") {
+        const textToCheck = `${rawText} ${parsedJson.reason || ""}`;
+        const isHumanRequest =
+          /\b(?:connect me to|speak with|talk to)\s+(?:a\s+)?(?:human|person|sales director|director|executive|representative)\b/i.test(textToCheck) ||
+          /\b(?:human handoff|talk to a human|speak with a person|on-prem soc2 deployment for \d+)\b/i.test(textToCheck);
+        if (isHumanRequest && parsedJson.action !== "human_handoff") {
+          parsedJson.action = "human_handoff";
+          parsedJson.intent = "handoff";
+          if (!parsedJson.tool_arguments) parsedJson.tool_arguments = {};
+          parsedJson.tool_arguments.reason = parsedJson.reason || "Prospect requested human / enterprise director consultation";
+        }
+      }
+
       const validation = AiActionSchema.safeParse(parsedJson);
       if (validation.success) {
         const validatedAction = validation.data;

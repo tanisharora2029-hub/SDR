@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { ResendService } from "../services/resendService.js";
@@ -381,8 +382,8 @@ async function runInboundTestSuite() {
   console.log("===================================================================\n");
 }
 
-runInboundTestSuite()
-  .catch((err) => {
-    console.error("Test Suite Unhandled Error:", err);
-    process.exit(1);
+describe("NexSDR Resend Inbound Reply Loop", () => {
+  it("verifies webhook ingestion, signature verification, and email reply dispatch", async () => {
+    await runInboundTestSuite();
   });
+});

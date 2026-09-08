@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import path from "path";
 import { EmailService } from "../services/emailService.js";
 import { ResendService } from "../services/resendService.js";
@@ -155,7 +156,8 @@ async function runResendSuite() {
   console.log("=======================================================\n");
 }
 
-runResendSuite().catch((err) => {
-  console.error("Test Suite Error:", err);
-  process.exit(1);
+describe("NexSDR Resend Email Integration", () => {
+  it("verifies provider selection, API key protection, and safe fallback", async () => {
+    await runResendSuite();
+  });
 });

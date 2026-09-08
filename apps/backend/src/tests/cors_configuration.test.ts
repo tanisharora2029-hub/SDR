@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import assert from "node:assert";
 import { app, server, parseCorsOrigins, PRODUCTION_CORS_ORIGINS } from "../server.js";
 
@@ -143,7 +144,8 @@ async function runCorsTests() {
   console.log("===================================================================\n");
 }
 
-runCorsTests().catch((err) => {
-  console.error("❌ CORS TEST FAILURE:", err);
-  process.exit(1);
+describe("NexSDR CORS Configuration", () => {
+  it("verifies multi-origin CORS behavior", async () => {
+    await runCorsTests();
+  });
 });

@@ -18,7 +18,10 @@ class AiService {
     this.fallbackProvider = new MockAiProvider();
     this.groqProvider = new GroqProvider();
 
-    const providerType = process.env.AI_PROVIDER || "ollama";
+    // Auto-detect Groq if explicitly requested OR if GROQ_API_KEY is configured
+    const hasGroqKey = !!process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim().length > 0;
+    const providerType = process.env.AI_PROVIDER || (hasGroqKey ? "groq" : "ollama");
+
     if (providerType === "groq") {
       this.primaryProvider = this.groqProvider;
     } else if (providerType === "online") {
@@ -126,7 +129,28 @@ class AiService {
       const decision = CostRouter.routeTask("EMAIL_DRAFTING");
       const provider = this.getProviderForDecision(decision);
 
-      return await provider.respondToMessage(enhancedSdr, lead, history, latestMessage);
+      logger.info("[AI_DIAGNOSTICS] Inbound reply processing", {
+        organizationId: sdr.organizationId,
+        leadId: lead.leadId,
+        leadName: `${lead.firstName || ""} ${lead.lastName || ""}`.trim() || "[Unknown]",
+        companyName: lead.companyName || "[Unknown]",
+        selectedProvider: decision.selectedProvider,
+        historyTurns: history.length,
+        latestMessageSnippet: latestMessage.substring(0, 100)
+      });
+
+      const response = await provider.respondToMessage(enhancedSdr, lead, history, latestMessage);
+
+      logger.info("[AI_DIAGNOSTICS] Response generated", {
+        organizationId: sdr.organizationId,
+        leadId: lead.leadId,
+        intent: response.action?.intent,
+        action: response.action?.action,
+        latencyMs: response.latencyMs,
+        responseSnippet: response.content.substring(0, 100)
+      });
+
+      return response;
     } catch (err: any) {
       logger.warn(`Primary AI provider failed, falling back to mock provider: ${err.message}`);
       return await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);

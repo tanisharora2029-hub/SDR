@@ -18,6 +18,11 @@ export const UpdateOrganizationSchema = z.object({
   website: z.string().url().optional().or(z.literal("")),
   valueProposition: z.string().optional(),
   targetCustomerIcp: z.string().optional(),
+  companyDescription: z.string().optional(),
+  products: z.string().optional(),
+  pricingInfo: z.string().optional(),
+  complianceInfo: z.string().optional(),
+  competitors: z.string().optional(),
   knowledgeBase: z.string().optional(),
   objectionRules: z.string().optional()
 });

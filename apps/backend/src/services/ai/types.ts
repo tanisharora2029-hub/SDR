@@ -1,10 +1,16 @@
 import { SdrToolDecision, SdrToolName, AiAction } from "@ai-sdr/shared";
 
 export interface SdrContext {
+  organizationId?: string | null;
   organizationName: string;
   industry?: string | null;
   valueProposition?: string | null;
   targetCustomerIcp?: string | null;
+  companyDescription?: string | null;
+  products?: string | null;
+  pricingInfo?: string | null;
+  complianceInfo?: string | null;
+  competitors?: string | null;
   knowledgeBase?: string | null;
   objectionRules?: string | null;
   personaName: string;

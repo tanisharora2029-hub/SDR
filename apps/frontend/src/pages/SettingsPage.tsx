@@ -27,6 +27,13 @@ export const SettingsPage: React.FC = () => {
   const [website, setWebsite] = useState("");
   const [targetIcp, setTargetIcp] = useState("");
   const [valueProp, setValueProp] = useState("");
+  const [companyDescription, setCompanyDescription] = useState("");
+  const [products, setProducts] = useState("");
+  const [pricingInfo, setPricingInfo] = useState("");
+  const [complianceInfo, setComplianceInfo] = useState("");
+  const [competitors, setCompetitors] = useState("");
+  const [knowledgeBase, setKnowledgeBase] = useState("");
+  const [objectionRules, setObjectionRules] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -104,6 +111,13 @@ export const SettingsPage: React.FC = () => {
         setWebsite(orgRes.organization.website || "");
         setTargetIcp(orgRes.organization.targetCustomerIcp || "");
         setValueProp(orgRes.organization.valueProposition || "");
+        setCompanyDescription(orgRes.organization.companyDescription || "");
+        setProducts(orgRes.organization.products || "");
+        setPricingInfo(orgRes.organization.pricingInfo || "");
+        setComplianceInfo(orgRes.organization.complianceInfo || "");
+        setCompetitors(orgRes.organization.competitors || "");
+        setKnowledgeBase(orgRes.organization.knowledgeBase || "");
+        setObjectionRules(orgRes.organization.objectionRules || "");
       }
 
       if (emailRes?.providers) {
@@ -132,7 +146,14 @@ export const SettingsPage: React.FC = () => {
         industry,
         website,
         targetCustomerIcp: targetIcp,
-        valueProposition: valueProp
+        valueProposition: valueProp,
+        companyDescription,
+        products,
+        pricingInfo,
+        complianceInfo,
+        competitors,
+        knowledgeBase,
+        objectionRules
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -963,72 +984,208 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 6: COMPANY PROFILE & ICP SETTINGS FORM */}
-      <form onSubmit={handleSave} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-        <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
-          Company Profile & ICP
-        </h2>
+      {/* SECTION 6: COMPANY PROFILE, KNOWLEDGE BASE & PLAYBOOK (PRODUCT TRUTH) */}
+      <form onSubmit={handleSave} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+                Company Knowledge Base & Objection Playbook (Product Truth)
+              </h2>
+              <span className="text-[10px] px-2.5 py-0.5 rounded font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                AI GROUNDING
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Every detail entered here is dynamically loaded at runtime and injected into Alex (AI SDR) prompts to ensure zero-hallucination, accurate pricing, and precise competitor objection handling.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {saved && (
+            <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
+              <CheckCircle2 className="w-4 h-4" /> Knowledge Base Saved!
+            </span>
+          )}
+        </div>
+
+        {/* Basic Company Identity */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div>
             <label className="text-slate-300 font-medium block mb-1">Company Legal Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. MachineMind or TestCorp"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Industry / Vertical</label>
+            <label className="text-slate-300 font-medium block mb-1">Industry / Domain</label>
             <input
               type="text"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
+              placeholder="e.g. AI Financial Services Automation"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Company Website</label>
+            <input
+              type="text"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://machinemind.in"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
         </div>
 
-        <div className="text-xs">
-          <label className="text-slate-300 font-medium block mb-1">Company Website</label>
-          <input
-            type="text"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
-            placeholder="https://company.com"
-          />
+        {/* Company Overview & Value Proposition */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Company Description & Mission</label>
+            <textarea
+              rows={3}
+              value={companyDescription}
+              onChange={(e) => setCompanyDescription(e.target.value)}
+              placeholder="e.g. MachineMind builds autonomous AI agents for financial back-office operations and high-volume document verification."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Core Value Proposition</label>
+            <textarea
+              rows={3}
+              value={valueProp}
+              onChange={(e) => setValueProp(e.target.value)}
+              placeholder="e.g. Cut manual KYC verification delays from 48 hours to 90 seconds while maintaining 99.8% precision."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
         </div>
 
+        {/* ICP & Products */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Target Customer Persona (ICP)</label>
+            <textarea
+              rows={3}
+              value={targetIcp}
+              onChange={(e) => setTargetIcp(e.target.value)}
+              placeholder="e.g. Heads of Compliance, Operations Directors, and CTOs at mid-to-large fintechs, NBFCs, and retail banks."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Products & Core Capabilities</label>
+            <textarea
+              rows={3}
+              value={products}
+              onChange={(e) => setProducts(e.target.value)}
+              placeholder="e.g. 1) DocuMind Agent: Multilingual KYC OCR. 2) FlowMind Orchestrator: Human-in-the-loop exception review."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Pricing & Compliance */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-300 font-medium">Verified Commercial Pricing Info</label>
+              <span className="text-[10px] text-amber-400 font-mono">Anti-Hallucination Enforced</span>
+            </div>
+            <textarea
+              rows={3}
+              value={pricingInfo}
+              onChange={(e) => setPricingInfo(e.target.value)}
+              placeholder="e.g. Starter ($199/mo up to 5,000 docs), Growth ($499/mo up to 25,000 docs). Enterprise custom contracts starting at $1,500/mo."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              AI will strictly cite these prices and will never invent discounts or imaginary tiers.
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-300 font-medium">Security, Privacy & Compliance Info</label>
+              <span className="text-[10px] text-emerald-400 font-mono">Enterprise Verified</span>
+            </div>
+            <textarea
+              rows={3}
+              value={complianceInfo}
+              onChange={(e) => setComplianceInfo(e.target.value)}
+              placeholder="e.g. SOC2 Type II Certified, ISO 27001, GDPR & RBI compliant. Data encrypted at rest (AES-256) and in transit (TLS 1.3). Zero customer data used for model training."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">
+              Injected into prompts when prospects raise data sovereignty, privacy, or security questions.
+            </p>
+          </div>
+        </div>
+
+        {/* Competitor Differentiation & Objection Playbook */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Competitor Intelligence & Differentiators</label>
+            <textarea
+              rows={4}
+              value={competitors}
+              onChange={(e) => setCompetitors(e.target.value)}
+              placeholder="e.g. UiPath / Automation Anywhere: Heavy legacy RPA that breaks on layout changes; MachineMind uses vision-LLMs with 0 template maintenance.&#10;Zapier / Make: Consumer iPaaS without bank-grade compliance or SLA."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-300 font-medium block mb-1">Custom Objection Handling Rules</label>
+            <textarea
+              rows={4}
+              value={objectionRules}
+              onChange={(e) => setObjectionRules(e.target.value)}
+              placeholder="e.g. Internal Team Objection: 'Our internal devs are building this' -> Validate internal talent, highlight 6-12 month maintenance cost & compliance overhead.&#10;Timing Objection: 'Reach back next quarter' -> Acknowledge politely, offer exact follow-up."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+        </div>
+
+        {/* Knowledge Base */}
         <div className="text-xs">
-          <label className="text-slate-300 font-medium block mb-1">Core Value Proposition</label>
+          <label className="text-slate-300 font-medium block mb-1">Core Knowledge Base & FAQs</label>
           <textarea
-            rows={3}
-            value={valueProp}
-            onChange={(e) => setValueProp(e.target.value)}
+            rows={4}
+            value={knowledgeBase}
+            onChange={(e) => setKnowledgeBase(e.target.value)}
+            placeholder="e.g. Implementation takes 2 business days via REST API or webhook. Native integration with Salesforce, HubSpot, and PostgreSQL. Supported languages: English, Hindi, Spanish, German."
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
           />
         </div>
 
-        <div className="text-xs">
-          <label className="text-slate-300 font-medium block mb-1">Target Customer Persona (ICP)</label>
-          <textarea
-            rows={3}
-            value={targetIcp}
-            onChange={(e) => setTargetIcp(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 border-t border-slate-800/80">
           <button
             type="submit"
             disabled={saving}
-            className="w-full sm:w-auto px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+            className="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-sm flex items-center justify-center gap-2"
           >
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving Knowledge Base...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Save Company Knowledge Base</span>
+              </>
+            )}
           </button>
         </div>
       </form>
