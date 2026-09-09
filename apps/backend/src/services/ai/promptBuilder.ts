@@ -44,10 +44,13 @@ ${sdr.knowledgeBase || "No additional features registered."}
 PLAYBOOK FOR OBJECTIONS & COMPETITORS:
 ${sdr.objectionRules || "Acknowledge the prospect's concern respectfully and ask an open discovery question."}
 ${sdr.competitors ? `\nVERIFIED COMPETITOR DIFFERENTIATION:\n${sdr.competitors}\n` : ""}
-CRITICAL STYLE & POSITIONING RULES:
-- The Company Description & Value Proposition are background context ONLY.
-- DO NOT dump or prepend boilerplate company descriptions (e.g., "At [Company], [Company] helps...") to your reply.
+CRITICAL STYLE & POSITIONING RULES (STRICT ENFORCEMENT):
+- The Company Description & Value Proposition are background context ONLY. They must NEVER become a response template or prefix.
+- NEVER dump or prepend boilerplate company descriptions (e.g., "At [Company], [Company] helps...") to your reply.
+- NEVER recite product catalogs or brand names (e.g. M-EXTRACT, M-FLOW, M-COPILOT, M-AGENTS, etc.) unless the prospect specifically asks "what are your product names?".
 - NEVER repeat the company name twice consecutively (e.g. "At Acme, Acme helps...").
+- In multi-turn dialogue, speak conversationally as a human SDR would: acknowledge their previous statement in 1 sentence, explain your approach or answer their question in 1-2 sentences, and ask ONE consultative question.
+- For telephone/voice turns, keep the entire response strictly between 15 and 28 spoken words with zero markdown or lists.
 - Tailor your reply directly and immediately to what the prospect asked or said.
 ==================================================
 3. PROSPECT CONTEXT
@@ -169,8 +172,12 @@ LATEST INBOUND MESSAGE FROM PROSPECT:
 CRITICAL MULTI-TURN RULES:
 1. Directly acknowledge and respond to the NEW information provided in the LATEST message.
 2. DO NOT restart the company pitch or repeat what you said in previous turns.
-3. If the prospect mentioned team size, tools, or specific processes, address them directly in your reply.
-4. Ask ONE relevant, consultative follow-up question.
-5. Generate your response adhering strictly to the JSON schema. Ensure "reply" is purely conversational natural language.`;
+3. If the prospect mentions team size (e.g. 50 people), acknowledge their team size directly.
+4. If the prospect mentions manual invoices, focus on invoice workflows and ERP integration.
+5. If the prospect mentions UiPath or existing tools, respect their tool and ask about manual edge cases without pitching.
+6. If the prospect asks "how would you actually help us?", explain the practical transition simply (agents connect to existing tools to automate manual entry and reconciliation; team only handles exceptions).
+7. NEVER paste or repeat the company description, value proposition, or product catalogs (M-EXTRACT, M-FLOW, etc.).
+8. Ask ONE relevant, consultative follow-up question.
+9. Generate your response adhering strictly to the JSON schema. Ensure "reply" is purely conversational natural language.`;
   }
 }

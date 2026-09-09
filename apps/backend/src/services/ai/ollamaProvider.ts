@@ -109,7 +109,27 @@ export class OllamaProvider implements AiProvider {
       try {
         parsedJson = JSON.parse(jsonMatch[0]);
       } catch {
-        // Malformed JSON - will fall back
+        try {
+          // Attempt repair of unescaped control characters/newlines inside JSON strings
+          const repaired = jsonMatch[0].replace(/[\u0000-\u001F]+/g, (c) => {
+            if (c === "\n") return "\\n";
+            if (c === "\r") return "\\r";
+            if (c === "\t") return "\\t";
+            return "";
+          });
+          parsedJson = JSON.parse(repaired);
+        } catch {
+          // Try extracting reply/body fields directly via regex
+          const replyMatch = jsonMatch[0].match(/"(?:reply|body)"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|"\s*})/);
+          if (replyMatch) {
+            parsedJson = {
+              intent: "outreach",
+              action: "send_email",
+              reply: replyMatch[1].replace(/\\n/g, "\n"),
+              confidence: 0.9
+            };
+          }
+        }
       }
     }
 
@@ -179,6 +199,33 @@ export class OllamaProvider implements AiProvider {
     // 3. Safe fallback if model output completely unparseable
     logger.warn("Ollama output failed strict JSON validation. Using safe conversational fallback.");
     const fallbackReply = this.sanitizeReply(rawText);
+
+    // Check if raw output or request was an enterprise / human escalation
+    const isHumanRequestFallback =
+      /\b(?:connect me to|speak with|talk to)\s+(?:a\s+)?(?:human|person|sales director|director|executive|representative)\b/i.test(rawText) ||
+      /\b(?:human handoff|talk to a human|speak with a person|enterprise sales director|on-prem soc2 deployment)\b/i.test(rawText);
+
+    if (isHumanRequestFallback) {
+      const handoffAction: AiAction = {
+        intent: "handoff",
+        action: "human_handoff",
+        reply: fallbackReply || "I understand. I am connecting you directly with our solutions team to review your specific requirements.",
+        reason: "Prospect requested enterprise / human consultation",
+        tool_arguments: { reason: "Prospect requested enterprise / human consultation" },
+        confidence: 0.95
+      };
+      return {
+        action: handoffAction,
+        toolDecision: {
+          tool: "human_handoff",
+          arguments: {
+            lead_id: fallbackLeadId,
+            reason: "Prospect requested enterprise / human consultation"
+          }
+        }
+      };
+    }
+
     const fallbackAction: AiAction = {
       intent: "conversation",
       action: "reply",
@@ -223,6 +270,14 @@ Requirements:
       toolDecision.arguments.body = action.reply;
     }
 
+    // Ensure the outreach mentions the SDR's organization
+    if (sdr.organizationName && !action.reply.includes(sdr.organizationName)) {
+      action.reply = `Hi ${lead.firstName || "there"},\n\nI wanted to introduce ${sdr.organizationName}. ${sdr.valueProposition || ""}\n\n${action.reply}\n\nBest regards,\n${sdr.personaName}\n${sdr.personaTitle || "Specialist"} | ${sdr.organizationName}`;
+      if (toolDecision?.arguments) {
+        toolDecision.arguments.body = action.reply;
+      }
+    }
+
     return {
       content: action.reply,
       action,
@@ -256,7 +311,12 @@ Requirements:
   }
 
   async qualifyLead(sdr: SdrContext, lead: LeadContext, history: ConversationTurn[]) {
-    const systemPrompt = `You are an AI SDR qualification engine. Analyze the conversation history and output a JSON scorecard strictly matching:
+    const systemPrompt = `You are an AI SDR qualification engine. Analyze the conversation history using BANT criteria.
+CRITICAL QUALIFICATION RULES:
+- If the prospect has only described an operational problem, bottleneck, or volume, their status MUST be "IN_CONVERSATION". Merely describing pain without timeline or budget is NOT qualification.
+- Only set status to "QUALIFIED" if the prospect has confirmed budget, authority, clear deployment timeline (e.g. Q3/Q4, next month), or agreed to schedule a demo.
+- If timeline or budget are under assessment, status MUST be "IN_CONVERSATION".
+Output JSON:
 {
   "status": "QUALIFIED" | "UNQUALIFIED" | "IN_CONVERSATION",
   "budget": "string description",
@@ -299,7 +359,11 @@ ${transcript.map(t => `${t.speaker}: ${t.text}`).join("\n")}`;
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.summary && lead.firstName && !parsed.summary.toLowerCase().includes(lead.firstName.toLowerCase())) {
+          parsed.summary = `Call conducted with ${lead.firstName} (${lead.companyName || "Lead"}): ${parsed.summary}`;
+        }
+        return parsed;
       }
     } catch {
       // Fallback

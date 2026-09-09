@@ -30,16 +30,18 @@ export class MockAiProvider implements AiProvider {
       intro = `Given your team's focus on scaling productivity and eliminating manual friction, I wanted to introduce ${sdr.organizationName}.`;
     }
 
-    const valueProp = sdr.valueProposition
-      ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
-      : "we help leaders streamline complex workflows and eliminate repetitive bottlenecks";
-    const valueClause = valueProp.toLowerCase().startsWith("we") ? valueProp : `we focus on ${valueProp}`;
+    const rawValueProp = sdr.valueProposition || "we help leaders streamline complex workflows and eliminate repetitive bottlenecks";
+    let cleanClause = rawValueProp.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "").trim();
+    cleanClause = cleanClause.replace(/^At\s+[A-Za-z0-9_-]+,?\s*/i, "").trim();
+    if (!cleanClause.toLowerCase().startsWith("we")) {
+      cleanClause = `we focus on ${cleanClause}`;
+    }
 
     const body = `${greeting}
 
 ${intro}
 
-At ${sdr.organizationName}, ${valueClause}.
+At ${sdr.organizationName}, ${cleanClause}.
 
 Would you be open to a brief introductory conversation next week to explore how our capabilities align with your current priorities?
 
@@ -253,7 +255,7 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
     }
 
     // 6. Internal Team / In-House Automation / No Vendors
-    if (/\b(internal team|in-house team|internal automation|our own team|don'?t want another vendor|no more vendors)\b/i.test(lower)) {
+    if (/\b(internal|in-house)\b.*?\b(team|engineering|development|automation|solution|developers)\b|\b(internal team|in-house team|internal automation|our own team|don'?t want another vendor|no more vendors)\b/i.test(lower)) {
       const reply = `We admire teams with strong internal automation capabilities. Organizations often partner with ${sdr.organizationName} not to replace in-house engineering, but to relieve their backlog—handling repetitive or high-volume workflows so internal developers can focus on core proprietary products. How is your internal team's backlog currently prioritized?`;
 
       const action: AiAction = {
@@ -414,35 +416,7 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 8f. Other Operational Bottleneck / Generic Problem Description
-    if (/\b(manual|errors?|too long|bottleneck|process(?:ing)?|turnaround|volume)\b/i.test(lower)) {
-      const cleanValueProp = sdr.valueProposition
-        ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
-        : "we help streamline critical workflows to ensure high accuracy and speed";
-      const valueClause = cleanValueProp.toLowerCase().startsWith("we") ? cleanValueProp : `we focus on ${cleanValueProp}`;
-
-      const reply = `Manual processing and high error rates create significant operational bottlenecks for growing teams. At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current operational volume and how information is transferred between your internal systems?`;
-
-      const action: AiAction = {
-        intent: "qualification",
-        action: "reply",
-        reply,
-        reason: "Engaged in consultative problem discovery based on operational pain description",
-        tool_arguments: {},
-        confidence: 0.95
-      };
-
-      return {
-        content: reply,
-        action,
-        toolDecision: null,
-        latencyMs: Date.now() - startTime,
-        tokensUsed: 85,
-        provider: "mock"
-      };
-    }
-
-    // 8g. Team Headcount & Operations Scale (e.g. "50 people working for me", "team of 50")
+    // 8f. Team Headcount & Operations Scale (Turn 2: "i have 50 people working for me")
     if (/\b(\d+\s*(?:people|team members|employees|staff|workers)|team of \d+)\b/i.test(lower)) {
       const match = lower.match(/\b(\d+)\s*(?:people|team members|employees|staff|workers)\b/i) || lower.match(/\bteam of (\d+)\b/i);
       const count = match ? match[1] : "that size";
@@ -467,16 +441,60 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 9. Default Consultative Discovery (Cleaned of duplicate company name boilerplate and multi-turn repetition)
-    const cleanValueProp = sdr.valueProposition
-      ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
-      : "we help organizations optimize operational workflows and scale efficiently";
-    const valueClause = cleanValueProp.toLowerCase().startsWith("we") ? cleanValueProp : `we focus on ${cleanValueProp}`;
+    // 8g. Approach & Solution Explanation (Turn 5: "how would you actually help us?", "how does it work?")
+    if (/\b(how (?:would|do|can) you (?:actually )?help|how does it work|what do you (?:actually )?do|what is your approach|how do you help|how can you help)\b/i.test(lower)) {
+      const reply = `We deploy autonomous software agents that connect directly to your existing tools—handling document ingestion, validation, and system updates end-to-end. Your team only reviews exceptions rather than keying in data manually. Would you be open to a 15-minute walkthrough of how this transition works in practice?`;
 
+      const action: AiAction = {
+        intent: "conversation",
+        action: "reply",
+        reply,
+        reason: "Explained practical implementation approach directly answering prospect question",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 80,
+        provider: "mock"
+      };
+    }
+
+    // 8h. Other Operational Bottleneck / Generic Problem Description (Without company description dump)
+    if (/\b(manual|errors?|too long|bottleneck|process(?:ing)?|turnaround|volume)\b/i.test(lower)) {
+      const reply = `Manual processing and high error rates create significant operational bottlenecks for growing teams. Where do your biggest operational delays occur between data extraction and updating your internal systems?`;
+
+      const action: AiAction = {
+        intent: "qualification",
+        action: "reply",
+        reply,
+        reason: "Engaged in consultative problem discovery based on operational pain description",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 75,
+        provider: "mock"
+      };
+    }
+
+    // 9. Default Consultative Discovery (Cleaned of company description repetition across turns)
     const hasPriorTurns = history && history.length > 0;
+    const hasName = Boolean(lead.firstName && lead.firstName.trim() && lead.firstName.toLowerCase() !== "unknown");
     const reply = hasPriorTurns
-      ? `Thanks for sharing that background. To better understand how we can support your priorities, which part of that workflow currently creates the biggest bottleneck for your team?`
-      : `Thanks for reaching out! At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current process at ${company} and where you see the biggest priority today?`;
+      ? `Thanks for sharing that context. Which specific part of that workflow currently creates the biggest operational bottleneck for your team?`
+      : hasName
+      ? `Hi ${lead.firstName}, thanks for reaching out. We help streamline operational workflows and eliminate manual bottlenecks. Could you share a bit about your current setup at ${company} and where manual processes consume the most time?`
+      : `Hello! Thanks for reaching out. We help streamline operational workflows and eliminate manual bottlenecks. Could you share a bit about your current setup and where manual processes consume the most time?`;
 
     const action: AiAction = {
       intent: "conversation",
@@ -484,7 +502,7 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       reply,
       reason: hasPriorTurns
         ? "Continued consultative multi-turn discovery without repeating introduction"
-        : "Dynamic consultative discovery grounded in organization value proposition without repetition",
+        : "Initial consultative discovery without boilerplate repetition",
       tool_arguments: {},
       confidence: 0.9
     };
@@ -504,7 +522,7 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
     const hasBudget = text.includes("$") || text.includes("budget") || text.includes("k");
     const hasAuthority = text.includes("vp") || text.includes("director") || text.includes("head") || text.includes("sign");
     const hasNeed = text.includes("need") || text.includes("problem") || text.includes("fail") || text.includes("slow") || text.includes("kyc") || text.includes("manual");
-    const hasTimeline = text.includes("q4") || text.includes("month") || text.includes("week") || text.includes("soon");
+    const hasTimeline = /\b(next\s+week|in\s+\d+\s+weeks?|this\s+month|next\s+month|q[1-4]|by\s+end\s+of|launching\s+soon|deploy(?:ing)?\s+soon|within\s+(?:a\s+)?month)\b/i.test(text);
 
     const qualified = (hasBudget && hasAuthority) || (hasNeed && hasTimeline);
 

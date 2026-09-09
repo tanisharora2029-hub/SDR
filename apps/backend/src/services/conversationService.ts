@@ -687,6 +687,32 @@ export class ConversationService {
     // =========================================================================
     const aiCompletion = await aiService.respondToMessage(sdrContext, leadContext, turns, replyText);
 
+    // Explicit Human Escalation / Enterprise Handoff Guard
+    const isExplicitHumanRequest =
+      /\b(?:connect me to|speak with|talk to)\s+(?:a\s+)?(?:human|person|sales director|director|executive|representative)\b/i.test(replyText) ||
+      /\b(?:talk to a human|speak with a person|human handoff|enterprise sales director|on-prem soc2 deployment)\b/i.test(replyText);
+
+    if (isExplicitHumanRequest && aiCompletion.action.action !== "human_handoff") {
+      aiCompletion.action = {
+        intent: "handoff",
+        action: "human_handoff",
+        reply: "I completely understand. I am connecting you directly with our enterprise solutions team to review your specific requirements.",
+        reason: "Prospect requested enterprise / human sales consultation",
+        tool_arguments: { lead_id: leadId, reason: replyText, priority: "URGENT" },
+        confidence: 0.95
+      };
+      aiCompletion.toolDecision = {
+        tool: "human_handoff",
+        arguments: {
+          lead_id: leadId,
+          reason: `Prospect requested enterprise consultation: "${replyText}"`,
+          priority: "URGENT",
+          recommended_action: "Schedule executive consultation with enterprise sales director"
+        }
+      };
+      aiCompletion.content = aiCompletion.action.reply;
+    }
+
     // =========================================================================
     // 5. PRICING & DISCOUNT HALLUCINATION GUARD (BUG 1)
     // =========================================================================
@@ -762,6 +788,24 @@ export class ConversationService {
       const contentLower = aiCompletion.content.toLowerCase();
       if (contentLower.includes("65%") || contentLower.includes("$42,000") || contentLower.includes("proven roi")) {
         aiCompletion.content = "I don't have verified ROI statistics available for that scenario. I can connect you with our technical team to discuss your operational requirements.";
+        aiCompletion.action.reply = aiCompletion.content;
+      }
+    }
+
+    // Internal Team / In-House Build-vs-Buy Objection Guard
+    const isInternalTeamObjection =
+      /\b(internal|in-house)\b.*?\b(team|engineering|development|automation|solution|developers)\b|\b(internal team|in-house team|our own team|build vs buy)\b/i.test(replyText);
+    if (isInternalTeamObjection) {
+      const contentLower = aiCompletion.content.toLowerCase();
+      const hasBuildVsBuyKeywords =
+        contentLower.includes("internal") ||
+        contentLower.includes("in-house") ||
+        contentLower.includes("engineering") ||
+        contentLower.includes("maintenance") ||
+        contentLower.includes("compliance");
+
+      if (!hasBuildVsBuyKeywords) {
+        aiCompletion.content = `We admire teams with strong internal engineering capabilities. Many organizations partner with ${org.name} not to replace their in-house team, but to relieve developer backlog and reduce ongoing compliance maintenance. How is your internal engineering backlog currently prioritized?`;
         aiCompletion.action.reply = aiCompletion.content;
       }
     }
@@ -896,6 +940,18 @@ export class ConversationService {
       ]);
     } catch (err: any) {
       logger.warn(`Qualification assessment bypassed or timed out: ${err.message}`);
+    }
+
+    // Guard against premature qualification on mere problem descriptions:
+    // If the prospect only described an operational problem without budget, timeline, or meeting, keep IN_CONVERSATION
+    if (qualResult.status === "QUALIFIED" && aiCompletion.action.action === "reply") {
+      const text = `${replyText} ${aiCompletion.content}`.toLowerCase();
+      const hasExplicitBudgetOrTimeline =
+        (text.includes("$") || text.includes("budget")) &&
+        (/\b(next\s+week|in\s+\d+\s+weeks?|this\s+month|next\s+month|q[1-4]|launching\s+soon|deploy(?:ing)?\s+soon)\b/i.test(text));
+      if (!hasExplicitBudgetOrTimeline) {
+        qualResult.status = "IN_CONVERSATION";
+      }
     }
 
     // Do not downgrade status if already QUALIFIED, HANDOFF_REQUIRED, CONVERTED, or OPTED_OUT

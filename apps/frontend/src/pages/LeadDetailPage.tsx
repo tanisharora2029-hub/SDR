@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import {
   ArrowLeft,
@@ -15,15 +15,21 @@ import {
   Play,
   Tag,
   FileText,
-  Radio
+  Radio,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 
 export const LeadDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [operatorReply, setOperatorReply] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
   const loadLead = async () => {
     if (!id) return;
@@ -75,14 +81,41 @@ export const LeadDetailPage: React.FC = () => {
     }
   };
 
+  const handleDeleteLead = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await api.deleteLead(id);
+      navigate("/leads");
+    } catch (err: any) {
+      alert(err.message || "Failed to delete lead");
+      setDeleting(false);
+    }
+  };
+
   const handleTriggerOutreach = async () => {
     if (!id) return;
     setActionLoading(true);
+    setStatusNotice(null);
     try {
-      await api.triggerOutreach(id);
+      const res = await api.triggerOutreach(id);
       await loadLead();
+      if (res?.result?.deliverySuccess === false) {
+        setStatusNotice({
+          type: "error",
+          message: `Outreach generated, but delivery failed: ${res.result.deliveryError || "Email dispatch failed"}`
+        });
+      } else {
+        setStatusNotice({
+          type: "success",
+          message: `Outreach dispatched successfully via ${res?.result?.provider || "email"}`
+        });
+      }
     } catch (err: any) {
-      alert(err.message || "Failed to trigger outreach");
+      setStatusNotice({
+        type: "error",
+        message: err.message || "Failed to trigger outreach"
+      });
     } finally {
       setActionLoading(false);
     }
@@ -129,8 +162,35 @@ export const LeadDetailPage: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5" />
             <span>{lead.isOptedOut || lead.status === "OPTED_OUT" ? "Outreach Blocked (DNC)" : "Trigger AI Cold Outreach"}</span>
           </button>
+
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={actionLoading || deleting}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 transition"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Delete Lead</span>
+          </button>
         </div>
       </div>
+
+      {statusNotice && (
+        <div
+          className={`p-3.5 rounded-xl border text-xs flex items-center justify-between shadow-lg ${
+            statusNotice.type === "error"
+              ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+          }`}
+        >
+          <span>{statusNotice.message}</span>
+          <button
+            onClick={() => setStatusNotice(null)}
+            className="text-slate-400 hover:text-slate-200 text-base font-bold ml-3 px-1"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* DNC Opt-out Alert Banner */}
       {(lead.isOptedOut || lead.status === "OPTED_OUT") && (
@@ -418,6 +478,61 @@ export const LeadDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Lead Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-100">Delete Target Lead</h3>
+                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5 text-xs">
+              <p className="text-slate-200 font-medium">
+                <span className="text-slate-400">Name:</span> {lead.firstName} {lead.lastName}
+              </p>
+              <p className="text-slate-200">
+                <span className="text-slate-400">Email:</span> {lead.email}
+              </p>
+              <p className="text-slate-200">
+                <span className="text-slate-400">Company:</span> {lead.companyName}
+              </p>
+              <div className="mt-2 pt-2 border-t border-slate-800 flex items-start gap-2 text-rose-300 text-[11px]">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                <span>
+                  Deleting this lead removes all associated conversations, message history, appointments, and pending follow-ups.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteLead}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition flex items-center gap-1.5 shadow-lg shadow-rose-950/50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{deleting ? "Deleting..." : "Yes, Delete Lead"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

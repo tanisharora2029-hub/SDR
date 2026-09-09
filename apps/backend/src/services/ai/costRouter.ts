@@ -40,23 +40,23 @@ export class CostRouter {
     const isProduction = process.env.NODE_ENV === "production";
     const explicitProvider = process.env.AI_PROVIDER;
 
-    if (explicitProvider === "groq" || (hasGroq && explicitProvider !== "ollama" && explicitProvider !== "mock")) {
+    if (explicitProvider === "mock") {
       return {
         taskType,
-        priority: isVoiceTask ? "LIVE_HIGH_PRIORITY_VOICE" : "ASYNC_CHEAP",
-        selectedProvider: "groq-online",
-        modelName: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-        reason: "Routed via Groq provider abstraction for cloud deployment."
+        priority: "ASYNC_CHEAP",
+        selectedProvider: "ollama-local",
+        modelName: "mock",
+        reason: "Explicit mock provider for sandbox/testing."
       };
     }
 
-    if (isProduction && !explicitProvider && hasGroq) {
+    if (hasGroq && explicitProvider !== "mock") {
       return {
         taskType,
         priority: isVoiceTask ? "LIVE_HIGH_PRIORITY_VOICE" : "ASYNC_CHEAP",
         selectedProvider: "groq-online",
         modelName: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-        reason: "Production environment auto-routed to Groq online."
+        reason: "Routed via Groq online provider for production cloud reliability."
       };
     }
 

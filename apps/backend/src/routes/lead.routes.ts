@@ -78,16 +78,12 @@ leadRouter.put("/:id", validateBody(UpdateLeadSchema), async (req, res, next) =>
 
 leadRouter.delete("/:id", async (req, res, next) => {
   try {
-    const existing = await prisma.lead.findFirst({
-      where: { id: req.params.id, organizationId: req.organizationId! }
-    });
-    if (!existing) return res.status(404).json({ success: false, error: "Lead not found" });
-
-    await prisma.lead.delete({
-      where: { id: req.params.id }
-    });
-    res.json({ success: true, message: "Lead deleted" });
-  } catch (err) {
+    const result = await LeadService.deleteLead(req.organizationId!, req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    if (err.message && err.message.includes("not found")) {
+      return res.status(404).json({ success: false, error: err.message });
+    }
     next(err);
   }
 });

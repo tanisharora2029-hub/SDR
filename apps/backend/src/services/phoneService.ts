@@ -187,21 +187,29 @@ export class PhoneService {
     cleanSpeech = cleanSpeech.replace(/^At\s+([A-Za-z0-9_-]+),\s+\1\b/i, "At $1, we");
     cleanSpeech = cleanSpeech.replace(/^At\s+([A-Za-z0-9_-]+),\s+at\s+\1\b/i, "At $1, we");
 
-    // Enforce concise spoken length (1-2 crisp sentences under 30 words total)
+    // In multi-turn voice calls, strip opening company intro if ongoing turn
+    if (transcript.length > 2) {
+      cleanSpeech = cleanSpeech.replace(/^At\s+[A-Za-z0-9_-]+,\s+(?:we\s+)?/i, "").trim();
+      if (cleanSpeech.length > 0) {
+        cleanSpeech = cleanSpeech.charAt(0).toUpperCase() + cleanSpeech.slice(1);
+      }
+    }
+
+    // Enforce concise spoken length (1-2 crisp sentences under 35 words total)
     const words = cleanSpeech.split(/\s+/).filter(Boolean);
-    if (words.length > 28) {
+    if (words.length > 35) {
       const sentences = cleanSpeech.match(/[^.!?]+[.!?]+/g);
       if (sentences && sentences.length > 0) {
         let concise = sentences[0].trim();
         if (sentences.length > 1) {
           const combined = `${concise} ${sentences[1].trim()}`;
-          if (combined.split(/\s+/).length <= 28) {
+          if (combined.split(/\s+/).length <= 35) {
             concise = combined;
           }
         }
         cleanSpeech = concise;
       } else {
-        cleanSpeech = words.slice(0, 25).join(" ") + ".";
+        cleanSpeech = words.slice(0, 30).join(" ") + ".";
       }
     }
 

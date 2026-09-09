@@ -20,9 +20,10 @@ class AiService {
 
     // Auto-detect Groq if explicitly requested OR if GROQ_API_KEY is configured
     const hasGroqKey = !!process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim().length > 0;
+    const hasGeminiKey = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0;
     const providerType = process.env.AI_PROVIDER || (hasGroqKey ? "groq" : "ollama");
 
-    if (providerType === "groq") {
+    if (providerType === "groq" || (hasGroqKey && providerType !== "mock")) {
       this.primaryProvider = this.groqProvider;
     } else if (providerType === "online") {
       this.primaryProvider = new OnlineGeminiProvider();
@@ -32,9 +33,9 @@ class AiService {
       this.primaryProvider = new MockAiProvider();
     }
 
-    // Default voice pipeline to ONLINE cloud model (Gemini or Groq) to decouple from local GPU during voice calls
-    const voiceProviderType = process.env.VOICE_AI_PROVIDER || (providerType === "groq" ? "groq" : "online");
-    if (voiceProviderType === "groq") {
+    // Voice pipeline defaults to Groq when Gemini key is not configured
+    const voiceProviderType = process.env.VOICE_AI_PROVIDER || (hasGeminiKey ? "online" : (hasGroqKey ? "groq" : "online"));
+    if (voiceProviderType === "groq" || (!hasGeminiKey && hasGroqKey)) {
       this.voiceProvider = this.groqProvider;
     } else if (voiceProviderType === "ollama") {
       this.voiceProvider = new OllamaProvider();
@@ -84,8 +85,21 @@ class AiService {
 
       return await this.voiceProvider.respondToMessage(enhancedSdr, lead, history, latestMessage);
     } catch (err: any) {
-      logger.warn(`Voice online provider failed, falling back to primary/mock: ${err.message}`);
-      return await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
+      logger.warn(`[AI_VOICE_FALLBACK] Voice online provider failed: ${err.message}`);
+      const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
+      if (hasGroqKey && this.voiceProvider !== this.groqProvider) {
+        try {
+          logger.info("[AI_VOICE_FALLBACK] Attempting Groq provider for voice...");
+          return await this.groqProvider.respondToMessage(sdr, lead, history, latestMessage);
+        } catch (groqErr: any) {
+          logger.warn(`[AI_VOICE_FALLBACK] Groq voice fallback also failed: ${groqErr.message}`);
+        }
+      }
+      const mockRes = await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
+      return {
+        ...mockRes,
+        provider: `mock (fallback: ${err.message})`
+      };
     }
   }
 
@@ -98,8 +112,21 @@ class AiService {
     try {
       return await provider.generateOutreach(sdr, lead);
     } catch (err: any) {
-      logger.warn(`Primary AI provider failed, falling back to mock provider: ${err.message}`);
-      return await this.fallbackProvider.generateOutreach(sdr, lead);
+      logger.warn(`[AI_OUTREACH_FALLBACK] Primary AI provider failed: ${err.message}`);
+      const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
+      if (hasGroqKey && provider !== this.groqProvider) {
+        try {
+          logger.info("[AI_OUTREACH_FALLBACK] Attempting Groq provider for outreach...");
+          return await this.groqProvider.generateOutreach(sdr, lead);
+        } catch (groqErr: any) {
+          logger.warn(`[AI_OUTREACH_FALLBACK] Groq outreach fallback also failed: ${groqErr.message}`);
+        }
+      }
+      const mockRes = await this.fallbackProvider.generateOutreach(sdr, lead);
+      return {
+        ...mockRes,
+        provider: `mock (fallback: ${err.message})`
+      };
     }
   }
 
@@ -152,8 +179,21 @@ class AiService {
 
       return response;
     } catch (err: any) {
-      logger.warn(`Primary AI provider failed, falling back to mock provider: ${err.message}`);
-      return await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
+      logger.warn(`[AI_CHAT_FALLBACK] Primary AI provider failed: ${err.message}`);
+      const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
+      if (hasGroqKey) {
+        try {
+          logger.info("[AI_CHAT_FALLBACK] Attempting Groq provider for chat...");
+          return await this.groqProvider.respondToMessage(sdr, lead, history, latestMessage);
+        } catch (groqErr: any) {
+          logger.warn(`[AI_CHAT_FALLBACK] Groq chat fallback also failed: ${groqErr.message}`);
+        }
+      }
+      const mockRes = await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
+      return {
+        ...mockRes,
+        provider: `mock (fallback: ${err.message})`
+      };
     }
   }
 
