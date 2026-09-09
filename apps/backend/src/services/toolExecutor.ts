@@ -52,7 +52,7 @@ export class ToolExecutor {
             };
           }
           const subject = args.subject || "Message from your SDR";
-          const body = args.body || "";
+          const body = args.body || args.content || args.text || args.message || "";
 
           // Ensure conversation exists
           let conv = await prisma.conversation.findFirst({

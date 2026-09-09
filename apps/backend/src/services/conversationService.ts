@@ -882,13 +882,21 @@ export class ConversationService {
       }
     });
 
-    // Run qualification assessment
-    const qualResult = await aiService.qualifyLead(sdrContext, leadContext, [...turns, {
-      speaker: "sdr",
-      channel,
-      content: aiCompletion.content,
-      timestamp: new Date().toISOString()
-    }]);
+    // Run qualification assessment safely with timeout protection
+    let qualResult: any = { status: "IN_CONVERSATION" };
+    try {
+      qualResult = await Promise.race([
+        aiService.qualifyLead(sdrContext, leadContext, [...turns, {
+          speaker: "sdr",
+          channel,
+          content: aiCompletion.content,
+          timestamp: new Date().toISOString()
+        }]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Qualification timeout")), 3500))
+      ]);
+    } catch (err: any) {
+      logger.warn(`Qualification assessment bypassed or timed out: ${err.message}`);
+    }
 
     // Do not downgrade status if already QUALIFIED, HANDOFF_REQUIRED, CONVERTED, or OPTED_OUT
     const currentLead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });

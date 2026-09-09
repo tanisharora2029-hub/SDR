@@ -131,8 +131,15 @@ export class LeadService {
 
     // If AI decided a tool call (send_email)
     if (aiResult.toolDecision) {
+      if (!aiResult.toolDecision.arguments?.body && aiResult.content) {
+        aiResult.toolDecision.arguments = aiResult.toolDecision.arguments || {};
+        aiResult.toolDecision.arguments.body = aiResult.content;
+      }
       const toolRes = await ToolExecutor.executeTool(organizationId, aiResult.toolDecision);
-      return { aiResult, toolExecution: toolRes };
+      const createdMessage = (toolRes as any)?.data?.messageId
+        ? await prisma.message.findUnique({ where: { id: (toolRes as any).data.messageId } })
+        : null;
+      return { aiResult, toolExecution: toolRes, message: createdMessage };
     }
 
     // Otherwise, create draft message

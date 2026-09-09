@@ -49,7 +49,7 @@ describe.sequential("NEXSDR — CONSOLIDATED PRODUCTION BUG FIX TEST SUITE (BUGS
         organizationId: orgId,
         firstName: "Vikram",
         lastName: "Patel",
-        email: "vikram.patel@finscale.io",
+        email: "vikram.consolidated@finscale.io",
         companyName: "FinScale",
         jobTitle: "Head of Operations",
         status: "CONTACTED"
@@ -79,7 +79,7 @@ describe.sequential("NEXSDR — CONSOLIDATED PRODUCTION BUG FIX TEST SUITE (BUGS
         content: "Hi Vikram, I noticed your focus on operations at FinScale. Would you be open to a brief chat?",
         senderName: sdr.personaName,
         status: "SENT",
-        toolCallArgs: JSON.stringify({ externalMessageId: "<outbound-initial-msg-999@nexsdr.in>" })
+        toolCallArgs: JSON.stringify({ externalMessageId: "<outbound-consolidated-msg-999@nexsdr.in>" })
       }
     });
   });
@@ -115,13 +115,13 @@ describe.sequential("NEXSDR — CONSOLIDATED PRODUCTION BUG FIX TEST SUITE (BUGS
         type: "email.received",
         data: {
           id: `inbound_${Date.now()}`,
-          from: "VIKRAM.PATEL@FINSCALE.IO", // Uppercase email
+          from: "VIKRAM.CONSOLIDATED@FINSCALE.IO", // Uppercase email
           to: ["alex@nexsdr.in"],
           subject: "Re: Streamlining operations at FinScale",
           text: "Thanks for reaching out! We run SAP ERP and struggle with invoice processing lag. How does your solution handle SAP integration?",
           headers: [
-            { name: "In-Reply-To", value: "<outbound-initial-msg-999@nexsdr.in>" },
-            { name: "References", value: "<outbound-initial-msg-999@nexsdr.in>" }
+            { name: "In-Reply-To", value: "<outbound-consolidated-msg-999@nexsdr.in>" },
+            { name: "References", value: "<outbound-consolidated-msg-999@nexsdr.in>" }
           ],
           created_at: new Date().toISOString()
         }

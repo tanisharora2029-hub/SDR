@@ -11,24 +11,37 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-  let data: any;
-  const rawText = await response.text();
   try {
-    data = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    data = { error: rawText.slice(0, 120) || `Server returned HTTP ${response.status}: ${response.statusText}` };
-  }
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal
+    });
 
-  if (!response.ok) {
-    throw new Error(data?.error || data?.message || `Request failed with status ${response.status}`);
-  }
+    let data: any;
+    const rawText = await response.text();
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = { error: rawText.slice(0, 120) || `Server returned HTTP ${response.status}: ${response.statusText}` };
+    }
 
-  return data;
+    if (!response.ok) {
+      throw new Error(data?.error || data?.message || `Request failed with status ${response.status}`);
+    }
+
+    return data;
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error("Request timed out. The server is taking longer than expected to respond.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export const api = {

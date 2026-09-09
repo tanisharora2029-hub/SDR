@@ -95,6 +95,16 @@ organizationRouter.post("/send-test-email", async (req, res, next) => {
     const recipient = req.body.to || "prospect-test@sandbox.nexsdr.in";
 
     const isResend = targetProvider === "RESEND";
+    const isMockRecipient = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(recipient);
+
+    if (isResend && isMockRecipient) {
+      return res.status(400).json({
+        success: false,
+        provider: "RESEND",
+        message: "Live Resend delivery cannot be sent to sandbox mock domains. Please enter a real recipient email address (e.g. your personal/work inbox) to test live delivery."
+      });
+    }
+
     const subject = isResend
       ? "NexSDR - Live Test Email via Resend"
       : "NexSDR - Sandbox Test Email via Ethereal";

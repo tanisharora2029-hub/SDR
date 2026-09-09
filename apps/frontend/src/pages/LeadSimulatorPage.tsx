@@ -30,12 +30,18 @@ export const LeadSimulatorPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
 
+  const selectedLeadIdRef = React.useRef(selectedLeadId);
+  useEffect(() => {
+    selectedLeadIdRef.current = selectedLeadId;
+  }, [selectedLeadId]);
+
   const loadData = async () => {
     try {
       const res = await api.getSimulatorLeads();
-      setLeads(res.leads || []);
-      if (!selectedLeadId && res.leads?.length > 0) {
-        setSelectedLeadId(res.leads[0].id);
+      const fetchedLeads = res.leads || [];
+      setLeads(fetchedLeads);
+      if (!selectedLeadIdRef.current && fetchedLeads.length > 0) {
+        setSelectedLeadId(fetchedLeads[0].id);
       }
     } catch (err) {
       console.error("Failed to load simulator leads:", err);
@@ -60,7 +66,7 @@ export const LeadSimulatorPage: React.FC = () => {
 
   const handleSendAsLead = async (text?: string) => {
     const contentToSend = text || replyText;
-    if (!selectedLeadId || !contentToSend.trim()) return;
+    if (!selectedLeadId || !contentToSend.trim() || sending) return;
 
     setSending(true);
     setLastResult(null);
@@ -108,7 +114,8 @@ export const LeadSimulatorPage: React.FC = () => {
         );
       }
 
-      await loadData().catch(() => {});
+      // Non-blocking refresh so send state is released immediately
+      loadData().catch(() => {});
     } catch (err: any) {
       alert(err.message || "Failed to deliver lead reply");
     } finally {

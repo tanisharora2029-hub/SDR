@@ -784,6 +784,11 @@ export const SettingsPage: React.FC = () => {
                 placeholder="prospect-test@sandbox.nexsdr.in"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
               />
+              <p className="text-[10px] text-slate-400 mt-1">
+                {activeProvider === "RESEND"
+                  ? "For live delivery verification, enter your real external inbox (e.g. your personal/work email). Sandbox domains are blocked from live dispatch."
+                  : "Sandbox mode captures emails with an instant preview link at zero cost."}
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:self-end">

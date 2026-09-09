@@ -80,7 +80,8 @@ export class ResendService {
         headers: {
           "Authorization": `Bearer ${key.trim()}`,
           "Content-Type": "application/json"
-        }
+        },
+        signal: AbortSignal.timeout(10000)
       });
 
       if (res.ok) {
@@ -176,7 +177,8 @@ export class ResendService {
           "Authorization": `Bearer ${key.trim()}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000)
       });
 
       if (response.ok) {
@@ -243,7 +245,8 @@ export class ResendService {
           "Authorization": `Bearer ${key.trim()}`,
           "Content-Type": "application/json",
           "User-Agent": "NexSDR/1.0"
-        }
+        },
+        signal: AbortSignal.timeout(10000)
       });
 
       if (!res.ok) {
@@ -253,7 +256,8 @@ export class ResendService {
             "Authorization": `Bearer ${key.trim()}`,
             "Content-Type": "application/json",
             "User-Agent": "NexSDR/1.0"
-          }
+          },
+          signal: AbortSignal.timeout(10000)
         });
       }
 

@@ -44,7 +44,8 @@ export class GroqProvider implements AiProvider {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`
       },
-      body: JSON.stringify(bodyPayload)
+      body: JSON.stringify(bodyPayload),
+      signal: AbortSignal.timeout(12000)
     });
 
     const latencyMs = Date.now() - startTime;
@@ -211,6 +212,8 @@ Requirements:
           body: action.reply
         }
       };
+    } else if (!toolDecision.arguments.body) {
+      toolDecision.arguments.body = action.reply;
     }
 
     return {

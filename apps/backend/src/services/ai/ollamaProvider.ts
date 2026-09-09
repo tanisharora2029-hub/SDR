@@ -219,6 +219,8 @@ Requirements:
           body: action.reply
         }
       };
+    } else if (!toolDecision.arguments.body) {
+      toolDecision.arguments.body = action.reply;
     }
 
     return {
