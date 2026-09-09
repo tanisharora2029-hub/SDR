@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
@@ -20,14 +20,30 @@ import {
 } from "lucide-react";
 
 export const ConversationsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selectedId;
   const [activeConv, setActiveConv] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [humanMsgText, setHumanMsgText] = useState("");
   const [sending, setSending] = useState(false);
   const [resuming, setResuming] = useState(false);
+
+  const loadConversationsQuietly = async () => {
+    try {
+      const res = await api.getConversations();
+      setConversations(res.conversations || []);
+    } catch (err) {}
+  };
+
+  const loadSelectedQuietly = async (convId: string) => {
+    try {
+      const res = await api.getConversation(convId);
+      setActiveConv(res.conversation);
+    } catch (err) {}
+  };
 
   const loadConversations = async () => {
     try {
@@ -59,6 +75,50 @@ export const ConversationsPage: React.FC = () => {
     }
     loadSelected();
   }, [selectedId]);
+
+  // Real-time WebSocket connection + 4-second fallback polling
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL;
+      let wsUrl = "";
+      if (apiBase && apiBase.startsWith("http")) {
+        wsUrl = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "/ws");
+      } else {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        wsUrl = `${protocol}//${window.location.host}/ws`;
+      }
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        if (organization?.id) {
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id }));
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "MESSAGE_CREATED" || data.type === "CONVERSATION_UPDATED") {
+            loadConversationsQuietly();
+            if (selectedIdRef.current) {
+              loadSelectedQuietly(selectedIdRef.current);
+            }
+          }
+        } catch (e) {}
+      };
+    } catch (err) {}
+
+    const interval = setInterval(() => {
+      loadConversationsQuietly();
+      if (selectedIdRef.current) {
+        loadSelectedQuietly(selectedIdRef.current);
+      }
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      if (ws) ws.close();
+    };
+  }, [organization?.id]);
 
   const handleSelectConversation = (id: string) => {
     if (id === selectedId) return;

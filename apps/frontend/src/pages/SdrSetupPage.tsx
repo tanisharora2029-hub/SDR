@@ -78,7 +78,7 @@ export const SdrSetupPage: React.FC = () => {
     setTimeout(() => {
       if (testInput.toLowerCase().includes("salesforce")) {
         setTestOutput(
-          "Yes! CloudFlow provides native bi-directional synchronization with Salesforce. You can map custom lead objects, sync status triggers, and maintain complete audit trails with zero custom coding in under 15 minutes."
+          `Yes! ${org?.name || "NexSDR"} provides native bi-directional synchronization with Salesforce. You can map custom lead objects, sync status triggers, and maintain complete audit trails with zero custom coding in under 15 minutes.`
         );
       } else if (testInput.toLowerCase().includes("pricing") || testInput.toLowerCase().includes("cost")) {
         setTestOutput(
@@ -86,7 +86,7 @@ export const SdrSetupPage: React.FC = () => {
         );
       } else {
         setTestOutput(
-          `Thanks for asking! As an AI SDR for ${org?.name || "CloudFlow"}, I'm focused on helping your team automate manual compliance handoffs. Could you tell me more about your current process?`
+          `Thanks for asking! As an AI SDR for ${org?.name || "NexSDR"}, I'm focused on helping your team automate manual compliance handoffs. Could you tell me more about your current process?`
         );
       }
       setTesting(false);

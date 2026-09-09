@@ -169,8 +169,12 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 4. Pricing / Cost Inquiry
-    if (/\b(price|pricing|cost|how much|rates|tiers?|fee)\b/i.test(lower)) {
+    // 4. Pricing / Cost Inquiry (Ensure tier-1 support tickets do not accidentally trigger pricing)
+    const isPricingInquiry = (
+      /\b(price|pricing|cost|how much|rates|fee)\b/i.test(lower) ||
+      (/\btiers?\b/i.test(lower) && !/\btier[\s-]*[123]\b/i.test(lower))
+    );
+    if (isPricingInquiry) {
       const allText = `${sdr.pricingInfo || ""} ${sdr.knowledgeBase || ""}`;
       const hasVerifiedPrice = allText.includes("$") || /pricing:/i.test(allText) || /tier/i.test(allText);
 
@@ -277,9 +281,130 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 8. Problem Descriptions & High Buying Intent (e.g. KYC documents, manual reviews, errors, turnaround delays)
-    if (/\b(kyc|document|manual|errors?|too long|bottleneck|process(?:ing)?|turnaround|volume)\b/i.test(lower)) {
-      const reply = `Manual processing and high error rates create significant operational bottlenecks for growing teams. At ${sdr.organizationName}, ${sdr.valueProposition || "we help streamline these critical workflows to ensure high accuracy and speed"}. Could you share a bit more about your current document volume and how information is entered into your internal systems?`;
+    // 8. Intent-Specific Inquiries & Workflows (Bug 2 & Bug 4 fixes)
+    // 8a. Invoice & ERP Integration
+    if (/\b(invoice|invoices|sap|oracle|netsuite|erp|accounting system|accounts payable|ap automation)\b/i.test(lower)) {
+      const reply = `Automating invoice processing and integrating directly into ERP platforms like SAP, Oracle, or NetSuite eliminates error-prone manual data entry and accelerates reconciliation cycles. How is your team currently extracting invoice data and syncing it with your accounting systems?`;
+
+      const action: AiAction = {
+        intent: "conversation",
+        action: "reply",
+        reply,
+        reason: "Directly addressed invoice and ERP integration requirements",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 85,
+        provider: "mock"
+      };
+    }
+
+    // 8b. KYC & Verification Backlog
+    if (/\b(kyc|onboarding backlog|aml|customer verification|verification queue|compliance backlog)\b/i.test(lower)) {
+      const reply = `Accelerating KYC and customer verification is essential for reducing onboarding drop-off while maintaining strict regulatory compliance. How large is your current daily verification queue, and where do manual review bottlenecks cause the biggest delays today?`;
+
+      const action: AiAction = {
+        intent: "qualification",
+        action: "reply",
+        reply,
+        reason: "Engaged in targeted KYC and verification workflow discovery",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 85,
+        provider: "mock"
+      };
+    }
+
+    // 8c. Contact Center & Customer Support
+    if (/\b(contact center|customer support|tickets?|zendesk|agent triage|call volume|support queue)\b/i.test(lower)) {
+      const reply = `Autonomous triage and resolution can dramatically reduce tier-1 support ticket volumes and speed up response times. What ticketing stack does your team use today, and what types of inquiries make up the bulk of your queue?`;
+
+      const action: AiAction = {
+        intent: "conversation",
+        action: "reply",
+        reply,
+        reason: "Addressed contact center and support ticket automation inquiry",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 85,
+        provider: "mock"
+      };
+    }
+
+    // 8d. Document Extraction & OCR
+    if (/\b(document extraction|ocr|pdf|unstructured data|parsing documents|document processing)\b/i.test(lower)) {
+      const reply = `Intelligent document processing extracts structured data from complex PDFs, contracts, and forms with high accuracy. What formats and volumes do you handle most frequently, and how are validation exceptions currently managed?`;
+
+      const action: AiAction = {
+        intent: "qualification",
+        action: "reply",
+        reply,
+        reason: "Addressed document extraction and unstructured data processing inquiry",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 85,
+        provider: "mock"
+      };
+    }
+
+    // 8e. General Automation & System Handoffs
+    if (/\b(general automation|workflow handoff|cross-system|handoffs|repetitive tasks|process automation)\b/i.test(lower)) {
+      const reply = `Streamlining cross-functional workflows and reducing manual handoffs between systems significantly boosts overall team throughput. Which manual handoffs between departments or tools currently create the largest operational bottlenecks?`;
+
+      const action: AiAction = {
+        intent: "conversation",
+        action: "reply",
+        reply,
+        reason: "Addressed general workflow automation and system handoffs inquiry",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 85,
+        provider: "mock"
+      };
+    }
+
+    // 8f. Other Operational Bottleneck / Generic Problem Description
+    if (/\b(manual|errors?|too long|bottleneck|process(?:ing)?|turnaround|volume)\b/i.test(lower)) {
+      const cleanValueProp = sdr.valueProposition
+        ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
+        : "we help streamline critical workflows to ensure high accuracy and speed";
+      const valueClause = cleanValueProp.toLowerCase().startsWith("we") ? cleanValueProp : `we focus on ${cleanValueProp}`;
+
+      const reply = `Manual processing and high error rates create significant operational bottlenecks for growing teams. At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current operational volume and how information is transferred between your internal systems?`;
 
       const action: AiAction = {
         intent: "qualification",
@@ -300,14 +425,19 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 9. Default Consultative Discovery (Context-Grounded in real organization data)
-    const reply = `Thanks for reaching out! At ${sdr.organizationName}, ${sdr.valueProposition || "we help organizations optimize operational workflows and scale efficiently"}. Could you share a bit more about your current process at ${company} and where you see the biggest priority today?`;
+    // 9. Default Consultative Discovery (Cleaned of duplicate company name boilerplate)
+    const cleanValueProp = sdr.valueProposition
+      ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
+      : "we help organizations optimize operational workflows and scale efficiently";
+    const valueClause = cleanValueProp.toLowerCase().startsWith("we") ? cleanValueProp : `we focus on ${cleanValueProp}`;
+
+    const reply = `Thanks for reaching out! At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current process at ${company} and where you see the biggest priority today?`;
 
     const action: AiAction = {
       intent: "conversation",
       action: "reply",
       reply,
-      reason: "Dynamic consultative discovery grounded in organization value proposition",
+      reason: "Dynamic consultative discovery grounded in organization value proposition without repetition",
       tool_arguments: {},
       confidence: 0.9
     };

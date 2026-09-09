@@ -99,26 +99,13 @@ app.use("/api/webhooks", webhookRouter);
 // Global Error Handler
 app.use(errorHandler);
 
-// WebSocket Server for Real-Time Phone Voice Studio
+// WebSocket Server for Real-Time Phone Voice Studio & Omnichannel Inbox Events
+import { wsBroadcaster, broadcastToOrganization } from "./lib/wsBroadcaster.js";
 const wss = new WebSocketServer({ server, path: "/ws" });
 
 wss.on("connection", (ws: WebSocket) => {
-  logger.info("WebSocket client connected to Voice Studio channel");
-
-  ws.on("message", (message: string) => {
-    try {
-      const data = JSON.parse(message.toString());
-      if (data.type === "PING") {
-        ws.send(JSON.stringify({ type: "PONG" }));
-      }
-    } catch (e) {
-      // ignore
-    }
-  });
-
-  ws.on("close", () => {
-    logger.info("WebSocket client disconnected");
-  });
+  logger.info("WebSocket client connected to real-time channel");
+  wsBroadcaster.registerClient(ws);
 });
 
 const PORT = parseInt(process.env.PORT || "5000", 10);
@@ -128,4 +115,4 @@ server.listen(PORT, HOST, () => {
   logger.info(`NexSDR Server running on http://${HOST}:${PORT} [${process.env.NODE_ENV || "development"}]`);
 });
 
-export { app, server };
+export { app, server, broadcastToOrganization };

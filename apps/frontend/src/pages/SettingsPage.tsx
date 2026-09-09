@@ -317,7 +317,7 @@ export const SettingsPage: React.FC = () => {
             <span className="text-[11px] font-semibold text-amber-300 flex items-center gap-1.5">
               <span>👨</span> CUSTOMER / OWNER
             </span>
-            <p className="text-slate-300 font-medium">{org?.users?.[0]?.name || "Tanish"} ({org?.name || "CloudFlow AI"})</p>
+            <p className="text-slate-300 font-medium">{org?.users?.[0]?.name || "Workspace Admin"} ({org?.name || "Workspace"})</p>
             <p className="text-[11px] text-slate-400 leading-relaxed">
               Workspace operator. Configures knowledge base and monitors conversations. Personal email is <strong>never</strong> used as the AI sender.
             </p>

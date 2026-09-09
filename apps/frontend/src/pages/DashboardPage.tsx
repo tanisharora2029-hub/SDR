@@ -77,7 +77,7 @@ export const DashboardPage: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold text-slate-100">Sales Pipeline Overview</h1>
             <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-              CLOUDFLOW AI
+              NEXSDR AI
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">

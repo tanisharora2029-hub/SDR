@@ -15,9 +15,11 @@ export class PhoneService {
 
     const callSid = `call_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-    // Initial greeting from SDR
+    // Initial greeting from SDR with neutral fallback
+    const hasLeadFirstName = Boolean(lead.firstName && lead.firstName.trim() && lead.firstName.toLowerCase() !== "unknown");
+    const greetingTarget = hasLeadFirstName ? ` ${lead.firstName}` : "";
     const initialGreeting = direction === "OUTBOUND"
-      ? `Hello ${lead.firstName}, this is ${sdr.personaName} calling from ${org.name}. I hope I didn't catch you at a bad time!`
+      ? `Hello${greetingTarget}, this is ${sdr.personaName} calling from ${org.name}. I hope I didn't catch you at a bad time!`
       : `Thank you for calling ${org.name}! My name is ${sdr.personaName}. How can I assist you today?`;
 
     const session = await prisma.callSession.create({
@@ -69,6 +71,11 @@ export class PhoneService {
       industry: org.industry,
       valueProposition: org.valueProposition,
       targetCustomerIcp: org.targetCustomerIcp,
+      companyDescription: (org as any).companyDescription,
+      products: (org as any).products,
+      pricingInfo: (org as any).pricingInfo,
+      complianceInfo: (org as any).complianceInfo,
+      competitors: (org as any).competitors,
       knowledgeBase: org.knowledgeBase,
       objectionRules: org.objectionRules,
       personaName: sdr.personaName,
@@ -137,6 +144,18 @@ export class PhoneService {
       .replace(/^\s*[-•]\s*/gm, "") // remove list bullets
       .replace(/\s+/g, " ")
       .trim();
+
+    // Context safety & de-hallucination guards
+    const leadCompUnknown = !lead.companyName || lead.companyName.toLowerCase() === "unknown";
+    const leadNameUnknown = !lead.firstName || lead.firstName.toLowerCase() === "unknown";
+    if (leadCompUnknown) {
+      cleanSpeech = cleanSpeech.replace(/\b(?:at\s+)?technew\b/gi, "").replace(/\s{2,}/g, " ").trim();
+      cleanSpeech = cleanSpeech.replace(/\b(?:at\s+)?CloudFlow\s*AI\b/gi, "").replace(/\s{2,}/g, " ").trim();
+    }
+    if (leadNameUnknown) {
+      cleanSpeech = cleanSpeech.replace(/\b(?:hi|hello|hey|thanks for getting back to me,?)\s+tanish\b/gi, "Hello,").trim();
+    }
+    cleanSpeech = cleanSpeech.replace(/\bCloudFlow\s*AI\b/gi, org.name || "NexSDR");
 
     // Enforce concise spoken length (1-2 crisp sentences under 30 words total)
     const words = cleanSpeech.split(/\s+/).filter(Boolean);

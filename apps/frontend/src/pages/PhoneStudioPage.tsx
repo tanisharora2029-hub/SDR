@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { api } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.js";
 import { VoiceSessionController, VoiceState } from "../lib/voiceSessionController.js";
 import {
   PhoneCall,
@@ -30,6 +31,8 @@ interface VoiceOption {
 }
 
 export const PhoneStudioPage: React.FC = () => {
+  const { organization } = useAuth();
+  const [sdrProfile, setSdrProfile] = useState<any>(null);
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [callStatus, setCallStatus] = useState<"IDLE" | "IN_PROGRESS" | "COMPLETED">("IDLE");
@@ -85,10 +88,15 @@ export const PhoneStudioPage: React.FC = () => {
   useEffect(() => {
     async function initData() {
       try {
-        const [leadsRes, voicesRes] = await Promise.all([
+        const [leadsRes, voicesRes, sdrRes] = await Promise.all([
           api.getLeads(),
-          api.getVoices().catch(() => ({ voices: [] }))
+          api.getVoices().catch(() => ({ voices: [] })),
+          api.getSdr().catch(() => null)
         ]);
+
+        if (sdrRes?.sdr) {
+          setSdrProfile(sdrRes.sdr);
+        }
 
         setLeads(leadsRes.leads || []);
         if (leadsRes.leads?.length > 0) {
@@ -400,6 +408,9 @@ export const PhoneStudioPage: React.FC = () => {
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId);
 
+  const sdrName = sdrProfile?.personaName || "Alex";
+  const orgName = organization?.name || sdrProfile?.organizationName || "NexSDR";
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -477,7 +488,7 @@ export const PhoneStudioPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="text-slate-400">
-              AI SDR: <strong className="text-indigo-300">Alex (CloudFlow AI)</strong>
+              AI SDR: <strong className="text-indigo-300">{sdrName} ({orgName})</strong>
             </span>
             <span className="text-slate-600">|</span>
             <span className="text-slate-400">
@@ -778,7 +789,7 @@ export const PhoneStudioPage: React.FC = () => {
                       {turn.speaker === "sdr" ? (
                         <>
                           <Bot className="w-3 h-3 text-indigo-400" />
-                          <span className="text-indigo-300 font-semibold">Alex (AI SDR @ CloudFlow AI)</span>
+                          <span className="text-indigo-300 font-semibold">{sdrName} (AI SDR @ {orgName})</span>
                         </>
                       ) : (
                         <>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   FlaskConical,
   Mail,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 export const LeadSimulatorPage: React.FC = () => {
+  const { organization } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>(searchParams.get("leadId") || "");
@@ -66,6 +68,28 @@ export const LeadSimulatorPage: React.FC = () => {
       const res = await api.simulateReply(selectedLeadId, contentToSend.trim(), channel);
       setLastResult(res.result);
       setReplyText("");
+
+      // Optimistically update local conversation messages immediately
+      if (res.result?.inboundMsg || res.result?.outboundMsg) {
+        setLeads((prevLeads) =>
+          prevLeads.map((l) => {
+            if (l.id !== selectedLeadId) return l;
+            const updatedConvs = (l.conversations || []).map((c: any) => {
+              if (c.channel !== channel && c.id !== res.result?.inboundMsg?.conversationId) return c;
+              const newMsgs = [...(c.messages || [])];
+              if (res.result?.inboundMsg && !newMsgs.some((m) => m.id === res.result.inboundMsg.id)) {
+                newMsgs.push(res.result.inboundMsg);
+              }
+              if (res.result?.outboundMsg && !newMsgs.some((m) => m.id === res.result.outboundMsg.id)) {
+                newMsgs.push(res.result.outboundMsg);
+              }
+              return { ...c, messages: newMsgs };
+            });
+            return { ...l, conversations: updatedConvs };
+          })
+        );
+      }
+
       await loadData();
     } catch (err: any) {
       alert(err.message || "Failed to deliver lead reply");
@@ -73,6 +97,44 @@ export const LeadSimulatorPage: React.FC = () => {
       setSending(false);
     }
   };
+
+  // Real-time synchronization via WebSocket & 4s polling
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL;
+      let wsUrl = "";
+      if (apiBase && apiBase.startsWith("http")) {
+        wsUrl = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "/ws");
+      } else {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        wsUrl = `${protocol}//${window.location.host}/ws`;
+      }
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        if (organization?.id) {
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id }));
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "MESSAGE_CREATED" || data.type === "CONVERSATION_UPDATED") {
+            loadData();
+          }
+        } catch (e) {}
+      };
+    } catch (err) {}
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      if (ws) ws.close();
+    };
+  }, [organization?.id]);
 
   const presets = [
     {
@@ -85,7 +147,7 @@ export const LeadSimulatorPage: React.FC = () => {
     },
     {
       label: "Competitor Objection",
-      text: "We currently use Outreach. Why should we consider switching to CloudFlow AI?"
+      text: "We currently use Outreach. Why should we consider switching to NexSDR?"
     },
     {
       label: "Follow-up in 3 days",

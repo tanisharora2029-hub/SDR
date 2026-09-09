@@ -5,6 +5,7 @@ import { ToolExecutor } from "./toolExecutor.js";
 import { CalendarService } from "./calendarService.js";
 import { SdrContext, LeadContext, ConversationTurn } from "./ai/types.js";
 import { logger } from "../lib/logger.js";
+import { broadcastToOrganization } from "../lib/wsBroadcaster.js";
 
 export class ConversationService {
   static async getConversations(organizationId: string) {
@@ -42,6 +43,7 @@ export class ConversationService {
       references?: string;
       isSimulator?: boolean;
       forceLiveEmail?: boolean;
+      conversationId?: string;
     }
   ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
@@ -84,9 +86,14 @@ export class ConversationService {
         });
 
         // 3. Find or create conversation for this lead to record the STOP message
-        let conv = await tx.conversation.findFirst({
-          where: { leadId, organizationId, channel }
-        });
+        let conv = options?.conversationId
+          ? await tx.conversation.findFirst({ where: { id: options.conversationId, organizationId } })
+          : null;
+        if (!conv) {
+          conv = await tx.conversation.findFirst({
+            where: { leadId, organizationId, channel }
+          });
+        }
         if (!conv) {
           conv = await tx.conversation.create({
             data: { organizationId, leadId, channel, isAiActive: false }
@@ -132,9 +139,14 @@ export class ConversationService {
     }
 
     // Find or create conversation
-    let conv = await prisma.conversation.findFirst({
-      where: { leadId, organizationId, channel }
-    });
+    let conv = options?.conversationId
+      ? await prisma.conversation.findFirst({ where: { id: options.conversationId, organizationId } })
+      : null;
+    if (!conv) {
+      conv = await prisma.conversation.findFirst({
+        where: { leadId, organizationId, channel }
+      });
+    }
     if (!conv) {
       conv = await prisma.conversation.create({
         data: { organizationId, leadId, channel, subject: options?.subject || undefined }
@@ -162,6 +174,15 @@ export class ConversationService {
           ? JSON.stringify({ source: options?.isRealInbound ? "REAL_INBOUND" : "SIMULATED", externalMessageId: options.externalMessageId })
           : null
       }
+    });
+
+    broadcastToOrganization(organizationId, {
+      type: "MESSAGE_CREATED",
+      payload: { conversationId: conv.id, message: inboundMsg }
+    });
+    broadcastToOrganization(organizationId, {
+      type: "CONVERSATION_UPDATED",
+      payload: { conversationId: conv.id, leadId }
     });
 
     // Record activity log for Lead Reply
@@ -270,6 +291,11 @@ export class ConversationService {
           }
         });
 
+        broadcastToOrganization(organizationId, {
+          type: "MESSAGE_CREATED",
+          payload: { conversationId: conv.id, message: outboundMsg }
+        });
+
         await ChannelManager.dispatch(channel, {
           to: targetLead.email || targetLead.phone || "",
           content: askDateMsg,
@@ -315,6 +341,11 @@ export class ConversationService {
             status: "SENT",
             aiReasoning: "Meeting booking: missing time - requested time from prospect"
           }
+        });
+
+        broadcastToOrganization(organizationId, {
+          type: "MESSAGE_CREATED",
+          payload: { conversationId: conv.id, message: outboundMsg }
         });
 
         await ChannelManager.dispatch(channel, {
@@ -417,6 +448,11 @@ export class ConversationService {
               }
             });
 
+            broadcastToOrganization(organizationId, {
+              type: "MESSAGE_CREATED",
+              payload: { conversationId: conv.id, message: outboundMsg }
+            });
+
             await ChannelManager.dispatch(channel, {
               to: targetLead.email || targetLead.phone || "",
               content: confirmMsg,
@@ -482,6 +518,11 @@ export class ConversationService {
               status: "SENT",
               aiReasoning: "Calendar slot conflict - suggested alternative times"
             }
+          });
+
+          broadcastToOrganization(organizationId, {
+            type: "MESSAGE_CREATED",
+            payload: { conversationId: conv.id, message: outboundMsg }
           });
 
           await ChannelManager.dispatch(channel, {
@@ -594,6 +635,11 @@ export class ConversationService {
           toolCallName: "create_followup",
           toolCallArgs: JSON.stringify({ lead_id: leadId, delay_days: delayDays, channel: "EMAIL" })
         }
+      });
+
+      broadcastToOrganization(organizationId, {
+        type: "MESSAGE_CREATED",
+        payload: { conversationId: conv.id, message: outboundMsg }
       });
 
       await ChannelManager.dispatch(channel, {
@@ -728,6 +774,31 @@ export class ConversationService {
       }
     }
 
+    // Bug 4 & Bug 3 Sanitization Guard:
+    // 1. Remove duplicate "At [Company], [Company] helps..." boilerplate if present
+    if (org.name) {
+      const escapedOrgName = org.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const dupRegex = new RegExp(`^At ${escapedOrgName},\\s*${escapedOrgName}\\s+`, 'i');
+      if (dupRegex.test(aiCompletion.content)) {
+        aiCompletion.content = aiCompletion.content.replace(dupRegex, `At ${org.name}, we `);
+      }
+    }
+    // 2. Also if lead company/name is Unknown, strip any hallucinated "technew" or "Tanish"
+    const leadCompUnknown = !lead.companyName || lead.companyName.toLowerCase() === "unknown";
+    const leadNameUnknown = !lead.firstName || lead.firstName.toLowerCase() === "unknown";
+    if (leadCompUnknown) {
+      aiCompletion.content = aiCompletion.content.replace(/\b(?:at\s+)?technew\b/gi, "").replace(/\s{2,}/g, " ").trim();
+      aiCompletion.content = aiCompletion.content.replace(/\b(?:at\s+)?CloudFlow\s*AI\b/gi, "").replace(/\s{2,}/g, " ").trim();
+    }
+    if (leadNameUnknown) {
+      aiCompletion.content = aiCompletion.content.replace(/\b(?:hi|hello|hey|thanks for getting back to me,?)\s+tanish\b/gi, "Hello,").trim();
+    }
+    // 3. Purge any stray legacy "CloudFlow AI" tokens and replace with actual organization name
+    aiCompletion.content = aiCompletion.content.replace(/\bCloudFlow\s*AI\b/gi, org.name || "NexSDR");
+    if (aiCompletion.action && aiCompletion.action.reply) {
+      aiCompletion.action.reply = aiCompletion.content;
+    }
+
     // Store ONLY clean natural language reply in Message table with proper AI role
     const outboundMsg = await prisma.message.create({
       data: {
@@ -744,6 +815,11 @@ export class ConversationService {
         toolCallName: actionName !== "reply" ? actionName : null,
         toolCallArgs: aiCompletion.toolDecision ? JSON.stringify(aiCompletion.toolDecision.arguments) : null
       }
+    });
+
+    broadcastToOrganization(organizationId, {
+      type: "MESSAGE_CREATED",
+      payload: { conversationId: conv.id, message: outboundMsg }
     });
 
     // Dispatch via channel abstraction to external lead
@@ -839,6 +915,15 @@ export class ConversationService {
         senderName,
         status: "SENT"
       }
+    });
+
+    broadcastToOrganization(organizationId, {
+      type: "MESSAGE_CREATED",
+      payload: { conversationId, message }
+    });
+    broadcastToOrganization(organizationId, {
+      type: "CONVERSATION_UPDATED",
+      payload: { conversationId, leadId: conv.leadId }
     });
 
     // Mark as human takeover: pause AI and clear escalation
