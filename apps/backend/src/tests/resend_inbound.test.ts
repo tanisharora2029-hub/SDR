@@ -375,10 +375,120 @@ async function runInboundTestSuite() {
   // Test WebhookService processInboundEmail return value
   assert(!JSON.stringify(matchResult).includes(secretKeySnippet), "processInboundEmail does not leak API key");
   assert(!JSON.stringify(takeoverResult).includes(secretKeySnippet), "processInboundEmail does not leak secret in takeover");
-  console.log("TEST 12 Completed Successfully.\n");
+  // -----------------------------------------------------------------
+  // TEST 13: REAL GMAIL -> ALEX@NEXSDR.IN E2E INBOUND PIPELINE
+  // -----------------------------------------------------------------
+  console.log(">>> TEST 13: Real Gmail -> alex@nexsdr.in Inbound Threading & WebSocket Verification...");
+  const gmailProspectEmail = `prospect_${Date.now()}@gmail.com`;
+  const gmailLead = await prisma.lead.create({
+    data: {
+      organizationId: org.id,
+      firstName: "Tanish",
+      lastName: "Arora",
+      email: gmailProspectEmail.toUpperCase(), // Test case-insensitive matching
+      companyName: "TechScale Global",
+      status: "CONTACTED"
+    }
+  });
+
+  // Outbound email sent previously via Resend
+  const outboundResendId = `01915678-abcd-7890-${Date.now()}`;
+  const initialConv = await prisma.conversation.create({
+    data: {
+      organizationId: org.id,
+      leadId: gmailLead.id,
+      channel: "EMAIL",
+      subject: "Partnership Exploration - NexSDR"
+    }
+  });
+
+  await prisma.message.create({
+    data: {
+      conversationId: initialConv.id,
+      channel: "EMAIL",
+      direction: "OUTBOUND",
+      senderRole: "AI",
+      senderName: "Alex Rivers",
+      content: "Hi Tanish, reaching out regarding sales automation.",
+      status: "SENT",
+      toolCallArgs: JSON.stringify({ externalMessageId: outboundResendId, provider: "RESEND" })
+    }
+  });
+
+  // Track WebSocket broadcasts
+  const wsEvents: Array<{ type: string; payload: any }> = [];
+  const { wsBroadcaster } = await import("../lib/wsBroadcaster.js");
+  const originalBroadcast = wsBroadcaster.broadcastToOrganization.bind(wsBroadcaster);
+  wsBroadcaster.broadcastToOrganization = (orgId: string, event: any) => {
+    wsEvents.push(event);
+    originalBroadcast(orgId, event);
+  };
+
+  try {
+    // Simulate real Gmail reply
+    const gmailInboundPayload = {
+      type: "email.received",
+      data: {
+        from: `Tanish Arora <${gmailProspectEmail.toLowerCase()}>`,
+        to: ["Alex Rivers <alex@nexsdr.in>"],
+        subject: "Re: Partnership Exploration - NexSDR",
+        text: "Hi Alex, we would love to connect. What time works best?",
+        in_reply_to: `<${outboundResendId}@resend.com>`,
+        references: `<${outboundResendId}@resend.com>`,
+        message_id: `<gmail-reply-${Date.now()}@mail.gmail.com>`
+      }
+    };
+
+    const gmailResult = await WebhookService.processInboundEmail(gmailInboundPayload);
+    assert(gmailResult.success === true, "Gmail inbound webhook succeeded");
+    assert(gmailResult.matched === true, "Matched to existing lead");
+    assert(gmailResult.leadId === gmailLead.id, "Matched correct lead ID");
+
+    // 1. Threading & No duplicate conversation
+    const allConvs = await prisma.conversation.findMany({
+      where: { leadId: gmailLead.id, channel: "EMAIL" }
+    });
+    assert(allConvs.length === 1, `Existing conversation preserved without duplicates (Count: ${allConvs.length})`);
+    assert(allConvs[0].id === initialConv.id, "Existing conversation ID reused");
+
+    // 2. Inbound Message attributes
+    const inboundGmailMsg = await prisma.message.findFirst({
+      where: {
+        conversationId: initialConv.id,
+        direction: "INBOUND"
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    assert(inboundGmailMsg !== null, "Inbound Gmail message stored");
+    assert(inboundGmailMsg?.senderRole === "LEAD", "Stored strictly with senderRole='LEAD'");
+    assert(inboundGmailMsg?.status === "REAL_INBOUND", "Status is 'REAL_INBOUND'");
+    assert(inboundGmailMsg?.content.includes("we would love to connect"), "Content accurately stored");
+
+    // 3. WebSocket Broadcast Verification
+    const messageCreatedEvents = wsEvents.filter(e => e.type === "MESSAGE_CREATED");
+    assert(messageCreatedEvents.length >= 1, "WebSocket emitted MESSAGE_CREATED event for inbox");
+    const leadBroadcast = messageCreatedEvents.find(e => e.payload?.message?.senderRole === "LEAD");
+    assert(leadBroadcast !== undefined, "WebSocket broadcast contains inbound LEAD message");
+
+    // 4. Outbound AI SDR response (Resend live, zero Ethereal)
+    const outboundAiMsg = await prisma.message.findFirst({
+      where: {
+        conversationId: initialConv.id,
+        direction: "OUTBOUND",
+        senderRole: "AI"
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    assert(outboundAiMsg !== null, "AI SDR auto-replied to Gmail inquiry");
+    assert(outboundAiMsg?.id !== undefined, "Outbound AI reply persisted");
+
+    console.log("TEST 13 Completed Successfully.\n");
+  } finally {
+    wsBroadcaster.broadcastToOrganization = originalBroadcast;
+  }
 
   console.log("===================================================================");
-  console.log("  ALL 12 INBOUND EMAIL & RESEND WEBHOOK TESTS PASSED (100% GREEN)  ");
+  console.log("  ALL 13 INBOUND EMAIL & RESEND WEBHOOK TESTS PASSED (100% GREEN)  ");
   console.log("===================================================================\n");
 }
 

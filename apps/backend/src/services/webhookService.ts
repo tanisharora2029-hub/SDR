@@ -53,20 +53,49 @@ export class WebhookService {
     // Or direct data object (used in some test harnesses / direct API requests)
     const data = payload.data || payload;
 
-    const fromRaw = typeof data.from === "string"
-      ? data.from
-      : (Array.isArray(data.from) ? data.from[0] : (typeof data.sender === "string" ? data.sender : (data.headers?.from || data.headers?.["reply-to"] || "")));
+    let fromRaw = "";
+    if (typeof data.from === "string") {
+      fromRaw = data.from;
+    } else if (data.from && typeof data.from === "object" && !Array.isArray(data.from) && data.from.email) {
+      fromRaw = data.from.name ? `${data.from.name} <${data.from.email}>` : data.from.email;
+    } else if (Array.isArray(data.from)) {
+      const first = data.from[0];
+      fromRaw = typeof first === "string" ? first : (first?.email || "");
+    } else if (typeof data.sender === "string") {
+      fromRaw = data.sender;
+    } else if (data.headers?.from) {
+      fromRaw = data.headers.from;
+    } else if (data.headers?.["reply-to"]) {
+      fromRaw = data.headers["reply-to"];
+    }
     const senderEmail = this.normalizeEmail(fromRaw);
     if (!senderEmail) {
       return null;
     }
 
-    const senderName = this.extractSenderName(fromRaw);
-    const toRaw = Array.isArray(data.to) ? data.to[0] : (data.to || (Array.isArray(data.received_for) ? data.received_for[0] : (data.headers?.to || "")));
+    const senderName = this.extractSenderName(fromRaw) || (typeof data.from === "object" ? data.from?.name : "");
+    let toRaw = "";
+    if (typeof data.to === "string") {
+      toRaw = data.to;
+    } else if (Array.isArray(data.to)) {
+      const first = data.to[0];
+      toRaw = typeof first === "string" ? first : (first?.email || "");
+    } else if (data.to && typeof data.to === "object" && data.to.email) {
+      toRaw = data.to.email;
+    } else if (Array.isArray(data.received_for)) {
+      toRaw = data.received_for[0];
+    } else if (data.headers?.to) {
+      toRaw = data.headers.to;
+    }
     const recipientEmail = this.normalizeEmail(toRaw);
 
     const subject = data.subject || data.headers?.subject || "No Subject";
-    const externalMessageId = data.message_id || data.messageId || data.email_id || data.id || data.headers?.["message-id"] || `resend_${Date.now()}`;
+    let externalMessageId = data.message_id || data.messageId || data.email_id || data.id || data.headers?.["message-id"];
+    if (!externalMessageId && Array.isArray(data.headers)) {
+      const midH = data.headers.find((h: any) => h.name?.toLowerCase() === "message-id");
+      if (midH) externalMessageId = midH.value;
+    }
+    externalMessageId = externalMessageId || `resend_${Date.now()}`;
     const timestamp = data.created_at || payload.created_at || new Date().toISOString();
     const replyTo = data.reply_to || data.headers?.["reply-to"] || undefined;
     let inReplyTo = data.in_reply_to || data.inReplyTo || undefined;
@@ -197,7 +226,20 @@ export class WebhookService {
         cleanRefIds.push(refHeader.trim().replace(/[<>]/g, ""));
       }
 
+      // Collect candidate message IDs (full ID + stripped ID before @ for Resend format)
+      const allRefIds: string[] = [];
       for (const refId of cleanRefIds) {
+        if (!refId) continue;
+        allRefIds.push(refId);
+        if (refId.includes("@")) {
+          const stripped = refId.split("@")[0].trim();
+          if (stripped && !allRefIds.includes(stripped)) {
+            allRefIds.push(stripped);
+          }
+        }
+      }
+
+      for (const refId of allRefIds) {
         const existingMsg = await prisma.message.findFirst({
           where: {
             OR: [
