@@ -4,6 +4,7 @@ import { aiService } from "./ai/aiService.js";
 import { ToolExecutor } from "./toolExecutor.js";
 import { SdrContext, LeadContext } from "./ai/types.js";
 import { logger } from "../lib/logger.js";
+import { broadcastToOrganization } from "../lib/wsBroadcaster.js";
 
 export class LeadService {
   static async getLeads(organizationId: string, status?: string) {
@@ -159,8 +160,22 @@ export class LeadService {
       }
     });
 
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: { updatedAt: new Date() }
+    }).catch(() => {});
+
+    broadcastToOrganization(organizationId, {
+      type: "MESSAGE_CREATED",
+      payload: { conversationId: conv.id, message }
+    });
+    broadcastToOrganization(organizationId, {
+      type: "CONVERSATION_UPDATED",
+      payload: { conversationId: conv.id, leadId }
+    });
+
     // Dispatch via channel abstraction
-    await ChannelManager.dispatch("EMAIL", {
+    const dispatchRes: any = await ChannelManager.dispatch("EMAIL", {
       to: lead.email,
       content: aiResult.content,
       subject: `Introducing ${org.name}`,
@@ -169,7 +184,19 @@ export class LeadService {
       replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
       leadId: lead.id,
       organizationId
-    }).catch((err) => logger.warn(`Outreach email dispatch failed: ${err.message}`));
+    }).catch((err) => {
+      logger.warn(`Outreach email dispatch failed: ${err.message}`);
+      return null;
+    });
+
+    if (dispatchRes?.messageId) {
+      await prisma.message.update({
+        where: { id: message.id },
+        data: {
+          toolCallArgs: JSON.stringify({ externalMessageId: dispatchRes.messageId })
+        }
+      }).catch(() => {});
+    }
 
     // Record activity log for cold outreach
     await prisma.activityLog.create({

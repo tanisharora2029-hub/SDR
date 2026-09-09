@@ -16,10 +16,16 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     headers
   });
 
-  const data = await response.json();
+  let data: any;
+  const rawText = await response.text();
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = { error: rawText.slice(0, 120) || `Server returned HTTP ${response.status}: ${response.statusText}` };
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || "An unexpected error occurred");
+    throw new Error(data?.error || data?.message || `Request failed with status ${response.status}`);
   }
 
   return data;

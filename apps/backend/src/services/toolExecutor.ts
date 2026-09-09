@@ -3,6 +3,7 @@ import { logger } from "../lib/logger.js";
 import { SdrToolDecision, ToolExecutionResult } from "@ai-sdr/shared";
 import { EmailService } from "./emailService.js";
 import { CalendarService } from "./calendarService.js";
+import { broadcastToOrganization } from "../lib/wsBroadcaster.js";
 
 export class ToolExecutor {
   static async executeTool(
@@ -132,8 +133,26 @@ export class ToolExecutor {
               senderName: sdrName,
               status: "SENT",
               toolCallName: "send_email",
-              toolCallArgs: JSON.stringify({ ...args, previewUrl: emailSendResult.previewUrl })
+              toolCallArgs: JSON.stringify({
+                ...args,
+                previewUrl: emailSendResult.previewUrl,
+                externalMessageId: emailSendResult.messageId
+              })
             }
+          });
+
+          await prisma.conversation.update({
+            where: { id: conv.id },
+            data: { updatedAt: new Date() }
+          }).catch(() => {});
+
+          broadcastToOrganization(organizationId, {
+            type: "MESSAGE_CREATED",
+            payload: { conversationId: conv.id, message }
+          });
+          broadcastToOrganization(organizationId, {
+            type: "CONVERSATION_UPDATED",
+            payload: { conversationId: conv.id, leadId }
           });
 
           // Update lead status to CONTACTED if it was NEW

@@ -74,23 +74,41 @@ export const LeadSimulatorPage: React.FC = () => {
         setLeads((prevLeads) =>
           prevLeads.map((l) => {
             if (l.id !== selectedLeadId) return l;
-            const updatedConvs = (l.conversations || []).map((c: any) => {
-              if (c.channel !== channel && c.id !== res.result?.inboundMsg?.conversationId) return c;
-              const newMsgs = [...(c.messages || [])];
-              if (res.result?.inboundMsg && !newMsgs.some((m) => m.id === res.result.inboundMsg.id)) {
-                newMsgs.push(res.result.inboundMsg);
+            const convs = l.conversations || [];
+            const targetConvId = res.result?.inboundMsg?.conversationId;
+            let convFound = false;
+            const updatedConvs = convs.map((c: any) => {
+              if (c.id === targetConvId || c.channel === channel) {
+                convFound = true;
+                const newMsgs = [...(c.messages || [])];
+                if (res.result?.inboundMsg && !newMsgs.some((m: any) => m.id === res.result.inboundMsg.id)) {
+                  newMsgs.push(res.result.inboundMsg);
+                }
+                if (res.result?.outboundMsg && !newMsgs.some((m: any) => m.id === res.result.outboundMsg.id)) {
+                  newMsgs.push(res.result.outboundMsg);
+                }
+                return { ...c, messages: newMsgs };
               }
-              if (res.result?.outboundMsg && !newMsgs.some((m) => m.id === res.result.outboundMsg.id)) {
-                newMsgs.push(res.result.outboundMsg);
-              }
-              return { ...c, messages: newMsgs };
+              return c;
             });
+            if (!convFound && (res.result?.inboundMsg || res.result?.outboundMsg)) {
+              const initialMsgs = [];
+              if (res.result.inboundMsg) initialMsgs.push(res.result.inboundMsg);
+              if (res.result.outboundMsg) initialMsgs.push(res.result.outboundMsg);
+              updatedConvs.push({
+                id: targetConvId || `conv_${Date.now()}`,
+                channel,
+                organizationId: l.organizationId,
+                leadId: l.id,
+                messages: initialMsgs
+              });
+            }
             return { ...l, conversations: updatedConvs };
           })
         );
       }
 
-      await loadData();
+      await loadData().catch(() => {});
     } catch (err: any) {
       alert(err.message || "Failed to deliver lead reply");
     } finally {
@@ -108,7 +126,12 @@ export const LeadSimulatorPage: React.FC = () => {
         wsUrl = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "/ws");
       } else {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        wsUrl = `${protocol}//${window.location.host}/ws`;
+        const host = window.location.host;
+        if (host.includes("nexsdr.in") || host.includes("onrender.com")) {
+          wsUrl = "wss://sdr-backend-6o2x.onrender.com/ws";
+        } else {
+          wsUrl = `${protocol}//${host}/ws`;
+        }
       }
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {
@@ -405,7 +428,15 @@ export const LeadSimulatorPage: React.FC = () => {
                   rows={2}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Reply as ${selectedLead?.firstName || "Lead"} (e.g. Sounds interesting, what are your pricing tiers?)...`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!sending && replyText.trim() && selectedLeadId) {
+                        handleSendAsLead();
+                      }
+                    }
+                  }}
+                  placeholder={`Reply as ${selectedLead?.firstName || "Lead"} (Press Enter to send, Shift+Enter for new line)...`}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-none"
                 />
                 <button

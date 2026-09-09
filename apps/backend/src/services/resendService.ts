@@ -241,7 +241,8 @@ export class ResendService {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${key.trim()}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "User-Agent": "NexSDR/1.0"
         }
       });
 
@@ -250,7 +251,8 @@ export class ResendService {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${key.trim()}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "NexSDR/1.0"
           }
         });
       }

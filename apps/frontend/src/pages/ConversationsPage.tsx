@@ -86,7 +86,12 @@ export const ConversationsPage: React.FC = () => {
         wsUrl = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "/ws");
       } else {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        wsUrl = `${protocol}//${window.location.host}/ws`;
+        const host = window.location.host;
+        if (host.includes("nexsdr.in") || host.includes("onrender.com")) {
+          wsUrl = "wss://sdr-backend-6o2x.onrender.com/ws";
+        } else {
+          wsUrl = `${protocol}//${host}/ws`;
+        }
       }
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {

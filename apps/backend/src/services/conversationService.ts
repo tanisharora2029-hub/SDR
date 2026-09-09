@@ -176,6 +176,11 @@ export class ConversationService {
       }
     });
 
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: { updatedAt: new Date() }
+    }).catch(() => {});
+
     broadcastToOrganization(organizationId, {
       type: "MESSAGE_CREATED",
       payload: { conversationId: conv.id, message: inboundMsg }
@@ -261,7 +266,8 @@ export class ConversationService {
       intentScore: lead.intentScore
     };
 
-    const turns: ConversationTurn[] = historyMsgs.map(m => ({
+    const priorHistory = historyMsgs.filter(m => m.id !== inboundMsg.id);
+    const turns: ConversationTurn[] = priorHistory.map(m => ({
       speaker: (m.senderRole === "LEAD" || m.direction === "INBOUND") ? "lead" : "sdr",
       channel: m.channel,
       content: m.content,
@@ -795,6 +801,11 @@ export class ConversationService {
     }
     // 3. Purge any stray legacy "CloudFlow AI" tokens and replace with actual organization name
     aiCompletion.content = aiCompletion.content.replace(/\bCloudFlow\s*AI\b/gi, org.name || "NexSDR");
+
+    // 4. Remove duplicate company prefix boilerplate ("At MachineMind, MachineMind..." -> "At MachineMind, we...")
+    aiCompletion.content = aiCompletion.content.replace(/^At\s+([A-Za-z0-9_-]+),\s+\1\b/i, "At $1, we");
+    aiCompletion.content = aiCompletion.content.replace(/^At\s+([A-Za-z0-9_-]+),\s+at\s+\1\b/i, "At $1, we");
+
     if (aiCompletion.action && aiCompletion.action.reply) {
       aiCompletion.action.reply = aiCompletion.content;
     }
@@ -817,13 +828,18 @@ export class ConversationService {
       }
     });
 
+    await prisma.conversation.update({
+      where: { id: conv.id },
+      data: { updatedAt: new Date() }
+    }).catch(() => {});
+
     broadcastToOrganization(organizationId, {
       type: "MESSAGE_CREATED",
       payload: { conversationId: conv.id, message: outboundMsg }
     });
 
     // Dispatch via channel abstraction to external lead
-    await ChannelManager.dispatch(channel, {
+    const dispatchRes: any = await ChannelManager.dispatch(channel, {
       to: targetLead.email || targetLead.phone || "",
       content: aiCompletion.content,
       subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -836,7 +852,20 @@ export class ConversationService {
       replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
       forceProvider: dispatchForceProvider,
       isSimulator: options?.isSimulator
-    }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
+    }).catch((err) => {
+      logger.warn(`Channel dispatch failed: ${err.message}`);
+      return null;
+    });
+
+    if (dispatchRes?.messageId) {
+      const existingArgs = outboundMsg.toolCallArgs ? JSON.parse(outboundMsg.toolCallArgs) : {};
+      await prisma.message.update({
+        where: { id: outboundMsg.id },
+        data: {
+          toolCallArgs: JSON.stringify({ ...existingArgs, externalMessageId: dispatchRes.messageId })
+        }
+      }).catch(() => {});
+    }
 
     // Record ActivityLog for AI SDR reply
     await prisma.activityLog.create({
@@ -929,7 +958,7 @@ export class ConversationService {
     // Mark as human takeover: pause AI and clear escalation
     await prisma.conversation.update({
       where: { id: conversationId },
-      data: { isAiActive: false, isEscalated: false }
+      data: { isAiActive: false, isEscalated: false, updatedAt: new Date() }
     });
 
     // Dispatch via channel abstraction to external lead

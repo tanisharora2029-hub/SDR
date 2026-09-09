@@ -14,15 +14,32 @@ export class MockAiProvider implements AiProvider {
 
   async generateOutreach(sdr: SdrContext, lead: LeadContext): Promise<AiCompletionResponse> {
     const startTime = Date.now();
-    const company = this.formatCompany(lead);
-    const greeting = this.formatGreeting(lead);
-    const subject = `Accelerating operational efficiency at ${company}`;
-    
+    const hasName = Boolean(lead.firstName && lead.firstName.trim() && lead.firstName.toLowerCase() !== "unknown");
+    const hasCompany = Boolean(lead.companyName && lead.companyName.trim() && lead.companyName.toLowerCase() !== "unknown");
+    const hasTitle = Boolean(lead.jobTitle && lead.jobTitle.trim() && lead.jobTitle.toLowerCase() !== "unknown");
+
+    const greeting = hasName ? `Hi ${lead.firstName},` : "Hello,";
+    const subject = hasCompany ? `Streamlining operations at ${lead.companyName?.trim()}` : `Streamlining operational workflows`;
+
+    let intro = "";
+    if (hasTitle && hasCompany && lead.jobTitle && lead.companyName) {
+      intro = `I noticed your work as ${lead.jobTitle.trim()} at ${lead.companyName.trim()}. Given your focus on scaling productivity, I wanted to introduce ${sdr.organizationName}.`;
+    } else if (hasCompany && lead.companyName) {
+      intro = `Given your team's operational focus at ${lead.companyName.trim()}, I wanted to introduce ${sdr.organizationName}.`;
+    } else {
+      intro = `Given your team's focus on scaling productivity and eliminating manual friction, I wanted to introduce ${sdr.organizationName}.`;
+    }
+
+    const valueProp = sdr.valueProposition
+      ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
+      : "we help leaders streamline complex workflows and eliminate repetitive bottlenecks";
+    const valueClause = valueProp.toLowerCase().startsWith("we") ? valueProp : `we focus on ${valueProp}`;
+
     const body = `${greeting}
 
-I noticed your work heading operations at ${company}. Given your focus on scaling productivity and reducing manual friction, I wanted to introduce ${sdr.organizationName}.
+${intro}
 
-${sdr.valueProposition || "We help leaders streamline manual workflows and eliminate operational bottlenecks."}
+At ${sdr.organizationName}, ${valueClause}.
 
 Would you be open to a brief introductory conversation next week to explore how our capabilities align with your current priorities?
 
@@ -425,19 +442,49 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       };
     }
 
-    // 9. Default Consultative Discovery (Cleaned of duplicate company name boilerplate)
+    // 8g. Team Headcount & Operations Scale (e.g. "50 people working for me", "team of 50")
+    if (/\b(\d+\s*(?:people|team members|employees|staff|workers)|team of \d+)\b/i.test(lower)) {
+      const match = lower.match(/\b(\d+)\s*(?:people|team members|employees|staff|workers)\b/i) || lower.match(/\bteam of (\d+)\b/i);
+      const count = match ? match[1] : "that size";
+      const reply = `A team of ${count} represents significant operational throughput. Managing workflows across a team of that size often exposes handoff delays and repetitive manual queues. Where do your team members currently spend the most manual hours each week?`;
+
+      const action: AiAction = {
+        intent: "qualification",
+        action: "reply",
+        reply,
+        reason: "Acknowledged team scale directly and explored specific workflow distribution",
+        tool_arguments: {},
+        confidence: 0.95
+      };
+
+      return {
+        content: reply,
+        action,
+        toolDecision: null,
+        latencyMs: Date.now() - startTime,
+        tokensUsed: 80,
+        provider: "mock"
+      };
+    }
+
+    // 9. Default Consultative Discovery (Cleaned of duplicate company name boilerplate and multi-turn repetition)
     const cleanValueProp = sdr.valueProposition
       ? sdr.valueProposition.replace(new RegExp(`^${sdr.organizationName}\\s+`, 'i'), "")
       : "we help organizations optimize operational workflows and scale efficiently";
     const valueClause = cleanValueProp.toLowerCase().startsWith("we") ? cleanValueProp : `we focus on ${cleanValueProp}`;
 
-    const reply = `Thanks for reaching out! At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current process at ${company} and where you see the biggest priority today?`;
+    const hasPriorTurns = history && history.length > 0;
+    const reply = hasPriorTurns
+      ? `Thanks for sharing that background. To better understand how we can support your priorities, which part of that workflow currently creates the biggest bottleneck for your team?`
+      : `Thanks for reaching out! At ${sdr.organizationName}, ${valueClause}. Could you share a bit more about your current process at ${company} and where you see the biggest priority today?`;
 
     const action: AiAction = {
       intent: "conversation",
       action: "reply",
       reply,
-      reason: "Dynamic consultative discovery grounded in organization value proposition without repetition",
+      reason: hasPriorTurns
+        ? "Continued consultative multi-turn discovery without repeating introduction"
+        : "Dynamic consultative discovery grounded in organization value proposition without repetition",
       tool_arguments: {},
       confidence: 0.9
     };

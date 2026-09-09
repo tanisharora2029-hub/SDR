@@ -66,6 +66,32 @@ export class PhoneService {
     // 1. Append lead's spoken utterance
     transcript.push({ speaker: "lead", text: leadUtterance, timestamp: Date.now() });
 
+    // Live STOP / DNC opt-out safety check
+    if (/\b(stop|unsubscribe|do not call|don't call|remove me|opt out)\b/i.test(leadUtterance)) {
+      await prisma.lead.updateMany({
+        where: { id: lead.id, organizationId },
+        data: { isOptedOut: true, status: "OPTED_OUT" }
+      });
+      await prisma.followUpTask.updateMany({
+        where: { leadId: lead.id, organizationId, status: "SCHEDULED" },
+        data: { status: "CANCELLED" }
+      });
+      const dncSpeech = "Understood. I have updated our records and added you to our do not call list. Have a great day.";
+      transcript.push({ speaker: "sdr", text: dncSpeech, timestamp: Date.now() });
+      await prisma.callSession.update({
+        where: { callSid },
+        data: { transcriptJson: JSON.stringify(transcript), status: "COMPLETED" }
+      });
+      return {
+        callSid,
+        sdrSpeech: dncSpeech,
+        toolExecution: null,
+        latencyMs: 0,
+        whisperDossier: null,
+        transcript
+      };
+    }
+
     const sdrContext: SdrContext = {
       organizationName: org.name,
       industry: org.industry,
@@ -156,6 +182,10 @@ export class PhoneService {
       cleanSpeech = cleanSpeech.replace(/\b(?:hi|hello|hey|thanks for getting back to me,?)\s+tanish\b/gi, "Hello,").trim();
     }
     cleanSpeech = cleanSpeech.replace(/\bCloudFlow\s*AI\b/gi, org.name || "NexSDR");
+
+    // Remove duplicate company prefix boilerplate in spoken voice
+    cleanSpeech = cleanSpeech.replace(/^At\s+([A-Za-z0-9_-]+),\s+\1\b/i, "At $1, we");
+    cleanSpeech = cleanSpeech.replace(/^At\s+([A-Za-z0-9_-]+),\s+at\s+\1\b/i, "At $1, we");
 
     // Enforce concise spoken length (1-2 crisp sentences under 30 words total)
     const words = cleanSpeech.split(/\s+/).filter(Boolean);

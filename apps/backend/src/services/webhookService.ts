@@ -86,12 +86,27 @@ export class WebhookService {
 
     // If body is not inlined in the webhook (standard Resend email.received payload), fetch full content via Resend API
     const emailId = data.email_id || data.id;
-    if ((!bodyText || bodyText.trim().length === 0) && emailId && ResendService.isConfigured()) {
-      logger.info(`[WebhookService] Fetching full inbound email body from Resend API for email_id: ${emailId}`);
+    let fetchedHeaders = data.headers;
+    if ((!bodyText || bodyText.trim().length === 0 || !inReplyTo) && emailId && ResendService.isConfigured()) {
+      logger.info(`[WebhookService] Fetching full inbound email details from Resend API for email_id: ${emailId}`);
       const fetched = await ResendService.getReceivedEmail(emailId);
       if (fetched.success && fetched.data) {
-        bodyText = fetched.data.text || "";
-        bodyHtml = fetched.data.html || "";
+        if (!bodyText && fetched.data.text) bodyText = fetched.data.text;
+        if (!bodyHtml && fetched.data.html) bodyHtml = fetched.data.html;
+        fetchedHeaders = fetched.data.headers || fetchedHeaders;
+
+        // Extract In-Reply-To / References from fetched headers if missing
+        if (!inReplyTo && fetched.data.headers) {
+          if (Array.isArray(fetched.data.headers)) {
+            const irt = fetched.data.headers.find((h: any) => h.name?.toLowerCase() === "in-reply-to");
+            if (irt) inReplyTo = irt.value;
+            const ref = fetched.data.headers.find((h: any) => h.name?.toLowerCase() === "references");
+            if (ref) references = ref.value;
+          } else if (typeof fetched.data.headers === "object") {
+            inReplyTo = fetched.data.headers["in-reply-to"] || fetched.data.headers["In-Reply-To"];
+            references = references || fetched.data.headers["references"] || fetched.data.headers["References"];
+          }
+        }
       } else {
         logger.warn(`[WebhookService] Could not retrieve full email body for ${emailId}: ${fetched.error}`);
       }
@@ -114,7 +129,7 @@ export class WebhookService {
       replyTo,
       inReplyTo,
       references,
-      rawHeaders: data.headers
+      rawHeaders: fetchedHeaders || data.headers
     };
   }
 
@@ -279,8 +294,8 @@ export class WebhookService {
         externalMessageId,
         isRealInbound: true,
         replyTo: replyTo || senderEmail,
-        inReplyTo: inbound.inReplyTo || externalMessageId,
-        references: inbound.references || externalMessageId
+        inReplyTo: inbound.inReplyTo || undefined,
+        references: inbound.references || inbound.inReplyTo || undefined
       }
     );
 

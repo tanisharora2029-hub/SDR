@@ -101,6 +101,11 @@ CRITICAL STYLE & POSITIONING RULES:
   * Politely offer to reconnect at their suggested timeframe (e.g., "Understood! When would be the best week next quarter to check in?").
   * Action: "reply" (or "create_followup" if explicit delay in days/weeks was requested).
 
+- TEAM HEADCOUNT & OPERATIONS SCALE (e.g. "50 people working for me", "team of 20", headcount, staff size):
+  * Directly acknowledge the scale of their team.
+  * Ask how work is distributed across those team members or which repetitive manual processes consume the most hours for that team.
+  * Action: "reply".
+
 - PROBLEM DESCRIPTIONS & HIGH BUYING SIGNALS (e.g., manual KYC processing, high error rates, document volumes):
   * Acknowledge the operational friction directly.
   * Ask targeted qualification questions to quantify the pain (e.g. document volumes, error resolution time, system handoffs).
@@ -161,6 +166,11 @@ ${historyText || "No prior messages in this conversation."}
 LATEST INBOUND MESSAGE FROM PROSPECT:
 "${latestMessage}"
 
-Generate your response adhering strictly to the JSON schema. Ensure "reply" is purely conversational natural language addressing the prospect's actual latest message.`;
+CRITICAL MULTI-TURN RULES:
+1. Directly acknowledge and respond to the NEW information provided in the LATEST message.
+2. DO NOT restart the company pitch or repeat what you said in previous turns.
+3. If the prospect mentioned team size, tools, or specific processes, address them directly in your reply.
+4. Ask ONE relevant, consultative follow-up question.
+5. Generate your response adhering strictly to the JSON schema. Ensure "reply" is purely conversational natural language.`;
   }
 }
