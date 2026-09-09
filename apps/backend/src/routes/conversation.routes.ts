@@ -64,7 +64,7 @@ conversationRouter.get("/:id", async (req, res, next) => {
 // Simulate external lead inbound reply
 conversationRouter.post("/simulate-reply", async (req, res, next) => {
   try {
-    const { leadId, channel, content } = req.body;
+    const { leadId, channel, content, forceLiveEmail } = req.body;
     if (!leadId || !content) {
       return res.status(400).json({ success: false, error: "leadId and content are required" });
     }
@@ -72,7 +72,11 @@ conversationRouter.post("/simulate-reply", async (req, res, next) => {
       req.organizationId!,
       leadId,
       channel || "EMAIL",
-      content
+      content,
+      {
+        isSimulator: true,
+        forceLiveEmail: Boolean(forceLiveEmail)
+      }
     );
     res.json({ success: true, result });
   } catch (err) {

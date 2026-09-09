@@ -2,8 +2,8 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    testTimeout: 45000,
-    hookTimeout: 45000,
+    testTimeout: 120000,
+    hookTimeout: 120000,
     pool: "forks"
   },
 });

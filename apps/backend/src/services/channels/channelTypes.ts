@@ -14,6 +14,8 @@ export interface ChannelSendOptions {
   replyTo?: string;
   inReplyTo?: string;
   references?: string;
+  forceProvider?: "ETHEREAL" | "RESEND";
+  isSimulator?: boolean;
 }
 
 export interface ChannelSendResult {

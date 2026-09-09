@@ -34,7 +34,16 @@ export interface EmailSendResult {
 export class EmailService {
   private static transporter: Transporter | null = null;
   private static etherealAccount: any = null;
-  private static activeProvider: EmailProviderChoice = process.env.RESEND_API_KEY ? "RESEND" : "ETHEREAL";
+
+  private static determineInitialProvider(): EmailProviderChoice {
+    const envProvider = (process.env.EMAIL_PROVIDER || "").trim().toUpperCase();
+    if ((envProvider === "RESEND" || envProvider === "LIVE") && process.env.RESEND_API_KEY) {
+      return "RESEND";
+    }
+    return "ETHEREAL";
+  }
+
+  private static activeProvider: EmailProviderChoice = EmailService.determineInitialProvider();
 
   static getActiveProvider(): EmailProviderChoice {
     return this.activeProvider;
@@ -84,8 +93,18 @@ export class EmailService {
   static async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
     const targetProvider = options.forceProvider || this.activeProvider;
 
+    // Safety Guard: Mock/test domains must NEVER be sent via real Resend API to preserve quota and avoid spam bounces
+    const isMockDomain = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(options.to);
+    const effectiveProvider = (targetProvider === "RESEND" && isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND)
+      ? "ETHEREAL"
+      : targetProvider;
+
+    if (targetProvider === "RESEND" && isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND) {
+      logger.info(`[EmailService] Recipient ${options.to} is a mock/test domain. Safely routing to Ethereal Sandbox (zero Resend quota consumed).`);
+    }
+
     // 1. LIVE Outbound Provider: Resend
-    if (targetProvider === "RESEND") {
+    if (effectiveProvider === "RESEND") {
       if (ResendService.isConfigured()) {
         const resendRes = await ResendService.sendEmail({
           to: options.to,

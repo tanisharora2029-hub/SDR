@@ -31,7 +31,8 @@ export class EmailChannelProvider implements IChannelProvider {
         replyTo: options.replyTo,
         inReplyTo: options.inReplyTo,
         references: options.references,
-        headers: options.headers
+        headers: options.headers,
+        forceProvider: options.forceProvider
       });
 
       const usedStatus: ChannelProviderStatus = res.provider === "RESEND" ? "REAL" : "SANDBOX";

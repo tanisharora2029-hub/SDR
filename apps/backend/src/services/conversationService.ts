@@ -40,9 +40,16 @@ export class ConversationService {
       replyTo?: string;
       inReplyTo?: string;
       references?: string;
+      isSimulator?: boolean;
+      forceLiveEmail?: boolean;
     }
   ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
+
+    // Safety Guard: Lead Simulator / simulated replies must NEVER call Resend LIVE API or consume quota unless explicitly intended.
+    // Real inbound emails via webhook (isRealInbound=true) follow the organization's active provider (RESEND or ETHEREAL).
+    const dispatchForceProvider: "ETHEREAL" | "RESEND" | undefined =
+      options?.forceLiveEmail ? "RESEND" : (options?.isSimulator || !options?.isRealInbound ? "ETHEREAL" : undefined);
 
     // 1. Verify lead ownership under organization
     const targetLead = await prisma.lead.findFirst({
@@ -273,7 +280,9 @@ export class ConversationService {
           organizationId,
           inReplyTo: options?.inReplyTo || options?.externalMessageId,
           references: options?.references || options?.externalMessageId,
-          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+          forceProvider: dispatchForceProvider,
+          isSimulator: options?.isSimulator
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -318,7 +327,9 @@ export class ConversationService {
           organizationId,
           inReplyTo: options?.inReplyTo || options?.externalMessageId,
           references: options?.references || options?.externalMessageId,
-          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+          replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+          forceProvider: dispatchForceProvider,
+          isSimulator: options?.isSimulator
         }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
         return {
           inboundMsg,
@@ -416,7 +427,9 @@ export class ConversationService {
               organizationId,
               inReplyTo: options?.inReplyTo || options?.externalMessageId,
               references: options?.references || options?.externalMessageId,
-              replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+              replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+              forceProvider: dispatchForceProvider,
+              isSimulator: options?.isSimulator
             }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
             return {
@@ -481,7 +494,9 @@ export class ConversationService {
             organizationId,
             inReplyTo: options?.inReplyTo || options?.externalMessageId,
             references: options?.references || options?.externalMessageId,
-            replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+            replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+            forceProvider: dispatchForceProvider,
+            isSimulator: options?.isSimulator
           }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
           return {
@@ -591,7 +606,9 @@ export class ConversationService {
         organizationId,
         inReplyTo: options?.inReplyTo || options?.externalMessageId,
         references: options?.references || options?.externalMessageId,
-        replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+        replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+        forceProvider: dispatchForceProvider,
+        isSimulator: options?.isSimulator
       }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
       return {
@@ -740,7 +757,9 @@ export class ConversationService {
       organizationId,
       inReplyTo: options?.inReplyTo || options?.externalMessageId,
       references: options?.references || options?.externalMessageId,
-      replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in"
+      replyTo: (sdr as any).replyTo || (sdr as any).email || "alex@nexsdr.in",
+      forceProvider: dispatchForceProvider,
+      isSimulator: options?.isSimulator
     }).catch((err) => logger.warn(`Channel dispatch failed: ${err.message}`));
 
     // Record ActivityLog for AI SDR reply
