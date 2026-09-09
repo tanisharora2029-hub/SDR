@@ -48,10 +48,10 @@ export class ConversationService {
   ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
 
-    // Safety Guard: Lead Simulator / simulated replies must NEVER call Resend LIVE API or consume quota unless explicitly intended.
-    // Real inbound emails via webhook (isRealInbound=true) follow the organization's active provider (RESEND or ETHEREAL).
+    // Inbound reply dispatch: If forceLiveEmail is explicitly requested, route to RESEND.
+    // Simulator runs with isSimulator: true (zero external network latency).
     const dispatchForceProvider: "ETHEREAL" | "RESEND" | undefined =
-      options?.forceLiveEmail ? "RESEND" : (options?.isSimulator || !options?.isRealInbound ? "ETHEREAL" : undefined);
+      options?.forceLiveEmail ? "RESEND" : undefined;
 
     // 1. Verify lead ownership under organization
     const targetLead = await prisma.lead.findFirst({

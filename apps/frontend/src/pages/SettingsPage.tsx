@@ -597,7 +597,7 @@ export const SettingsPage: React.FC = () => {
             <div className="space-y-1">
               <p className="font-semibold text-emerald-200">Resend LIVE Mode Active (Real Outbound Delivery)</p>
               <p className="text-[11px] text-emerald-300/80 leading-relaxed">
-                All AI cold outreach, cadence emails, and replies are dispatched through the Resend REST API and delivered directly to prospect recipient inboxes. In the unlikely event of an authentication or provider failure, the platform automatically falls back to Ethereal Sandbox so outreach is never dropped.
+                All AI cold outreach, cadence emails, and replies are dispatched strictly through the Resend REST API and delivered directly to prospect recipient inboxes. Resend is the dedicated live email delivery provider.
               </p>
             </div>
           </div>

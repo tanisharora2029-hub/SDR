@@ -2,7 +2,7 @@ import nodemailer, { Transporter } from "nodemailer";
 import { logger } from "../lib/logger.js";
 import { ResendService } from "./resendService.js";
 
-export type EmailProviderChoice = "ETHEREAL" | "RESEND";
+export type EmailProviderChoice = "ETHEREAL" | "RESEND" | "SIMULATOR";
 
 export interface SendEmailOptions {
   to: string;
@@ -38,10 +38,15 @@ export class EmailService {
 
   private static determineInitialProvider(): EmailProviderChoice {
     const envProvider = (process.env.EMAIL_PROVIDER || "").trim().toUpperCase();
-    if ((envProvider === "RESEND" || envProvider === "LIVE") && process.env.RESEND_API_KEY) {
+    // Production always defaults to RESEND
+    if (process.env.NODE_ENV === "production") {
       return "RESEND";
     }
-    return "ETHEREAL";
+    if (envProvider === "ETHEREAL") {
+      return "ETHEREAL";
+    }
+    // Default to RESEND when configured or standard
+    return "RESEND";
   }
 
   private static activeProvider: EmailProviderChoice = EmailService.determineInitialProvider();
@@ -51,12 +56,21 @@ export class EmailService {
   }
 
   static setActiveProvider(provider: EmailProviderChoice) {
+    if (process.env.NODE_ENV === "production" && provider === "ETHEREAL") {
+      logger.warn("[EmailService] Ethereal is strictly disabled in production. Active provider remains RESEND.");
+      this.activeProvider = "RESEND";
+      return;
+    }
     this.activeProvider = provider;
     logger.info(`[EmailService] Active email provider switched to: ${provider}`);
   }
 
   private static async getTransporter(): Promise<Transporter> {
     if (this.transporter) return this.transporter;
+
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Ethereal / SMTP transport is strictly disabled in production. Resend LIVE must be used.");
+    }
 
     const host = process.env.SMTP_HOST;
     const user = process.env.SMTP_USER;
@@ -95,70 +109,108 @@ export class EmailService {
   }
 
   static async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
-    // Simulator Mode: Immediate sandbox delivery with zero external network latency
+    // 1. Simulator Mode: Immediate sandbox delivery with ZERO external network latency
     if (options.isSimulator) {
       logger.info(`[EmailService] Simulator dispatch in sandbox mode (zero external network latency).`);
       return {
         success: true,
         messageId: `sim_${Date.now()}`,
-        provider: "ETHEREAL",
+        provider: "SIMULATOR",
         isSimulated: true,
-        previewUrl: `https://ethereal.email/message/sim_${Date.now()}`
+        previewUrl: false
+      };
+    }
+
+    // Safety Guard: Mock/test domains must NEVER call Ethereal port 587 nor consume live Resend quota
+    const isMockDomain = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(options.to);
+    if (isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND) {
+      logger.info(`[EmailService] Recipient ${options.to} is a mock/test domain. Safely returning internal simulation (zero external network calls).`);
+      return {
+        success: true,
+        messageId: `mock_${Date.now()}`,
+        provider: "SIMULATOR",
+        isSimulated: true,
+        previewUrl: false
       };
     }
 
     const targetProvider = options.forceProvider || this.activeProvider;
 
-    // Safety Guard: Mock/test domains must NEVER be sent via real Resend API to preserve quota and avoid spam bounces
-    const isMockDomain = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(options.to);
-    const effectiveProvider = (targetProvider === "RESEND" && isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND)
-      ? "ETHEREAL"
-      : targetProvider;
-
-    if (targetProvider === "RESEND" && isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND) {
-      logger.info(`[EmailService] Recipient ${options.to} is a mock/test domain. Safely routing to Ethereal Sandbox (zero Resend quota consumed).`);
+    // Reject Ethereal in production
+    if (process.env.NODE_ENV === "production" && options.forceProvider === "ETHEREAL") {
+      return {
+        success: false,
+        error: "Ethereal is strictly disabled in production. Resend is the only live email provider.",
+        provider: "RESEND",
+        isSimulated: false,
+        fallbackUsed: false
+      };
     }
 
-    // 1. LIVE Outbound Provider: Resend
-    if (effectiveProvider === "RESEND") {
-      if (ResendService.isConfigured()) {
-        const resendRes = await ResendService.sendEmail({
-          to: options.to,
-          subject: options.subject,
-          text: options.text,
-          html: options.html,
-          senderName: options.senderName,
-          senderEmail: options.senderEmail,
-          from: options.from,
-          leadId: options.leadId,
-          organizationId: options.organizationId,
-          replyTo: options.replyTo,
-          inReplyTo: options.inReplyTo,
-          references: options.references,
-          headers: options.headers
-        });
-
-        if (resendRes.success) {
-          return {
-            success: true,
-            messageId: resendRes.messageId,
-            provider: "RESEND",
-            isSimulated: false
-          };
-        }
-
-        // Authentication failure or Resend API error -> Safe fallback to Ethereal Sandbox!
-        logger.warn(
-          `[EmailService] Resend dispatch failed (${resendRes.error || "Unknown error"}). Safely falling back to Ethereal Sandbox.`
-        );
-      } else {
-        logger.warn(
-          "[EmailService] Resend requested but RESEND_API_KEY is not configured. Safely falling back to Ethereal Sandbox."
-        );
+    // 2. LIVE Outbound Provider: Resend (Sole live outbound provider)
+    if (targetProvider === "RESEND" || process.env.NODE_ENV === "production") {
+      if (!ResendService.isConfigured()) {
+        const errMsg = "RESEND_API_KEY is not configured in environment. Real outbound emails require a valid Resend API key.";
+        logger.error(`[EmailService] ${errMsg}`);
+        return {
+          success: false,
+          error: errMsg,
+          provider: "RESEND",
+          isSimulated: false,
+          fallbackUsed: false
+        };
       }
+
+      const resendRes = await ResendService.sendEmail({
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+        senderName: options.senderName,
+        senderEmail: options.senderEmail,
+        from: options.from,
+        leadId: options.leadId,
+        organizationId: options.organizationId,
+        replyTo: options.replyTo,
+        inReplyTo: options.inReplyTo,
+        references: options.references,
+        headers: options.headers
+      });
+
+      if (resendRes.success) {
+        return {
+          success: true,
+          messageId: resendRes.messageId,
+          provider: "RESEND",
+          isSimulated: false,
+          fallbackUsed: false
+        };
+      }
+
+      // STRICT: Return clear Resend provider error. ZERO automatic fallback to Ethereal.
+      logger.error(
+        `[EmailService] Resend dispatch failed: ${resendRes.error || "Unknown error"}. Strictly returning provider error with zero Ethereal fallback.`
+      );
+      return {
+        success: false,
+        error: resendRes.error || "Resend email delivery failed",
+        provider: "RESEND",
+        isSimulated: false,
+        fallbackUsed: false
+      };
     }
 
-    // 2. SANDBOX Outbound Provider: Ethereal (Default & Safe Fallback)
+    // 3. SANDBOX Outbound Provider: Ethereal (Development mode only - strictly blocked in production)
+    if (process.env.NODE_ENV === "production") {
+      return {
+        success: false,
+        error: "Ethereal is strictly disabled in production. Resend is the only live email provider.",
+        provider: "RESEND",
+        isSimulated: false,
+        fallbackUsed: false
+      };
+    }
+
     try {
       const transporter = await this.getTransporter();
       const fromName = options.senderName || "Alex";
@@ -211,17 +263,16 @@ export class EmailService {
         previewUrl: previewUrl || undefined,
         provider: "ETHEREAL",
         isSimulated: false,
-        fallbackUsed: targetProvider === "RESEND"
+        fallbackUsed: false
       };
     } catch (err: any) {
-      logger.warn(`[EmailService] Ethereal/SMTP dispatch failed (${err.message}). Safely returning sandbox delivery.`);
+      logger.warn(`[EmailService] Ethereal/SMTP dispatch failed: ${err.message}`);
       return {
-        success: true,
-        messageId: `sim_fallback_${Date.now()}`,
-        previewUrl: `https://ethereal.email/message/sim_${Date.now()}`,
+        success: false,
+        error: err.message || "Ethereal dispatch failed",
         provider: "ETHEREAL",
-        isSimulated: true,
-        fallbackUsed: targetProvider === "RESEND"
+        isSimulated: false,
+        fallbackUsed: false
       };
     }
   }
@@ -234,12 +285,12 @@ export class EmailService {
     senderEmail: string;
     isSandbox: boolean;
   }> {
-    await this.getTransporter();
-    const senderEmail = this.etherealAccount?.user || process.env.SMTP_FROM_EMAIL || "alex@nexsdr.in";
+    const isProd = process.env.NODE_ENV === "production";
+    const senderEmail = process.env.SMTP_FROM_EMAIL || "alex@nexsdr.in";
     return {
       provider: "Ethereal Sandbox",
       mode: "SANDBOX",
-      status: "Connected/Ready",
+      status: isProd ? "Disabled in Production" : "Sandbox Only (Dev)",
       senderName: "Alex Rivers",
       senderEmail,
       isSandbox: true
@@ -247,6 +298,12 @@ export class EmailService {
   }
 
   static async verifyConnection(): Promise<{ success: boolean; message: string }> {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        success: false,
+        message: "Ethereal Sandbox is disabled in production. Resend is the only live email provider."
+      };
+    }
     try {
       const transporter = await this.getTransporter();
       await transporter.verify();

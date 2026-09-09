@@ -46,8 +46,8 @@ export class EmailChannelProvider implements IChannelProvider {
         previewUrl: res.previewUrl || undefined,
         notes: res.provider === "RESEND"
           ? `Delivered via Resend LIVE API (ID: ${res.messageId})`
-          : (res.fallbackUsed
-              ? `Delivered via Ethereal Sandbox (Fell back from Resend). Preview link: ${res.previewUrl}`
+          : (res.isSimulated || res.provider === "SIMULATOR"
+              ? `Delivered internally via simulator (ID: ${res.messageId})`
               : `Delivered via Ethereal Sandbox. Preview link: ${res.previewUrl}`),
         error: res.error
       };

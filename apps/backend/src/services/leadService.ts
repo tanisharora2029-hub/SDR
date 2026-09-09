@@ -193,7 +193,7 @@ export class LeadService {
     // Real dispatch via ChannelManager / EmailService
     let deliverySuccess = true;
     let deliveryError: string | null = null;
-    let deliveryProvider: string = "ETHEREAL";
+    let deliveryProvider: string = "RESEND";
 
     try {
       const dispatchRes: any = await ChannelManager.dispatch("EMAIL", {
@@ -207,12 +207,12 @@ export class LeadService {
         organizationId
       });
 
-      if (dispatchRes?.messageId) {
-        deliveryProvider = dispatchRes.provider || "ETHEREAL";
+      if (dispatchRes?.externalMessageId || dispatchRes?.messageId) {
+        deliveryProvider = dispatchRes.provider || (dispatchRes.providerStatus === "REAL" ? "RESEND" : "SIMULATOR");
         await prisma.message.update({
           where: { id: message.id },
           data: {
-            toolCallArgs: JSON.stringify({ externalMessageId: dispatchRes.messageId, provider: deliveryProvider })
+            toolCallArgs: JSON.stringify({ externalMessageId: dispatchRes.externalMessageId || dispatchRes.messageId, provider: deliveryProvider })
           }
         }).catch(() => {});
       }

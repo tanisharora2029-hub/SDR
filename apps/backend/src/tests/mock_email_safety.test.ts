@@ -103,47 +103,65 @@ describe("Email Provider Safety & Mock Isolation Audit", () => {
     } catch {}
   });
 
-  it("1. Verifies that without explicit EMAIL_PROVIDER=resend, default active provider is ETHEREAL", () => {
+  it("1. Verifies that in production or by default, initial active provider resolves to RESEND", () => {
     delete process.env.EMAIL_PROVIDER;
-    const envProvider = (process.env.EMAIL_PROVIDER || "").trim().toUpperCase();
-    const isExplicitResend = (envProvider === "RESEND" || envProvider === "LIVE") && Boolean(process.env.RESEND_API_KEY);
-    expect(isExplicitResend).toBe(false);
+    delete process.env.RESEND_API_KEY;
+    const prevNodeEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = "production";
+      EmailService.setActiveProvider("RESEND");
+      expect(EmailService.getActiveProvider()).toBe("RESEND");
 
-    EmailService.setActiveProvider("ETHEREAL");
-    expect(EmailService.getActiveProvider()).toBe("ETHEREAL");
+      // In production, switching to ETHEREAL is blocked
+      EmailService.setActiveProvider("ETHEREAL");
+      expect(EmailService.getActiveProvider()).toBe("RESEND");
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
   });
 
-  it("2. Verifies that EmailService in ETHEREAL mode makes ZERO calls to api.resend.com", async () => {
-    EmailService.setActiveProvider("ETHEREAL");
+  it("2. Verifies that EmailService in non-production ETHEREAL mode makes ZERO calls to api.resend.com", async () => {
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "test";
+    try {
+      EmailService.setActiveProvider("ETHEREAL");
 
-    const result = await EmailService.sendEmail({
-      to: "prospect@company.test",
-      subject: "Ethereal Sandbox Mode Verification",
-      text: "Testing Ethereal isolation.",
-      senderName: "Alex Rivers"
-    });
+      const result = await EmailService.sendEmail({
+        to: "prospect@company.test",
+        subject: "Ethereal Sandbox Mode Verification",
+        text: "Testing Ethereal isolation.",
+        senderName: "Alex Rivers"
+      });
 
-    expect(result.success).toBe(true);
-    expect(result.provider).toBe("ETHEREAL");
-    expect(resendApiCallCount).toBe(0);
-    expect(interceptedResendUrls).toHaveLength(0);
+      expect(result.success).toBe(true);
+      expect(resendApiCallCount).toBe(0);
+      expect(interceptedResendUrls).toHaveLength(0);
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
   });
 
   it("3. Verifies that ChannelManager dispatch in default mode makes ZERO calls to api.resend.com", async () => {
-    EmailService.setActiveProvider("ETHEREAL");
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "test";
+    try {
+      EmailService.setActiveProvider("ETHEREAL");
 
-    const result = await ChannelManager.dispatch("EMAIL", {
-      to: "prospect@company.test",
-      content: "Hello from ChannelManager",
-      subject: "ChannelManager Dispatch",
-      senderName: "Alex Rivers",
-      organizationId: testOrg.id
-    });
+      const result = await ChannelManager.dispatch("EMAIL", {
+        to: "prospect@company.test",
+        content: "Hello from ChannelManager",
+        subject: "ChannelManager Dispatch",
+        senderName: "Alex Rivers",
+        organizationId: testOrg.id
+      });
 
-    expect(result.success).toBe(true);
-    expect(result.channel).toBe("EMAIL");
-    expect(result.providerStatus).toBe("SANDBOX");
-    expect(resendApiCallCount).toBe(0);
+      expect(result.success).toBe(true);
+      expect(result.channel).toBe("EMAIL");
+      expect(result.providerStatus).toBe("SANDBOX");
+      expect(resendApiCallCount).toBe(0);
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
   });
 
   it("4. Verifies that Lead Simulator (isSimulator: true) NEVER calls api.resend.com even when active provider is RESEND", async () => {
@@ -169,7 +187,7 @@ describe("Email Provider Safety & Mock Isolation Audit", () => {
     expect(interceptedResendUrls).toHaveLength(0);
   });
 
-  it("5. Verifies that mock/test domains (@example.com, @sandbox.nexsdr.in) safely route to Ethereal and make ZERO Resend API calls", async () => {
+  it("5. Verifies that mock/test domains (@example.com, @sandbox.nexsdr.in) safely route to internal simulation and make ZERO Resend API calls", async () => {
     EmailService.setActiveProvider("RESEND");
     process.env.RESEND_API_KEY = "re_test_dummy_key_12345";
 
@@ -177,12 +195,13 @@ describe("Email Provider Safety & Mock Isolation Audit", () => {
     const sendResult = await EmailService.sendEmail({
       to: "prospect@example.com",
       subject: "Test Domain Safety Check",
-      text: "This should route to Ethereal sandbox automatically.",
+      text: "This should route to internal simulation automatically.",
       senderName: "Alex Rivers"
     });
 
     expect(sendResult.success).toBe(true);
-    expect(sendResult.provider).toBe("ETHEREAL");
+    expect(sendResult.provider).toBe("SIMULATOR");
+    expect(sendResult.isSimulated).toBe(true);
     // Assert 0 calls to api.resend.com
     expect(resendApiCallCount).toBe(0);
   });
@@ -206,5 +225,62 @@ describe("Email Provider Safety & Mock Isolation Audit", () => {
     // Verified: Resend API was called exactly once for real outbound
     expect(resendApiCallCount).toBe(1);
     expect(interceptedResendUrls[0]).toContain("api.resend.com/emails");
+  });
+
+  it("7. Verifies that when Resend fails, EmailService returns a clear error and does NOT fall back to Ethereal", async () => {
+    EmailService.setActiveProvider("RESEND");
+    process.env.RESEND_API_KEY = "re_test_live_key_error_sim";
+
+    // Override fetch to simulate Resend API error
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = async (url: any, init?: any) => {
+      if (url.toString().includes("api.resend.com/emails")) {
+        return new Response(
+          JSON.stringify({ statusCode: 403, message: "Domain not verified on Resend account" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return prevFetch(url, init);
+    };
+
+    try {
+      const sendResult = await EmailService.sendEmail({
+        to: "john.doe@enterprise-real.com",
+        subject: "Outbound Lead Outreach",
+        text: "Checking in regarding sales automation.",
+        senderName: "Alex Rivers",
+        forceProvider: "RESEND"
+      });
+
+      // Assertions: strictly fails with clear error, NO fallback to Ethereal
+      expect(sendResult.success).toBe(false);
+      expect(sendResult.provider).toBe("RESEND");
+      expect(sendResult.fallbackUsed).toBe(false);
+      expect(sendResult.error).toContain("Domain not verified");
+    } finally {
+      globalThis.fetch = prevFetch;
+    }
+  });
+
+  it("8. Verifies that in production mode, Ethereal is strictly disabled", async () => {
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    try {
+      const connResult = await EmailService.verifyConnection();
+      expect(connResult.success).toBe(false);
+      expect(connResult.message).toContain("disabled in production");
+
+      const sendResult = await EmailService.sendEmail({
+        to: "lead@realclient.com",
+        subject: "Test in prod",
+        text: "Hello",
+        forceProvider: "ETHEREAL"
+      });
+      expect(sendResult.success).toBe(false);
+      expect(sendResult.error).toContain("disabled in production");
+    } finally {
+      process.env.NODE_ENV = prevNodeEnv;
+    }
   });
 });

@@ -77,7 +77,7 @@ describe.sequential("NEXSDR — NETWORK RESILIENCE & PROVIDER STATE (BUGS 9, 12,
 
     expect(result.success).toBe(true);
     expect(result.isSimulated).toBe(true);
-    expect(result.provider).toBe("ETHEREAL");
+    expect(result.provider).toBe("SIMULATOR");
     expect(elapsed).toBeLessThan(200); // Guarantees zero blocked TCP port 587 socket hang
   });
 
@@ -118,16 +118,17 @@ describe.sequential("NEXSDR — NETWORK RESILIENCE & PROVIDER STATE (BUGS 9, 12,
   // =========================================================================
   // TEST 3: EmailService Fallback Safety on SMTP Timeout
   // =========================================================================
-  it("BUG #12: EmailService handles SMTP timeouts gracefully and returns simulated delivery", async () => {
+  it("BUG #12: EmailService handles simulation and provider routing cleanly without cloud hanging", async () => {
     const result = await EmailService.sendEmail({
-      to: "test-timeout@mock-domain.org",
+      to: "test-timeout@example.com",
       subject: "Diagnostic Timeout Test",
       text: "Testing resilience against network port blocking",
-      forceProvider: "ETHEREAL"
+      forceProvider: "RESEND"
     });
 
     expect(result.success).toBe(true);
-    expect(result.provider).toBe("ETHEREAL");
+    expect(result.provider).toBe("SIMULATOR");
+    expect(result.isSimulated).toBe(true);
     expect(result.messageId).toBeDefined();
   });
 

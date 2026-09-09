@@ -58,6 +58,12 @@ organizationRouter.post("/select-email-provider", async (req, res, next) => {
     if (provider !== "RESEND" && provider !== "ETHEREAL") {
       return res.status(400).json({ success: false, message: "Provider must be RESEND or ETHEREAL" });
     }
+    if (process.env.NODE_ENV === "production" && provider === "ETHEREAL") {
+      return res.status(400).json({
+        success: false,
+        message: "Ethereal Sandbox is strictly disabled in production. Resend is the sole live email provider."
+      });
+    }
     const { EmailService } = await import("../services/emailService.js");
     EmailService.setActiveProvider(provider);
     res.json({
@@ -94,7 +100,7 @@ organizationRouter.post("/send-test-email", async (req, res, next) => {
     const targetProvider = req.body.provider || EmailService.getActiveProvider();
     const recipient = req.body.to || "prospect-test@sandbox.nexsdr.in";
 
-    const isResend = targetProvider === "RESEND";
+    const isResend = targetProvider === "RESEND" || process.env.NODE_ENV === "production";
     const isMockRecipient = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(recipient);
 
     if (isResend && isMockRecipient) {
@@ -122,19 +128,23 @@ organizationRouter.post("/send-test-email", async (req, res, next) => {
       forceProvider: targetProvider
     });
 
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        provider: result.provider || targetProvider,
+        message: result.error || "Failed to send test email"
+      });
+    }
+
     res.json({
-      success: result.success,
+      success: true,
       previewUrl: result.previewUrl || null,
       messageId: result.messageId,
       provider: result.provider,
-      fallbackUsed: result.fallbackUsed || false,
-      message: result.success
-        ? (result.provider === "RESEND"
-            ? `Live test email dispatched successfully via Resend API (ID: ${result.messageId})`
-            : (result.fallbackUsed
-                ? `Resend dispatch failed; safely delivered via Ethereal Sandbox fallback.`
-                : `Test email sent successfully via Ethereal Sandbox.`))
-        : (result.error || "Failed to send test email")
+      fallbackUsed: false,
+      message: result.provider === "RESEND"
+        ? `Live test email dispatched successfully via Resend API (ID: ${result.messageId})`
+        : `Test email sent successfully via Ethereal Sandbox.`
     });
   } catch (err) {
     next(err);

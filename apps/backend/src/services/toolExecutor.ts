@@ -188,8 +188,7 @@ export class ToolExecutor {
             data: {
               messageId: message.id,
               conversationId: conv.id,
-              previewUrl: emailSendResult.previewUrl,
-              deliveryMode: emailSendResult.previewUrl ? "TEST_EMAIL_ETHEREAL" : "PRODUCTION_SMTP"
+              deliveryMode: emailSendResult.isSimulated ? "SIMULATED" : (emailSendResult.previewUrl ? "TEST_EMAIL_ETHEREAL" : "RESEND_LIVE")
             }
           };
         }

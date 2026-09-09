@@ -76,33 +76,34 @@ async function runResendSuite() {
   console.log("TEST 2 Completed Successfully.\n");
 
   // -------------------------------------------------------------
-  // TEST 3: SAFE FALLBACK TO ETHEREAL SANDBOX
+  // TEST 3: STRICT RESEND ERROR HANDLING (ZERO ETHEREAL FALLBACK)
   // -------------------------------------------------------------
-  console.log(">>> TEST 3: Safe Fallback to Ethereal Sandbox on Resend Failure...");
+  console.log(">>> TEST 3: Strict Error Reporting on Resend Failure (No Ethereal Fallback)...");
 
   // Set active provider to RESEND
   EmailService.setActiveProvider("RESEND");
 
-  // If RESEND_API_KEY is unset or fails, EmailService.sendEmail must catch it
-  // and safely deliver through Ethereal so outreach is NEVER lost.
-  const fallbackSendResult = await EmailService.sendEmail({
-    to: "rahul.prospect@test.example",
-    subject: "Autonomous Outreach - High Priority",
-    text: "Hi Rahul, following up on our discussion regarding CloudFlow AI.",
-    senderName: "Alex Rivers",
-    forceProvider: "RESEND"
-  });
+  // If RESEND_API_KEY is unset or fails, EmailService.sendEmail must return clear error
+  // with provider: "RESEND", success: false, and ZERO fallback to Ethereal.
+  const prevKey = process.env.RESEND_API_KEY;
+  delete process.env.RESEND_API_KEY;
 
-  assert(fallbackSendResult.success === true, "Delivery succeeded (either live or via fallback)");
+  try {
+    const errorSendResult = await EmailService.sendEmail({
+      to: "rahul.prospect@fortune500.com",
+      subject: "Autonomous Outreach - High Priority",
+      text: "Hi Rahul, following up on our discussion regarding CloudFlow AI.",
+      senderName: "Alex Rivers",
+      forceProvider: "RESEND"
+    });
 
-  if (fallbackSendResult.provider === "ETHEREAL") {
-    assert(fallbackSendResult.fallbackUsed === true, "fallbackUsed flag is correctly set to true");
-    assert(typeof fallbackSendResult.previewUrl === "string" && fallbackSendResult.previewUrl.includes("ethereal.email"),
-      `Valid Ethereal preview URL generated: ${fallbackSendResult.previewUrl}`);
-    console.log(`[Safe Fallback Verified] Successfully redirected to Ethereal Sandbox. Preview: ${fallbackSendResult.previewUrl}`);
-  } else {
-    assert(fallbackSendResult.provider === "RESEND", "Delivered via Resend LIVE");
-    console.log(`[Live Resend Verified] Live email delivered. Message ID: ${fallbackSendResult.messageId}`);
+    assert(errorSendResult.success === false, "Resend failure returns success: false");
+    assert(errorSendResult.provider === "RESEND", "Provider is strictly identified as RESEND");
+    assert(!errorSendResult.fallbackUsed, "No fallback to Ethereal is used");
+    assert(typeof errorSendResult.error === "string" && errorSendResult.error.length > 0, "Clear error message returned");
+    console.log(`[Strict Error Reporting Verified] Error: ${errorSendResult.error} (zero fallback used)`);
+  } finally {
+    if (prevKey) process.env.RESEND_API_KEY = prevKey;
   }
   console.log("TEST 3 Completed Successfully.\n");
 
@@ -157,7 +158,7 @@ async function runResendSuite() {
 }
 
 describe("NexSDR Resend Email Integration", () => {
-  it("verifies provider selection, API key protection, and safe fallback", async () => {
+  it("verifies provider selection, API key protection, and strict Resend failure handling", async () => {
     await runResendSuite();
   });
 });
