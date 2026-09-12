@@ -1,6 +1,13 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "sdr-default-dev-secret-key-32chars";
+const isProduction = process.env.NODE_ENV === "production";
+const rawSecret = process.env.JWT_SECRET?.trim();
+
+if (isProduction && (!rawSecret || rawSecret === "sdr-default-dev-secret-key-32chars")) {
+  throw new Error("FATAL: JWT_SECRET environment variable must be set to a secure, private key in production.");
+}
+
+const JWT_SECRET = rawSecret || "sdr-default-dev-secret-key-32chars";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 export interface JwtPayload {

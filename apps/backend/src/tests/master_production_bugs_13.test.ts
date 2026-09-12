@@ -129,7 +129,7 @@ describe.sequential("NEXSDR — MASTER PRODUCTION BUG FIX TEST SUITE (BUGS 1 - 1
       on: () => {},
       removeListener: () => {}
     };
-    registerWsClient(mockWs as any);
+    registerWsClient(mockWs as any, orgId);
 
     const convBefore = await prisma.conversation.findUnique({ where: { id: conversationId } });
 

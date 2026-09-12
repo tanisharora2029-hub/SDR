@@ -66,9 +66,16 @@ leadRouter.put("/:id", validateBody(UpdateLeadSchema), async (req, res, next) =>
     });
     if (!existing) return res.status(404).json({ success: false, error: "Lead not found" });
 
+    const updateData = { ...req.body };
+    delete updateData.organizationId;
+    delete updateData.id;
+    if (updateData.email) {
+      updateData.email = updateData.email.toLowerCase().trim();
+    }
+
     const updated = await prisma.lead.update({
       where: { id: req.params.id },
-      data: req.body
+      data: updateData
     });
     res.json({ success: true, lead: updated });
   } catch (err) {

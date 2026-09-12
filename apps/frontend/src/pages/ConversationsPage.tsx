@@ -103,10 +103,14 @@ export const ConversationsPage: React.FC = () => {
           wsUrl = `${protocol}//${host}/ws`;
         }
       }
+      const token = localStorage.getItem("token");
+      if (token) {
+        wsUrl += (wsUrl.includes("?") ? "&" : "?") + `token=${encodeURIComponent(token)}`;
+      }
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         if (organization?.id) {
-          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id }));
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id, token }));
         }
       };
       ws.onmessage = (event) => {

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { prisma } from "../lib/prisma.js";
 import { PhoneService } from "../services/phoneService.js";
 import { WhisperService } from "../services/whisperService.js";
 import { TtsService, SUPPORTED_VOICES } from "../services/ttsService.js";
@@ -132,6 +133,13 @@ callRouter.post("/complete", async (req, res, next) => {
 callRouter.get("/whisper/:callSid", async (req, res, next) => {
   try {
     const { callSid } = req.params;
+    const session = await prisma.callSession.findUnique({
+      where: { callSid },
+      select: { organizationId: true }
+    });
+    if (!session || session.organizationId !== req.organizationId) {
+      return res.status(404).json({ success: false, error: "Call session not found or unauthorized" });
+    }
     const dossier = WhisperService.getDossier(callSid);
     res.json({ success: true, dossier });
   } catch (err) {
@@ -144,6 +152,13 @@ callRouter.post("/takeover", async (req, res, next) => {
   try {
     const { callSid, takeover } = req.body;
     if (!callSid) return res.status(400).json({ success: false, error: "callSid is required" });
+    const session = await prisma.callSession.findUnique({
+      where: { callSid },
+      select: { organizationId: true }
+    });
+    if (!session || session.organizationId !== req.organizationId) {
+      return res.status(404).json({ success: false, error: "Call session not found or unauthorized" });
+    }
     const isTakenOver = WhisperService.setTakeover(callSid, Boolean(takeover));
     res.json({ success: true, callSid, isTakenOver });
   } catch (err) {

@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { logger } from "../lib/logger.js";
 import { ResendService } from "../services/resendService.js";
 import { WebhookService } from "../services/webhookService.js";
+import { verifyToken } from "../lib/jwt.js";
 
 export const webhookRouter = Router();
 
@@ -71,6 +72,27 @@ webhookRouter.post("/resend/inbound", async (req: Request, res: Response) => {
  */
 webhookRouter.post("/resend/inbound/test", async (req: Request, res: Response) => {
   try {
+    // In production, require authenticated user belonging to an organization
+    if (process.env.NODE_ENV === "production") {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized: Authentication required to use the test webhook endpoint in production."
+        });
+      }
+      try {
+        const decoded = verifyToken(authHeader.split(" ")[1]);
+        (req as any).user = decoded;
+        (req as any).organizationId = decoded.organizationId;
+      } catch {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized: Invalid or expired token."
+        });
+      }
+    }
+
     const { payload, secretOverride, organizationId } = req.body;
     const testData = payload || req.body;
 
@@ -94,7 +116,8 @@ webhookRouter.post("/resend/inbound/test", async (req: Request, res: Response) =
       });
     }
 
-    const result = await WebhookService.processInboundEmail(parsed, organizationId);
+    const targetOrgId = (req as any).organizationId || organizationId;
+    const result = await WebhookService.processInboundEmail(parsed, targetOrgId);
     return res.status(200).json(result);
   } catch (err: any) {
     logger.error(`[InboundWebhook Test] Error during test execution: ${err.message}`);

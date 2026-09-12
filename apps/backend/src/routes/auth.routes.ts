@@ -10,9 +10,10 @@ export const authRouter = Router();
 
 authRouter.post("/register", validateBody(RegisterSchema), async (req, res, next) => {
   try {
-    const { name, email, password, organizationName } = req.body;
+    const { name, password, organizationName } = req.body;
+    const normalizedEmail = (req.body.email || "").toLowerCase().trim();
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return res.status(400).json({ success: false, error: "User with this email already exists" });
     }
@@ -33,7 +34,7 @@ authRouter.post("/register", validateBody(RegisterSchema), async (req, res, next
       const user = await tx.user.create({
         data: {
           name,
-          email,
+          email: normalizedEmail,
           passwordHash,
           role: "OWNER",
           organizationId: org.id
@@ -90,11 +91,21 @@ authRouter.post("/register", validateBody(RegisterSchema), async (req, res, next
 
 authRouter.post("/login", validateBody(LoginSchema), async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const { password } = req.body;
+    const rawEmail = (req.body.email || "").trim();
+    const normalizedEmail = rawEmail.toLowerCase();
+
+    let user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
       include: { organization: true }
     });
+
+    if (!user && rawEmail !== normalizedEmail) {
+      user = await prisma.user.findUnique({
+        where: { email: rawEmail },
+        include: { organization: true }
+      });
+    }
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ success: false, error: "Invalid email or password" });

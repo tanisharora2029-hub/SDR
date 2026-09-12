@@ -104,9 +104,9 @@ app.use(errorHandler);
 import { wsBroadcaster, broadcastToOrganization } from "./lib/wsBroadcaster.js";
 const wss = new WebSocketServer({ server, path: "/ws" });
 
-wss.on("connection", (ws: WebSocket) => {
+wss.on("connection", (ws: WebSocket, req: http.IncomingMessage) => {
   logger.info("WebSocket client connected to real-time channel");
-  wsBroadcaster.registerClient(ws);
+  wsBroadcaster.registerClient(ws, req);
 });
 
 const PORT = parseInt(process.env.PORT || "5000", 10);

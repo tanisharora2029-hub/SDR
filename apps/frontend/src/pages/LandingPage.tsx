@@ -379,14 +379,33 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Footer matching reference image typography */}
-      <footer className="mt-auto border-t border-white/[0.06] bg-[#070710]/80 py-8 px-6 text-center text-xs text-slate-500 relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-violet-400/70">
-            HUMAN-LIKE CONVERSATIONS. REAL BUSINESS IMPACT.
-          </p>
-          <p className="text-xs text-slate-400">
-            NexSDR — Build. Automate. Scale.
-          </p>
+      <footer className="mt-auto border-t border-white/[0.06] bg-[#070710]/80 py-10 px-6 text-xs text-slate-500 relative z-10">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-violet-400/70">
+              HUMAN-LIKE CONVERSATIONS. REAL BUSINESS IMPACT.
+            </p>
+            <div className="flex items-center gap-6 text-xs">
+              <Link to="/privacy" className="text-slate-400 hover:text-white transition">
+                Privacy Policy
+              </Link>
+              <Link to="/terms" className="text-slate-400 hover:text-white transition">
+                Terms of Service
+              </Link>
+              <Link to="/login" className="text-slate-400 hover:text-white transition">
+                Sign In
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
+            <p className="text-slate-400">
+              NexSDR — Autonomous AI Sales Command Center.
+            </p>
+            <p className="max-w-xl text-center sm:text-right text-slate-500">
+              AI SDR Notice: NexSDR deploys autonomous AI agents for B2B pipeline execution. All automated outreach complies with anti-spam standards and honors DNC / opt-out requests immediately.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

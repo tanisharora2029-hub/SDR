@@ -19,21 +19,21 @@ export class GroqProvider implements AiProvider {
   public resolveModel(): string {
     const envModel = (process.env.GROQ_MODEL || this.model || "").trim();
     const decommissioned = [
-      "llama-3.3-70b-versatile",
       "llama-3.1-70b-versatile",
-      "llama-3.1-8b-instant",
       "llama3-70b-8192",
       "llama3-8b-8192",
       "qwen/qwen3-32b",
-      "meta-llama/llama-4-maverick-17b-128e-instruct"
+      "meta-llama/llama-4-maverick-17b-128e-instruct",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b"
     ];
     if (decommissioned.includes(envModel)) {
       logger.warn(
-        `[GroqProvider] Configured model '${envModel}' is decommissioned by Groq (returns 404). Automatically migrating to 'openai/gpt-oss-120b'.`
+        `[GroqProvider] Configured model '${envModel}' is decommissioned or invalid. Automatically migrating to 'llama-3.3-70b-versatile'.`
       );
-      return "openai/gpt-oss-120b";
+      return "llama-3.3-70b-versatile";
     }
-    return envModel || "openai/gpt-oss-120b";
+    return envModel || "llama-3.3-70b-versatile";
   }
 
   public getRequestUrl(): string {
@@ -64,11 +64,11 @@ export class GroqProvider implements AiProvider {
 
     // Primary target model, followed by official Groq fallbacks
     const candidateModels = [targetModel];
-    if (!candidateModels.includes("openai/gpt-oss-120b")) {
-      candidateModels.push("openai/gpt-oss-120b");
+    if (!candidateModels.includes("llama-3.3-70b-versatile")) {
+      candidateModels.push("llama-3.3-70b-versatile");
     }
-    if (!candidateModels.includes("openai/gpt-oss-20b")) {
-      candidateModels.push("openai/gpt-oss-20b");
+    if (!candidateModels.includes("llama-3.1-8b-instant")) {
+      candidateModels.push("llama-3.1-8b-instant");
     }
 
     let lastError: Error | null = null;

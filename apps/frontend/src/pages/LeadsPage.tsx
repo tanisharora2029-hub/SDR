@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Users,
   Plus,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 
 export const LeadsPage: React.FC = () => {
+  const { organization } = useAuth();
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -68,7 +70,16 @@ export const LeadsPage: React.FC = () => {
           wsUrl = `${protocol}//${host}/ws`;
         }
       }
+      const token = localStorage.getItem("token");
+      if (token) {
+        wsUrl += (wsUrl.includes("?") ? "&" : "?") + `token=${encodeURIComponent(token)}`;
+      }
       ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        if (organization?.id) {
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id, token }));
+        }
+      };
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
@@ -81,7 +92,7 @@ export const LeadsPage: React.FC = () => {
     return () => {
       if (ws) ws.close();
     };
-  }, []);
+  }, [organization?.id]);
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();

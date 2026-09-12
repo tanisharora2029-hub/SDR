@@ -47,12 +47,13 @@ export class LeadService {
   }
 
   static async createLead(organizationId: string, data: any) {
+    const normalizedEmail = (data.email || "").toLowerCase().trim();
     return prisma.lead.create({
       data: {
         organizationId,
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email,
+        email: normalizedEmail,
         phone: data.phone,
         companyName: data.companyName,
         jobTitle: data.jobTitle,
@@ -70,13 +71,14 @@ export class LeadService {
     let imported = 0;
     for (const item of leads) {
       if (!item.email || !item.firstName || !item.companyName) continue;
+      const normalizedEmail = item.email.toLowerCase().trim();
       await prisma.lead.upsert({
-        where: { organizationId_email: { organizationId, email: item.email } },
+        where: { organizationId_email: { organizationId, email: normalizedEmail } },
         create: {
           organizationId,
           firstName: item.firstName,
           lastName: item.lastName || "",
-          email: item.email,
+          email: normalizedEmail,
           phone: item.phone || null,
           companyName: item.companyName,
           jobTitle: item.jobTitle || null,
