@@ -6,6 +6,7 @@ import { CalendarService } from "./calendarService.js";
 import { SdrContext, LeadContext, ConversationTurn } from "./ai/types.js";
 import { logger } from "../lib/logger.js";
 import { broadcastToOrganization } from "../lib/wsBroadcaster.js";
+import { EmailReplyParser } from "./emailReplyParser.js";
 
 export class ConversationService {
   static async getConversations(organizationId: string) {
@@ -58,6 +59,7 @@ export class ConversationService {
       isSimulator?: boolean;
       forceLiveEmail?: boolean;
       conversationId?: string;
+      rawHtml?: string;
     }
   ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
@@ -85,8 +87,17 @@ export class ConversationService {
       return { optedOut: true, message: "Lead has opted out of communications" };
     }
 
-    // Check opt-out keywords (STOP, Unsubscribe, Do not contact)
-    const isOptOut = /\b(stop|unsubscribe|remove me|opt out|cancel|do not contact|don't contact)\b/i.test(replyText);
+    // 2. Isolate newly authored text & check opt-out keywords ONLY against newly authored content
+    // Prevents false DNC triggers caused by quoted previous emails containing "reply STOP to unsubscribe"
+    const isEmail = channel.toUpperCase() === "EMAIL";
+    const newlyAuthored = isEmail
+      ? EmailReplyParser.extractNewlyAuthoredReply(replyText, options?.rawHtml)
+      : replyText.trim();
+    const effectiveReply = newlyAuthored.length > 0 ? newlyAuthored : replyText.trim();
+
+    const isOptOut = isEmail
+      ? EmailReplyParser.isOptOutIntent(replyText, options?.rawHtml)
+      : /\b(stop|unsubscribe|remove me|opt out|cancel|do not contact|don't contact)\b/i.test(replyText);
 
     if (isOptOut) {
       let inboundMsg: any = null;
@@ -133,7 +144,7 @@ export class ConversationService {
             senderRole: "LEAD",
             senderId: targetLead.id,
             recipientId: null,
-            content: replyText,
+            content: effectiveReply || replyText,
             senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
             status: options?.isRealInbound ? "REAL_INBOUND" : "DELIVERED",
             toolCallArgs: options?.externalMessageId
@@ -148,7 +159,7 @@ export class ConversationService {
             organizationId,
             category: "LEAD",
             action: "LEAD_OPTED_OUT",
-            detailsJson: JSON.stringify({ leadId, reply: replyText })
+            detailsJson: JSON.stringify({ leadId, reply: effectiveReply || replyText })
           }
         });
       });
@@ -186,7 +197,7 @@ export class ConversationService {
         senderRole: "LEAD",
         senderId: targetLead.id,
         recipientId: null,
-        content: replyText,
+        content: effectiveReply || replyText,
         senderName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Lead",
         status: options?.isRealInbound ? "REAL_INBOUND" : "DELIVERED",
         toolCallArgs: options?.externalMessageId
@@ -254,7 +265,7 @@ export class ConversationService {
       organizationId,
       conv,
       targetLead,
-      replyText,
+      effectiveReply || replyText,
       inboundMsg,
       options
     );

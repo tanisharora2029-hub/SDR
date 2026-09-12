@@ -341,7 +341,8 @@ export class WebhookService {
         replyTo: replyTo || senderEmail,
         inReplyTo: inbound.inReplyTo || undefined,
         references: inbound.references || inbound.inReplyTo || undefined,
-        forceLiveEmail: true
+        forceLiveEmail: true,
+        rawHtml: inbound.bodyHtml
       }
     );
 
