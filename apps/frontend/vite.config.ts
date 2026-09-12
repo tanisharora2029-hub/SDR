@@ -15,5 +15,15 @@ export default defineConfig({
         ws: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+          vendor: ['react', 'react-dom', 'react-router-dom', 'lucide-react']
+        }
+      }
+    }
   }
 })

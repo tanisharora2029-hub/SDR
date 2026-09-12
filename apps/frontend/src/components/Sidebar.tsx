@@ -15,6 +15,8 @@ import {
   Repeat,
   Sparkles,
   FlaskConical,
+  Search,
+  ChevronRight,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
@@ -30,9 +32,9 @@ const navItems = [
   { name: "Omnichannel Inbox", path: "/conversations", icon: MessageSquare },
   { name: "Lead Simulator", path: "/lead-simulator", icon: FlaskConical, badge: "DEV" },
   { name: "Phone Studio", path: "/phone-studio", icon: PhoneCall, badge: "Voice AI" },
-  { name: "Follow-up Cadences", path: "/follow-ups", icon: Repeat },
-  { name: "Appointments & Tasks", path: "/tasks", icon: CalendarCheck },
-  { name: "Human Handoff", path: "/handoff", icon: UserCheck, alert: true },
+  { name: "Follow-ups", path: "/follow-ups", icon: Repeat },
+  { name: "Appointments", path: "/tasks", icon: CalendarCheck },
+  { name: "Human Handoff", path: "/handoff", icon: UserCheck },
   { name: "AI SDR Setup", path: "/sdr-setup", icon: Brain },
   { name: "Analytics", path: "/analytics", icon: BarChart3 },
   { name: "Billing & Plans", path: "/billing", icon: CreditCard },
@@ -41,22 +43,30 @@ const navItems = [
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
-  const { organization } = useAuth();
+  const { user, organization } = useAuth();
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "TA";
 
   const renderNav = (isMobile: boolean) => (
     <>
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 sm:p-5 border-b border-white/[0.06] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-fuchsia-500 flex items-center justify-center text-white shadow-lg shadow-violet-600/30 shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-bold text-slate-100 text-lg tracking-tight flex items-center gap-1.5">
-              Nex<span className="text-indigo-400">SDR</span>
+            <h1 className="font-bold text-white text-base tracking-tight flex items-center gap-1">
+              Nex<span className="text-violet-400">SDR</span>
             </h1>
-            <p className="text-xs text-slate-400 truncate max-w-[140px]">
-              {organization?.name || "AI Sales Org"}
+            <p className="text-[11px] text-slate-400 truncate max-w-[130px]">
+              {organization?.name || "AI Sales Platform"}
             </p>
           </div>
         </div>
@@ -64,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         {isMobile && (
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] transition"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
@@ -72,8 +82,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+      {/* Quick Search Trigger matching reference */}
+      <div className="px-3 pt-3 pb-1">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#121224]/80 border border-white/[0.06] text-xs text-slate-400 hover:border-violet-500/40 transition cursor-pointer group">
+          <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-violet-400 transition" />
+          <span className="flex-1 text-[11px]">Search...</span>
+          <kbd className="text-[10px] font-mono bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 rounded text-slate-400">
+            Ctrl K
+          </kbd>
+        </div>
+      </div>
+
+      {/* Navigation Links */}
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto scrollbar-thin">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -84,19 +105,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 if (isMobile && onClose) onClose();
               }}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/30"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                    ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/35 border border-violet-400/30"
+                    : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05]"
                 }`
               }
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <Icon className="w-4 h-4 shrink-0" />
                 <span>{item.name}</span>
               </div>
               {item.badge && (
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
                   {item.badge}
                 </span>
               )}
@@ -105,17 +126,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
         })}
       </nav>
 
-      {/* Status Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/40">
-        <div className="flex items-center gap-2.5">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <div className="text-xs min-w-0">
-            <p className="font-medium text-slate-300">Alex Rivers (AI SDR)</p>
-            <p className="text-slate-400 text-[11px] truncate">alex@nexsdr.in</p>
+      {/* User Profile Footer Card matching reference */}
+      <div className="p-3 border-t border-white/[0.06] bg-[#0c0c1a]/90">
+        <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] transition cursor-pointer">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-700 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md shadow-violet-900/40">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate max-w-[110px]">
+                {user?.name || "Tanish Arora"}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate max-w-[110px]">
+                {user?.role || "Owner"}
+              </p>
+            </div>
           </div>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
         </div>
       </div>
     </>
@@ -124,13 +151,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col h-screen select-none shrink-0">
+      <aside className="hidden md:flex w-64 bg-[#090914]/90 backdrop-blur-2xl border-r border-white/[0.06] flex-col h-screen select-none shrink-0 z-20">
         {renderNav(false)}
       </aside>
 
       {/* Mobile Drawer Backdrop */}
       <div
-        className={`fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-0 bg-black/80 backdrop-blur-md z-40 transition-opacity duration-300 md:hidden ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -139,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
       {/* Mobile Drawer Aside */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:hidden shadow-2xl ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#0a0a16] border-r border-white/[0.08] flex flex-col h-full select-none transform transition-transform duration-300 ease-in-out md:hidden shadow-2xl shadow-violet-950/50 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Mobile Navigation"

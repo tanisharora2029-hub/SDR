@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
 import { VoiceSessionController, VoiceState } from "../lib/voiceSessionController.js";
+import { VoiceOrb, VoiceOrbState } from "../components/ui/VoiceOrb.js";
 import {
   PhoneCall,
   PhoneOff,
@@ -504,10 +505,10 @@ export const PhoneStudioPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Call Controls, Mic Monitor, & Device Settings */}
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-5">
-            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center justify-between">
+          <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 space-y-5">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center justify-between">
               <span>Telephony Dispatch</span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-normal">
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
                 Neural Engine
               </span>
             </h2>
@@ -592,29 +593,29 @@ export const PhoneStudioPage: React.FC = () => {
             )}
 
             {/* Call State Display & Real-Time Audio Level Meter */}
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-3">
+            <div className="p-5 rounded-2xl bg-[#0e0e1a]/80 backdrop-blur-xl border border-white/[0.08] text-center space-y-3 shadow-2xl shadow-black/40">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2.5 h-2.5 rounded-full ${
                       callStatus === "IN_PROGRESS"
-                        ? "bg-emerald-500 animate-pulse"
+                        ? "bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"
                         : callStatus === "COMPLETED"
-                        ? "bg-blue-500"
+                        ? "bg-blue-400"
                         : "bg-slate-600"
                     }`}
                   ></span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                    {callStatus === "IN_PROGRESS" ? "Live Stream Active" : callStatus}
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">
+                    {callStatus === "IN_PROGRESS" ? "Live Voice Stream" : callStatus}
                   </span>
                 </div>
                 {callStatus === "IN_PROGRESS" && (
                   <button
                     onClick={toggleMicMute}
-                    className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+                    className={`p-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition ${
                       isMicMuted
                         ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                        : "bg-white/[0.06] text-slate-300 hover:bg-white/[0.1]"
                     }`}
                     title={isMicMuted ? "Unmute Mic" : "Mute Mic"}
                   >
@@ -624,13 +625,31 @@ export const PhoneStudioPage: React.FC = () => {
                 )}
               </div>
 
-              <p className="text-3xl font-mono font-bold text-slate-100">
+              {/* Central 3D Reactive VoiceOrb */}
+              <div className="py-1">
+                <VoiceOrb
+                  state={
+                    voiceState === "AI_SPEAKING"
+                      ? "speaking"
+                      : voiceState === "PROCESSING"
+                      ? "thinking"
+                      : voiceState === "LISTENING" || voiceState === "SPEAKING_DETECTED"
+                      ? "listening"
+                      : "idle"
+                  }
+                  audioLevel={micVolumeLevel / 100}
+                  size={150}
+                  className="mx-auto"
+                />
+              </div>
+
+              <p className="text-3xl font-mono font-bold text-white tracking-tight">
                 {formatTimer(callDuration)}
               </p>
 
               {/* Real-time Hardware VU Meter */}
               {callStatus === "IN_PROGRESS" && (
-                <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                <div className="space-y-1.5 pt-2 border-t border-white/[0.06]">
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                     <span className="flex items-center gap-1">
                       <Mic className="w-3 h-3 text-emerald-400" />
@@ -760,15 +779,15 @@ export const PhoneStudioPage: React.FC = () => {
 
         {/* Middle & Right Column: Rolling Transcript, Live Utterances, & AI Summary */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col h-[580px]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-indigo-400" />
+          <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 flex flex-col h-[580px]">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-4">
+              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-violet-400" />
                 <span>Live Audio Transcript & Intent Extraction</span>
               </span>
               <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>Neural Audio Stream</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse"></span>
+                <span className="text-emerald-300 font-semibold">Neural Audio Stream</span>
               </span>
             </div>
 
@@ -776,7 +795,7 @@ export const PhoneStudioPage: React.FC = () => {
             <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
               {transcript.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
-                  <Bot className="w-8 h-8 mb-2 opacity-40" />
+                  <Bot className="w-8 h-8 mb-2 opacity-30 text-violet-400" />
                   <p>Select a lead and click "Place Outbound Call" to connect real voice stream.</p>
                 </div>
               ) : (
@@ -788,8 +807,8 @@ export const PhoneStudioPage: React.FC = () => {
                     <span className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">
                       {turn.speaker === "sdr" ? (
                         <>
-                          <Bot className="w-3 h-3 text-indigo-400" />
-                          <span className="text-indigo-300 font-semibold">{sdrName} (AI SDR @ {orgName})</span>
+                          <Bot className="w-3 h-3 text-violet-400" />
+                          <span className="text-violet-300 font-semibold">{sdrName} (AI SDR @ {orgName})</span>
                         </>
                       ) : (
                         <>
@@ -799,10 +818,10 @@ export const PhoneStudioPage: React.FC = () => {
                       )}
                     </span>
                     <div
-                      className={`max-w-lg p-3 rounded-xl text-xs leading-relaxed ${
+                      className={`max-w-lg p-3.5 rounded-2xl text-xs leading-relaxed ${
                         turn.speaker === "sdr"
-                          ? "bg-slate-800 text-slate-200 border border-slate-700/80 rounded-tl-none shadow"
-                          : "bg-indigo-600 text-white rounded-tr-none shadow"
+                          ? "bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 text-white rounded-tl-sm shadow-xl shadow-violet-950/40 border border-violet-400/30"
+                          : "bg-[#101020]/90 text-slate-200 border border-white/[0.08] rounded-tr-sm shadow-md"
                       }`}
                     >
                       <p>{turn.text}</p>

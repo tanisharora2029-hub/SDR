@@ -41,11 +41,11 @@ export const BillingPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-xs text-slate-400">Loading subscription details...</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto min-w-0">
+    <div className="space-y-6 max-w-7xl mx-auto min-w-0 pb-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <CreditCard className="w-6 h-6 text-indigo-400 shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <CreditCard className="w-6 h-6 text-violet-400 shrink-0" />
             <span>Billing & Subscription Plans</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -53,20 +53,20 @@ export const BillingPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-mono font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          <span className="text-[11px] font-mono font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
             {billing?.gatewayStatus?.label || "TEST_MODE (Sandbox)"}
           </span>
         </div>
       </div>
 
       {/* Current Usage Banner */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-xs text-slate-400 font-medium">Current Active Tier:</span>
-            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 mt-0.5">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2 mt-0.5">
               <span>{billing?.currentPlan?.name} Plan</span>
-              <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+              <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
                 Active
               </span>
             </h2>
@@ -74,7 +74,7 @@ export const BillingPage: React.FC = () => {
 
           <div className="text-left sm:text-right">
             <span className="text-xs text-slate-400 font-medium">Monthly AI Credits Used:</span>
-            <p className="text-lg font-bold text-indigo-400">
+            <p className="text-lg font-bold text-violet-300">
               {billing?.creditsUsed} / {billing?.creditLimit} credits
             </p>
           </div>
@@ -82,15 +82,15 @@ export const BillingPage: React.FC = () => {
 
         {/* Usage progress bar */}
         <div>
-          <div className="w-full bg-slate-950 rounded-full h-2.5 border border-slate-800">
+          <div className="w-full bg-[#090914] rounded-full h-2.5 border border-white/[0.06] overflow-hidden">
             <div
-              className="bg-gradient-to-r from-indigo-500 to-violet-500 h-2.5 rounded-full transition-all"
+              className="bg-gradient-to-r from-violet-600 to-indigo-500 h-2.5 rounded-full transition-all shadow-[0_0_10px_rgba(124,58,237,0.5)]"
               style={{ width: `${billing?.percentUsed || 5}%` }}
             ></div>
           </div>
-          <div className="flex justify-between text-[11px] text-slate-500 mt-1.5">
+          <div className="flex justify-between text-[11px] text-slate-500 mt-1.5 font-medium">
             <span>{billing?.percentUsed || 0}% consumed this period</span>
-            <span>Resets next month</span>
+            <span>Resets next billing cycle</span>
           </div>
         </div>
       </div>
@@ -102,24 +102,24 @@ export const BillingPage: React.FC = () => {
           return (
             <div
               key={plan.tier}
-              className={`p-6 rounded-2xl border flex flex-col justify-between ${
+              className={`p-6 rounded-2xl backdrop-blur-xl border flex flex-col justify-between ${
                 isCurrent
-                  ? "bg-slate-900 border-emerald-500/50 shadow-xl shadow-emerald-500/5"
-                  : "bg-slate-900/40 border-slate-800"
+                  ? "bg-[#121228]/90 border-violet-500/50 shadow-2xl shadow-violet-950/40"
+                  : "bg-[#0e0e1a]/60 border-white/[0.08]"
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-bold text-slate-100">{plan.name}</h3>
+                  <h3 className="text-base font-bold text-white">{plan.name}</h3>
                   {isCurrent && (
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    <span className="text-[10px] uppercase font-bold text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
                       Current
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-3xl font-extrabold text-slate-100">${plan.priceMonthlyUsd}</span>
+                  <span className="text-3xl font-extrabold text-white">${plan.priceMonthlyUsd}</span>
                   <span className="text-xs text-slate-400">/ mo</span>
                 </div>
                 <p className="text-[11px] text-slate-500">₹{plan.priceMonthlyInr} / mo (India gateway)</p>
@@ -127,18 +127,18 @@ export const BillingPage: React.FC = () => {
                 <ul className="mt-6 space-y-2.5">
                   {plan.features.map((f: string, i: number) => (
                     <li key={i} className="flex items-center gap-2 text-xs text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                       <span>{f}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-800">
+              <div className="mt-6 pt-4 border-t border-white/[0.06]">
                 {isCurrent ? (
                   <button
                     disabled
-                    className="w-full py-2 rounded-xl bg-slate-800 text-slate-400 text-xs font-semibold cursor-default"
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] text-slate-400 text-xs font-semibold cursor-default border border-white/[0.06]"
                   >
                     Current Active Tier
                   </button>
@@ -146,7 +146,7 @@ export const BillingPage: React.FC = () => {
                   <button
                     onClick={() => handleUpgrade(plan.tier)}
                     disabled={upgrading}
-                    className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold transition shadow-md shadow-violet-600/30 border border-violet-400/30"
                   >
                     {upgrading ? "Processing..." : `Upgrade to ${plan.name}`}
                   </button>

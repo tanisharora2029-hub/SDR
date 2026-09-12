@@ -169,24 +169,24 @@ export const LeadsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-100">Leads Pipeline</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Leads Pipeline</h1>
           <p className="text-xs text-slate-400 mt-1">
             Manage target accounts, import contacts, and monitor autonomous outreach.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setShowCsvModal(true)}
-            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 transition"
+            className="flex items-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.1] text-white transition shadow-sm"
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5 text-slate-400" />
             <span>Import CSV</span>
           </button>
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm"
+            className="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white transition shadow-md shadow-violet-600/30 border border-violet-400/30"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Lead</span>
@@ -196,7 +196,7 @@ export const LeadsPage: React.FC = () => {
 
       {statusNotice && (
         <div
-          className={`p-3.5 rounded-xl border text-xs flex items-center justify-between shadow-lg ${
+          className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between shadow-lg ${
             statusNotice.type === "error"
               ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
               : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
@@ -213,16 +213,16 @@ export const LeadsPage: React.FC = () => {
       )}
 
       {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0e0e1a]/70 backdrop-blur-xl p-3.5 rounded-2xl border border-white/[0.08] shadow-xl">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           {statuses.map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
                 statusFilter === s
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-600/30 border border-violet-400/30 font-semibold"
+                  : "text-slate-400 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
               {s.replace("_", " ")}
@@ -231,19 +231,19 @@ export const LeadsPage: React.FC = () => {
         </div>
 
         <div className="relative w-full md:w-64">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-2.5" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads or company..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="w-full bg-[#090914] border border-white/[0.08] rounded-xl pl-10 pr-3.5 py-2 text-xs text-white focus:outline-none focus:border-violet-500/60 shadow-inner"
           />
         </div>
       </div>
 
       {/* Leads Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-400">Loading leads...</div>
         ) : filteredLeads.length === 0 ? (
