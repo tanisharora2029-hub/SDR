@@ -121,8 +121,13 @@ export class EmailService {
       };
     }
 
+    const targetProvider = options.forceProvider || this.activeProvider;
+
     // Safety Guard: Mock/test domains must NEVER call Ethereal port 587 nor consume live Resend quota
-    const isMockDomain = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(options.to);
+    const isStandardMockDomain = /@(example\.(com|org|net)|test\.(com|org|net)|sandbox\.nexsdr\.in|simulator\.test|ethereal\.email)$/i.test(options.to);
+    const isEtherealSandboxDomain = targetProvider === "ETHEREAL" && /@[a-z0-9_.-]+\.test$/i.test(options.to);
+    const isMockDomain = isStandardMockDomain || isEtherealSandboxDomain;
+
     if (isMockDomain && !process.env.ALLOW_TEST_DOMAIN_RESEND) {
       logger.info(`[EmailService] Recipient ${options.to} is a mock/test domain. Safely returning internal simulation (zero external network calls).`);
       return {
@@ -133,8 +138,6 @@ export class EmailService {
         previewUrl: false
       };
     }
-
-    const targetProvider = options.forceProvider || this.activeProvider;
 
     // Reject Ethereal in production
     if (process.env.NODE_ENV === "production" && options.forceProvider === "ETHEREAL") {

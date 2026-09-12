@@ -16,7 +16,8 @@ import {
   FlaskConical,
   Play,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  XCircle
 } from "lucide-react";
 
 export const ConversationsPage: React.FC = () => {
@@ -155,6 +156,10 @@ export const ConversationsPage: React.FC = () => {
 
   const handleResumeAi = async () => {
     if (!activeConv?.id) return;
+    if (activeConv.lead?.isOptedOut || activeConv.lead?.status === "OPTED_OUT") {
+      alert("Cannot resume AI SDR: This lead is opted out (DNC). All automated outreach is hard-blocked.");
+      return;
+    }
     setResuming(true);
     try {
       await api.resumeAi(activeConv.id);
@@ -271,10 +276,10 @@ export const ConversationsPage: React.FC = () => {
                     <span className="hidden sm:inline">Test in Simulator</span>
                   </Link>
 
-                  {/* Status Badge & Resume AI Toggle */}
                   {activeConv.lead?.isOptedOut || activeConv.lead?.status === "OPTED_OUT" ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30">
-                      OPTED OUT / DNC
+                    <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                      <XCircle className="w-3 h-3 text-rose-400" />
+                      <span>OPTED OUT / DNC — AI BLOCKED</span>
                     </span>
                   ) : activeConv.isAiActive ? (
                     <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
@@ -391,7 +396,14 @@ export const ConversationsPage: React.FC = () => {
 
               {/* Action Composer: Strictly Human Takeover */}
               <div className="p-4 border-t border-slate-800 bg-slate-950/40 space-y-2">
-                {!activeConv.isAiActive && (
+                {activeConv.lead?.isOptedOut || activeConv.lead?.status === "OPTED_OUT" ? (
+                  <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>
+                      <strong>Lead Opted Out (DNC):</strong> Autonomous AI SDR is blocked. Automated outreach cannot be resumed for this contact.
+                    </span>
+                  </div>
+                ) : !activeConv.isAiActive ? (
                   <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-300">
                     <span className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5" />
@@ -406,7 +418,7 @@ export const ConversationsPage: React.FC = () => {
                       <span>Resume AI SDR</span>
                     </button>
                   </div>
-                )}
+                ) : null}
 
                 <form onSubmit={handleSendHumanMessage} className="space-y-2">
                   <div className="flex items-center justify-between text-[11px] text-slate-400">

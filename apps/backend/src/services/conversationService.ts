@@ -9,7 +9,7 @@ import { broadcastToOrganization } from "../lib/wsBroadcaster.js";
 
 export class ConversationService {
   static async getConversations(organizationId: string) {
-    return prisma.conversation.findMany({
+    const convs = await prisma.conversation.findMany({
       where: { organizationId },
       orderBy: { updatedAt: "desc" },
       include: {
@@ -17,16 +17,30 @@ export class ConversationService {
         messages: { orderBy: { createdAt: "desc" }, take: 1 }
       }
     });
+
+    return convs.map((c) => {
+      const isDnc = Boolean(c.lead?.isOptedOut || c.lead?.status === "OPTED_OUT");
+      return {
+        ...c,
+        isAiActive: isDnc ? false : c.isAiActive
+      };
+    });
   }
 
   static async getConversationWithMessages(organizationId: string, id: string) {
-    return prisma.conversation.findFirst({
+    const conv = await prisma.conversation.findFirst({
       where: { id, organizationId },
       include: {
         lead: true,
         messages: { orderBy: { createdAt: "asc" } }
       }
     });
+    if (!conv) return null;
+    const isDnc = Boolean(conv.lead?.isOptedOut || conv.lead?.status === "OPTED_OUT");
+    return {
+      ...conv,
+      isAiActive: isDnc ? false : conv.isAiActive
+    };
   }
 
   static async ingestLeadReply(
@@ -48,10 +62,10 @@ export class ConversationService {
   ) {
     logger.info(`Ingesting lead reply for lead ${leadId} via ${channel}: "${replyText}"`);
 
-    // Inbound reply dispatch: If forceLiveEmail is explicitly requested, route to RESEND.
+    // Inbound reply dispatch: If forceLiveEmail is explicitly requested or real inbound, route to RESEND.
     // Simulator runs with isSimulator: true (zero external network latency).
     const dispatchForceProvider: "ETHEREAL" | "RESEND" | undefined =
-      options?.forceLiveEmail ? "RESEND" : undefined;
+      (options?.forceLiveEmail || options?.isRealInbound) ? "RESEND" : undefined;
 
     // 1. Verify lead ownership under organization
     const targetLead = await prisma.lead.findFirst({
@@ -64,6 +78,10 @@ export class ConversationService {
     // Hard-block if lead is already opted out
     if (targetLead.isOptedOut || targetLead.status === "OPTED_OUT") {
       logger.warn(`Lead ${leadId} has already opted out. Suppressing all automated outreach.`);
+      await prisma.conversation.updateMany({
+        where: { leadId, organizationId },
+        data: { isAiActive: false }
+      });
       return { optedOut: true, message: "Lead has opted out of communications" };
     }
 
@@ -85,7 +103,13 @@ export class ConversationService {
           data: { status: "CANCELLED" }
         });
 
-        // 3. Find or create conversation for this lead to record the STOP message
+        // 3. Ensure ALL conversations for this lead are marked isAiActive: false
+        await tx.conversation.updateMany({
+          where: { leadId, organizationId },
+          data: { isAiActive: false }
+        });
+
+        // Find or create conversation for this lead to record the STOP message
         let conv = options?.conversationId
           ? await tx.conversation.findFirst({ where: { id: options.conversationId, organizationId } })
           : null;
@@ -97,11 +121,6 @@ export class ConversationService {
         if (!conv) {
           conv = await tx.conversation.create({
             data: { organizationId, leadId, channel, isAiActive: false }
-          });
-        } else {
-          await tx.conversation.updateMany({
-            where: { id: conv.id, organizationId },
-            data: { isAiActive: false }
           });
         }
 
@@ -220,14 +239,54 @@ export class ConversationService {
     });
 
     // If human took over (isAiActive == false), do not auto-respond
+    const isDnc = Boolean(targetLead.isOptedOut || targetLead.status === "OPTED_OUT");
+    logger.info(`[DIAGNOSTIC 4/14] check AI active/DNC/human takeover state (isDnc: ${isDnc}, isAiActive: ${conv.isAiActive})`);
+    if (isDnc) {
+      logger.warn(`[DIAGNOSTIC 4/14 - BLOCKED] DNC state active for lead ${leadId.substring(0, 8)}... Auto-reply suppressed.`);
+      return { optedOut: true, message: "Lead has opted out of communications" };
+    }
     if (!conv.isAiActive) {
+      logger.info(`[DIAGNOSTIC 4/14 - PAUSED] Human takeover active (isAiActive=false) for lead ${leadId.substring(0, 8)}... Auto-reply suppressed.`);
       return { inboundMsg, aiResponded: false, reason: "Human takeover active" };
     }
+
+    return await this.generateAndDispatchAiResponse(
+      organizationId,
+      conv,
+      targetLead,
+      replyText,
+      inboundMsg,
+      options
+    );
+  }
+
+  static async generateAndDispatchAiResponse(
+    organizationId: string,
+    conv: any,
+    targetLead: any,
+    replyText: string,
+    inboundMsg: any,
+    options?: {
+      subject?: string;
+      externalMessageId?: string;
+      isRealInbound?: boolean;
+      replyTo?: string;
+      inReplyTo?: string;
+      references?: string;
+      isSimulator?: boolean;
+      forceLiveEmail?: boolean;
+    }
+  ) {
+    const channel = conv.channel || "EMAIL";
+    const leadId = targetLead.id;
+    const isReal = Boolean(options?.isRealInbound) || Boolean(options?.forceLiveEmail) || inboundMsg?.status === "REAL_INBOUND";
+    const dispatchForceProvider: "ETHEREAL" | "RESEND" | undefined = isReal ? "RESEND" : undefined;
+    logger.info(`[DIAGNOSTIC 5/14] AI response generation function called (leadId: ${leadId.substring(0, 8)}..., convId: ${conv.id}, isRealInbound: ${isReal}, dispatchForceProvider: ${dispatchForceProvider})`);
 
     // Fetch full context to generate AI response
     const org = await prisma.organization.findUnique({ where: { id: organizationId } });
     const sdr = await prisma.sdrProfile.findFirst({ where: { organizationId } });
-    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    const lead = targetLead;
     const historyMsgs = await prisma.message.findMany({
       where: { conversationId: conv.id },
       orderBy: { createdAt: "asc" }
@@ -685,7 +744,36 @@ export class ConversationService {
     // =========================================================================
     // 4. AI DIALOGUE INFERENCE & CANONICAL ACTION DECISION
     // =========================================================================
-    const aiCompletion = await aiService.respondToMessage(sdrContext, leadContext, turns, replyText);
+    let aiCompletion: any;
+    try {
+      aiCompletion = await aiService.respondToMessage(sdrContext, leadContext, turns, replyText);
+      logger.info(`[DIAGNOSTIC 9/14] generated response returned (intent: ${aiCompletion?.action?.intent}, action: ${aiCompletion?.action?.action}, responseLength: ${aiCompletion?.content?.length || 0})`);
+    } catch (err: any) {
+      logger.error(`[DIAGNOSTIC 9/14 - FAILED] AI response generation failed: ${err.message}`);
+      logger.error(`[ConversationService] Inbound email AI response generation failed: ${err.message}`, {
+        organizationId,
+        leadId,
+        conversationId: conv.id
+      });
+      await prisma.activityLog.create({
+        data: {
+          organizationId,
+          category: "AI",
+          action: "AI_GENERATION_FAILED",
+          detailsJson: JSON.stringify({
+            conversationId: conv.id,
+            leadId,
+            error: err.message
+          })
+        }
+      });
+      return {
+        inboundMsg,
+        aiResponded: false,
+        error: err.message,
+        reason: `AI generation failed: ${err.message}`
+      };
+    }
 
     // Explicit Human Escalation / Enterprise Handoff Guard
     const isExplicitHumanRequest =
@@ -871,6 +959,7 @@ export class ConversationService {
         toolCallArgs: aiCompletion.toolDecision ? JSON.stringify(aiCompletion.toolDecision.arguments) : null
       }
     });
+    logger.info(`[DIAGNOSTIC 13/14] outbound message saved to DB (msgId: ${outboundMsg.id}, role: ${outboundMsg.senderRole}, status: ${outboundMsg.status})`);
 
     await prisma.conversation.update({
       where: { id: conv.id },
@@ -881,8 +970,10 @@ export class ConversationService {
       type: "MESSAGE_CREATED",
       payload: { conversationId: conv.id, message: outboundMsg }
     });
+    logger.info(`[DIAGNOSTIC 14/14] WebSocket broadcast occurs (event: MESSAGE_CREATED, msgId: ${outboundMsg.id})`);
 
     // Dispatch via channel abstraction to external lead
+    logger.info(`[DIAGNOSTIC 10/14] outbound email dispatch starts (channel: ${channel}, leadId: ${leadId.substring(0, 8)}..., forceProvider: ${dispatchForceProvider})`);
     const dispatchRes: any = await ChannelManager.dispatch(channel, {
       to: targetLead.email || targetLead.phone || "",
       content: aiCompletion.content,
@@ -1062,9 +1153,37 @@ export class ConversationService {
     });
     if (!conv) throw new Error("Conversation not found");
 
+    const targetLead = conv.lead;
+    if (!targetLead) throw new Error("Lead not found for conversation");
+
+    // Guard: DNC / STOP protection. If lead opted out, do NOT allow AI resumption or automated outreach
+    if (targetLead.isOptedOut || targetLead.status === "OPTED_OUT") {
+      logger.warn(`[ConversationService] Cannot resume AI for opted-out lead ${targetLead.id} (DNC enforced)`);
+      await prisma.conversation.updateMany({
+        where: { id: conversationId, organizationId },
+        data: { isAiActive: false }
+      });
+      broadcastToOrganization(organizationId, {
+        type: "CONVERSATION_UPDATED",
+        payload: { conversationId, leadId: conv.leadId, isAiActive: false }
+      });
+      return {
+        conversation: { ...conv, isAiActive: false },
+        optedOut: true,
+        aiTriggered: false,
+        error: "Cannot resume AI SDR: Lead is on the Do Not Contact (DNC) list. All automated outbound communication is hard-blocked.",
+        reason: "Lead has opted out of communications"
+      };
+    }
+
     const updated = await prisma.conversation.update({
       where: { id: conversationId },
-      data: { isAiActive: true }
+      data: { isAiActive: true, isEscalated: false, updatedAt: new Date() }
+    });
+
+    broadcastToOrganization(organizationId, {
+      type: "CONVERSATION_UPDATED",
+      payload: { conversationId, leadId: conv.leadId, isAiActive: true }
     });
 
     await prisma.activityLog.create({
@@ -1075,11 +1194,45 @@ export class ConversationService {
         detailsJson: JSON.stringify({
           conversationId,
           leadId: conv.leadId,
-          leadName: conv.lead ? `${conv.lead.firstName} ${conv.lead.lastName}`.trim() : "Unknown"
+          leadName: `${targetLead.firstName} ${targetLead.lastName}`.trim() || "Unknown"
         })
       }
     });
 
-    return updated;
+    // Check if the latest message in this thread is an unanswered INBOUND lead message
+    const latestMsg = await prisma.message.findFirst({
+      where: { conversationId },
+      orderBy: { createdAt: "desc" }
+    });
+
+    let aiResult: any = null;
+    if (latestMsg && (latestMsg.direction === "INBOUND" || latestMsg.senderRole === "LEAD")) {
+      logger.info(
+        `[ConversationService] AI resumed on active conversation ${conversationId}. Responding to pending lead message ${latestMsg.id}: "${latestMsg.content.substring(0, 60)}"`
+      );
+      const isReal = Boolean(
+        latestMsg.status === "REAL_INBOUND" ||
+        (latestMsg.toolCallArgs && latestMsg.toolCallArgs.includes("REAL_INBOUND"))
+      );
+      aiResult = await this.generateAndDispatchAiResponse(
+        organizationId,
+        updated,
+        targetLead,
+        latestMsg.content,
+        latestMsg,
+        {
+          subject: conv.subject || undefined,
+          isRealInbound: isReal,
+          forceLiveEmail: isReal,
+          isSimulator: !isReal
+        }
+      );
+    }
+
+    return {
+      conversation: updated,
+      aiTriggered: Boolean(aiResult && (aiResult.outboundMsg || aiResult.action)),
+      responseResult: aiResult
+    };
   }
 }

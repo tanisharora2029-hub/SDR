@@ -114,11 +114,26 @@ conversationRouter.post("/:id/human-message", async (req, res, next) => {
 // Resume autonomous AI SDR handling
 conversationRouter.post("/:id/resume-ai", async (req, res, next) => {
   try {
-    const conversation = await ConversationService.resumeAiHandling(
+    const result: any = await ConversationService.resumeAiHandling(
       req.organizationId!,
       req.params.id
     );
-    res.json({ success: true, conversation });
+    if (result?.optedOut) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || "Cannot resume AI SDR: Lead is on the Do Not Contact (DNC) list. All automated outbound communication is hard-blocked.",
+        conversation: result.conversation,
+        optedOut: true,
+        aiTriggered: false
+      });
+    }
+    const conversation = result?.conversation || result;
+    res.json({
+      success: true,
+      conversation,
+      aiTriggered: Boolean(result?.aiTriggered),
+      responseResult: result?.responseResult || null
+    });
   } catch (err) {
     next(err);
   }

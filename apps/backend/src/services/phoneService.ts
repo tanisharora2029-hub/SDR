@@ -76,6 +76,10 @@ export class PhoneService {
         where: { leadId: lead.id, organizationId, status: "SCHEDULED" },
         data: { status: "CANCELLED" }
       });
+      await prisma.conversation.updateMany({
+        where: { leadId: lead.id, organizationId },
+        data: { isAiActive: false }
+      });
       const dncSpeech = "Understood. I have updated our records and added you to our do not call list. Have a great day.";
       transcript.push({ speaker: "sdr", text: dncSpeech, timestamp: Date.now() });
       await prisma.callSession.update({

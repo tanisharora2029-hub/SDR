@@ -23,7 +23,7 @@ export class LeadService {
   }
 
   static async getLeadById(organizationId: string, id: string) {
-    return prisma.lead.findFirst({
+    const lead = await prisma.lead.findFirst({
       where: { id, organizationId },
       include: {
         conversations: {
@@ -34,6 +34,16 @@ export class LeadService {
         followUpTasks: { orderBy: { scheduledFor: "asc" } }
       }
     });
+    if (!lead) return null;
+
+    const isDnc = Boolean(lead.isOptedOut || lead.status === "OPTED_OUT");
+    if (isDnc && lead.conversations) {
+      lead.conversations = lead.conversations.map((c) => ({
+        ...c,
+        isAiActive: false
+      }));
+    }
+    return lead;
   }
 
   static async createLead(organizationId: string, data: any) {

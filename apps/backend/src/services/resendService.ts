@@ -170,6 +170,8 @@ export class ResendService {
     }
 
     try {
+      const safeTo = options.to?.includes("@") ? options.to.split("@")[1] : "recipient";
+      logger.info(`[DIAGNOSTIC 11/14] Resend API request starts (from: ${fromAddress}, toDomain: @${safeTo}, subject: "${options.subject?.substring(0, 30)}")`);
       logger.info(`[ResendService] Sending live email to ${options.to} via Resend API...`);
       const response = await fetch(this.API_URL, {
         method: "POST",
@@ -183,6 +185,7 @@ export class ResendService {
 
       if (response.ok) {
         const data: any = await response.json();
+        logger.info(`[DIAGNOSTIC 12/14] Resend API request SUCCEEDED (status: ${response.status}, messageId: ${data.id})`);
         logger.info(`[ResendService] Live email successfully dispatched via Resend. Message ID: ${data.id}`);
         return {
           success: true,
@@ -194,6 +197,7 @@ export class ResendService {
 
       const errJson: any = await response.json().catch(() => ({}));
       const errorMsg = errJson.message || response.statusText || "Resend API error";
+      logger.error(`[DIAGNOSTIC 12/14] Resend API request FAILED (status: ${response.status}, error: ${errorMsg})`);
       logger.warn(`[ResendService] Resend API error (${response.status}): ${errorMsg}`);
       return {
         success: false,
@@ -203,6 +207,7 @@ export class ResendService {
         statusCode: response.status
       };
     } catch (err: any) {
+      logger.error(`[DIAGNOSTIC 12/14] Resend API request FAILED with exception (status: 500, error: ${err.message})`);
       logger.error(`[ResendService] Network error sending via Resend: ${err.message}`);
       return {
         success: false,

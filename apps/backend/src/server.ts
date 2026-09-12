@@ -2,6 +2,9 @@ import express from "express";
 import http from "http";
 import cors from "cors";
 import dotenv from "dotenv";
+
+dotenv.config();
+
 import { WebSocketServer, WebSocket } from "ws";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authLimiter, apiLimiter } from "./middleware/rateLimiter.js";
@@ -19,8 +22,6 @@ import { appointmentRouter } from "./routes/appointment.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);

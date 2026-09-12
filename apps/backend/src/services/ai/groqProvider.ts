@@ -9,55 +9,127 @@ export class GroqProvider implements AiProvider {
 
   constructor() {
     this.apiKey = process.env.GROQ_API_KEY || "";
-    this.model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    this.model = this.resolveModel();
+  }
+
+  public getApiKey(): string {
+    return (process.env.GROQ_API_KEY || this.apiKey || "").trim();
+  }
+
+  public resolveModel(): string {
+    const envModel = (process.env.GROQ_MODEL || this.model || "").trim();
+    const decommissioned = [
+      "llama-3.3-70b-versatile",
+      "llama-3.1-70b-versatile",
+      "llama-3.1-8b-instant",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "qwen/qwen3-32b",
+      "meta-llama/llama-4-maverick-17b-128e-instruct"
+    ];
+    if (decommissioned.includes(envModel)) {
+      logger.warn(
+        `[GroqProvider] Configured model '${envModel}' is decommissioned by Groq (returns 404). Automatically migrating to 'openai/gpt-oss-120b'.`
+      );
+      return "openai/gpt-oss-120b";
+    }
+    return envModel || "openai/gpt-oss-120b";
+  }
+
+  public getRequestUrl(): string {
+    const rawBase = process.env.GROQ_BASE_URL?.trim();
+    if (!rawBase) {
+      return "https://api.groq.com/openai/v1/chat/completions";
+    }
+    const trimmed = rawBase.replace(/\/+$/, "");
+    if (trimmed.endsWith("/chat/completions")) {
+      return trimmed;
+    }
+    return `${trimmed}/chat/completions`;
   }
 
   private async callGroq(
     systemPrompt: string,
     userPrompt: string,
     jsonMode = false
-  ): Promise<{ text: string; latencyMs: number }> {
-    if (!this.apiKey) {
+  ): Promise<{ text: string; latencyMs: number; modelUsed: string }> {
+    const key = this.getApiKey();
+    if (!key) {
       throw new Error("GROQ_API_KEY is not configured in environment variables.");
     }
 
     const startTime = Date.now();
-    const url = "https://api.groq.com/openai/v1/chat/completions";
+    const url = this.getRequestUrl();
+    const targetModel = this.resolveModel();
 
-    const bodyPayload: any = {
-      model: this.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.1,
-      max_tokens: 1024
-    };
-
-    if (jsonMode) {
-      bodyPayload.response_format = { type: "json_object" };
+    // Primary target model, followed by official Groq fallbacks
+    const candidateModels = [targetModel];
+    if (!candidateModels.includes("openai/gpt-oss-120b")) {
+      candidateModels.push("openai/gpt-oss-120b");
+    }
+    if (!candidateModels.includes("openai/gpt-oss-20b")) {
+      candidateModels.push("openai/gpt-oss-20b");
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.apiKey}`
-      },
-      body: JSON.stringify(bodyPayload),
-      signal: AbortSignal.timeout(12000)
-    });
+    let lastError: Error | null = null;
+    for (const modelToTry of candidateModels) {
+      try {
+        const bodyPayload: any = {
+          model: modelToTry,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+          max_tokens: 1024
+        };
 
-    const latencyMs = Date.now() - startTime;
+        if (jsonMode) {
+          bodyPayload.response_format = { type: "json_object" };
+        }
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Groq API error [${res.status}]: ${errText}`);
+        logger.info(`[DIAGNOSTIC 7/14 - Groq] LLM HTTP request dispatched (model: ${modelToTry}, jsonMode: ${Boolean(jsonMode)})`);
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`
+          },
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(12000)
+        });
+
+        const latencyMs = Date.now() - startTime;
+
+        if (!res.ok) {
+          const errText = await res.text();
+          const errSnippet = errText.length > 250 ? `${errText.substring(0, 250)}...` : errText;
+          logger.error(`[DIAGNOSTIC 8/14 - Groq] LLM request FAILED (status: ${res.status}, model: ${modelToTry}, err: ${errSnippet})`);
+          logger.error(`[GroqProvider] Groq API request failed [HTTP ${res.status}] for model '${modelToTry}': ${errSnippet}`);
+
+          if (res.status === 404 && candidateModels.indexOf(modelToTry) < candidateModels.length - 1) {
+            logger.warn(`[GroqProvider] Model '${modelToTry}' returned 404 Not Found. Attempting fallback model...`);
+            continue;
+          }
+
+          throw new Error(`Groq API error [${res.status}]: ${errText}`);
+        }
+
+        const data: any = await res.json();
+        const text = data.choices?.[0]?.message?.content || "";
+        logger.info(`[DIAGNOSTIC 8/14 - Groq] LLM request SUCCEEDED (status: 200, model: ${modelToTry}, latencyMs: ${latencyMs})`);
+        return { text, latencyMs, modelUsed: modelToTry };
+      } catch (err: any) {
+        lastError = err;
+        logger.error(`[DIAGNOSTIC 8/14 - Groq] LLM request EXCEPTION (model: ${modelToTry}, err: ${err.message})`);
+        if (err.message?.includes("[404]") && candidateModels.indexOf(modelToTry) < candidateModels.length - 1) {
+          continue;
+        }
+        throw err;
+      }
     }
 
-    const data: any = await res.json();
-    const text = data.choices?.[0]?.message?.content || "";
-    return { text, latencyMs };
+    throw lastError || new Error("Groq API call failed on all candidate models.");
   }
 
   public sanitizeReply(raw: string): string {
@@ -195,7 +267,7 @@ Requirements:
 3. Provide the full professional email text in "reply".
 4. Set tool_arguments: { "lead_id": "${lead.leadId}", "subject": "<compelling subject>", "body": "<email body>" }.`;
 
-    const { text, latencyMs } = await this.callGroq(systemPrompt, userPrompt);
+    const { text, latencyMs, modelUsed } = await this.callGroq(systemPrompt, userPrompt);
     let { action, toolDecision } = this.parseAiAction(text, lead.leadId);
 
     if (action.intent !== "outreach") action.intent = "outreach";
@@ -221,7 +293,7 @@ Requirements:
       action,
       toolDecision,
       latencyMs,
-      provider: `groq (${this.model})`
+      provider: `groq (${modelUsed})`
     };
   }
 
@@ -234,7 +306,7 @@ Requirements:
     const systemPrompt = PromptBuilder.buildSystemPrompt(sdr, lead);
     const userPrompt = PromptBuilder.buildConversationPrompt(history, latestMessage);
 
-    const { text, latencyMs } = await this.callGroq(systemPrompt, userPrompt);
+    const { text, latencyMs, modelUsed } = await this.callGroq(systemPrompt, userPrompt);
     const { action, toolDecision } = this.parseAiAction(text, lead.leadId);
 
     return {
@@ -242,7 +314,7 @@ Requirements:
       action,
       toolDecision,
       latencyMs,
-      provider: `groq (${this.model})`
+      provider: `groq (${modelUsed})`
     };
   }
 

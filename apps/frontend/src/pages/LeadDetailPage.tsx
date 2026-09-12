@@ -68,6 +68,10 @@ export const LeadDetailPage: React.FC = () => {
   };
 
   const handleResumeAi = async () => {
+    if (lead?.isOptedOut || lead?.status === "OPTED_OUT") {
+      alert("Cannot resume AI SDR: This lead is opted out (DNC). All automated outreach is hard-blocked.");
+      return;
+    }
     const conversation = lead?.conversations?.[0];
     if (!conversation) return;
     setActionLoading(true);
@@ -127,7 +131,8 @@ export const LeadDetailPage: React.FC = () => {
   const bant = lead.bantScorecard ? JSON.parse(lead.bantScorecard) : null;
   const conversation = lead.conversations?.[0];
   const messages = conversation?.messages || [];
-  const isAiActive = conversation ? conversation.isAiActive !== false : true;
+  const isDnc = Boolean(lead.isOptedOut || lead.status === "OPTED_OUT");
+  const isAiActive = isDnc ? false : (conversation ? conversation.isAiActive !== false : true);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto min-w-0">
@@ -338,7 +343,12 @@ export const LeadDetailPage: React.FC = () => {
                 <span>Omnichannel Conversation Thread</span>
               </span>
               <div className="flex items-center gap-2">
-                {!isAiActive ? (
+                {isDnc ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                    <XCircle className="w-3 h-3 text-rose-400" />
+                    <span>AI Blocked (DNC)</span>
+                  </span>
+                ) : !isAiActive ? (
                   <button
                     onClick={handleResumeAi}
                     disabled={actionLoading}
@@ -443,6 +453,14 @@ export const LeadDetailPage: React.FC = () => {
 
             {/* Operator Human Takeover Reply Box */}
             <div className="mt-4 pt-3 border-t border-slate-800">
+              {isDnc && (
+                <div className="mb-2.5 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>
+                    <strong>Do Not Contact (DNC) Active:</strong> Autonomous AI SDR is blocked from generating replies. Automated cadences are cancelled.
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-amber-400" />

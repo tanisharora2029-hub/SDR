@@ -56,6 +56,15 @@ class AiService {
     return this.primaryProvider;
   }
 
+  private shouldAllowMockFallback(): boolean {
+    if (process.env.NODE_ENV === "production") return false;
+    if (process.env.AI_PROVIDER === "mock") return true;
+    if (process.env.AI_PROVIDER === "groq") return false;
+    const hasGroqKey = Boolean(process.env.GROQ_API_KEY?.trim());
+    const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+    return !hasGroqKey && !hasGeminiKey;
+  }
+
   /**
    * Dedicated method for voice telephony dialogue (defaults to ONLINE cloud model)
    * Integrates Zero-Shot Tone Mirroring and Competitor RAG with zero hallucination.
@@ -95,10 +104,13 @@ class AiService {
           logger.warn(`[AI_VOICE_FALLBACK] Groq voice fallback also failed: ${groqErr.message}`);
         }
       }
+      if (!this.shouldAllowMockFallback()) {
+        throw new Error(`AI voice generation failed: ${err.message}`);
+      }
       const mockRes = await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
       return {
         ...mockRes,
-        provider: `mock (fallback: ${err.message})`
+        provider: "mock"
       };
     }
   }
@@ -122,10 +134,13 @@ class AiService {
           logger.warn(`[AI_OUTREACH_FALLBACK] Groq outreach fallback also failed: ${groqErr.message}`);
         }
       }
+      if (!this.shouldAllowMockFallback()) {
+        throw new Error(`AI outreach generation failed: ${err.message}`);
+      }
       const mockRes = await this.fallbackProvider.generateOutreach(sdr, lead);
       return {
         ...mockRes,
-        provider: `mock (fallback: ${err.message})`
+        provider: "mock"
       };
     }
   }
@@ -136,6 +151,10 @@ class AiService {
     history: ConversationTurn[],
     latestMessage: string
   ): Promise<AiCompletionResponse> {
+    const decision = CostRouter.routeTask("EMAIL_DRAFTING");
+    const provider = this.getProviderForDecision(decision);
+    logger.info(`[DIAGNOSTIC 6/14] provider/router selected (task: EMAIL_DRAFTING, provider: ${decision.selectedProvider}, model: ${decision.modelName}, reason: ${decision.reason})`);
+
     try {
       // 1. Zero-Shot Tone Mirroring for Email / Text
       const tone = ToneMirroringService.analyzeTone(latestMessage, "email");
@@ -153,9 +172,6 @@ class AiService {
         customInstructions: `${sdr.customInstructions || ""}\n\n${tone.promptDirective}${compDirective}`
       };
 
-      const decision = CostRouter.routeTask("EMAIL_DRAFTING");
-      const provider = this.getProviderForDecision(decision);
-
       logger.info("[AI_DIAGNOSTICS] Inbound reply processing", {
         organizationId: sdr.organizationId,
         leadId: lead.leadId,
@@ -166,6 +182,7 @@ class AiService {
         latestMessageSnippet: latestMessage.substring(0, 100)
       });
 
+      logger.info(`[DIAGNOSTIC 7/14] actual LLM request starts (provider: ${decision.selectedProvider}, model: ${decision.modelName})`);
       const response = await provider.respondToMessage(enhancedSdr, lead, history, latestMessage);
 
       logger.info("[AI_DIAGNOSTICS] Response generated", {
@@ -181,7 +198,7 @@ class AiService {
     } catch (err: any) {
       logger.warn(`[AI_CHAT_FALLBACK] Primary AI provider failed: ${err.message}`);
       const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
-      if (hasGroqKey) {
+      if (hasGroqKey && provider !== this.groqProvider) {
         try {
           logger.info("[AI_CHAT_FALLBACK] Attempting Groq provider for chat...");
           return await this.groqProvider.respondToMessage(sdr, lead, history, latestMessage);
@@ -189,10 +206,13 @@ class AiService {
           logger.warn(`[AI_CHAT_FALLBACK] Groq chat fallback also failed: ${groqErr.message}`);
         }
       }
+      if (!this.shouldAllowMockFallback()) {
+        throw new Error(`AI response generation failed: ${err.message}`);
+      }
       const mockRes = await this.fallbackProvider.respondToMessage(sdr, lead, history, latestMessage);
       return {
         ...mockRes,
-        provider: `mock (fallback: ${err.message})`
+        provider: "mock"
       };
     }
   }

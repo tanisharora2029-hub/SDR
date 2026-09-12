@@ -193,7 +193,9 @@ export class WebhookService {
     }
 
     const { senderEmail, subject, bodyText, externalMessageId, replyTo } = inbound;
-    logger.info(`[WebhookService] Processing inbound email from: ${senderEmail} (Subject: "${subject}", ID: ${externalMessageId})`);
+    const safeDomain = senderEmail?.includes("@") ? senderEmail.split("@")[1] : "unknown";
+    logger.info(`[DIAGNOSTIC 1/14] Webhook receives email (domain: ${safeDomain}, msgId: ${externalMessageId || "none"}, subject: "${subject?.substring(0, 30)}")`);
+    logger.info(`[WebhookService] Processing inbound email from domain: ${safeDomain} (Subject: "${subject}", ID: ${externalMessageId})`);
 
     // 1. Idempotency Check: Prevent duplicate processing of the same external email event
     const existingLog = await prisma.activityLog.findFirst({
@@ -305,6 +307,7 @@ export class WebhookService {
     }
 
     const organizationId = matchedLead.organizationId;
+    logger.info(`[DIAGNOSTIC 2/14] Webhook identifies lead/conversation (leadId: ${matchedLead.id.substring(0, 8)}..., conversationId: ${matchedConversationId || "new"})`);
     logger.info(`[WebhookService] Matched inbound email to Lead: ${matchedLead.firstName} ${matchedLead.lastName} (${matchedLead.id}) in Org: ${organizationId}`);
 
     // Record idempotency token in ActivityLog
@@ -337,19 +340,22 @@ export class WebhookService {
         isRealInbound: true,
         replyTo: replyTo || senderEmail,
         inReplyTo: inbound.inReplyTo || undefined,
-        references: inbound.references || inbound.inReplyTo || undefined
+        references: inbound.references || inbound.inReplyTo || undefined,
+        forceLiveEmail: true
       }
     );
+
+    logger.info(`[DIAGNOSTIC 3/14] ingestLeadReply completes (leadId: ${matchedLead.id.substring(0, 8)}..., action: ${(result as any).action || ((result as any).optedOut ? "LEAD_OPTED_OUT" : "PROCESSED")}, aiResponded: ${Boolean((result as any).aiResponded || (result as any).outboundMsg)})`);
 
     return {
       success: true,
       duplicate: false,
       matched: true,
       leadId: matchedLead.id,
-      action: result.optedOut ? "LEAD_OPTED_OUT" : (result.aiResponded === false ? "HUMAN_TAKEOVER_ACTIVE" : "AI_RESPONDED"),
-      message: result.optedOut
+      action: (result as any).optedOut ? "LEAD_OPTED_OUT" : ((result as any).aiResponded === false ? "HUMAN_TAKEOVER_ACTIVE" : "AI_RESPONDED"),
+      message: (result as any).optedOut
         ? "Lead processed STOP / unsubscribe request successfully."
-        : (result.aiResponded === false
+        : ((result as any).aiResponded === false
             ? "Lead reply stored in Omnichannel Inbox. Human takeover active; AI auto-reply suppressed."
             : "Inbound email processed and autonomous AI SDR response dispatched."),
       conversationResult: result
