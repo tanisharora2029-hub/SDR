@@ -39,9 +39,19 @@ opportunityRouter.get("/:id", authenticate, async (req: Request, res: Response) 
 opportunityRouter.post("/autopilot", authenticate, async (req: Request, res: Response) => {
   try {
     const opportunities = await OpportunityService.runAutopilot(req.organizationId!);
+    const count = Array.isArray(opportunities) ? opportunities.length : 0;
+    const discoveryStatus = (opportunities as any).discoveryStatus || (count > 0 ? "SUCCESS" : "NO_RESULTS");
+    const message =
+      (opportunities as any).message ||
+      (count > 0
+        ? `Autopilot discovery completed. Found ${count} opportunities.`
+        : "No real businesses discovered matching MachineMind ICP.");
+
     res.json({
       success: true,
-      message: `Autopilot discovery completed. Found ${opportunities.length} opportunities.`,
+      count,
+      discoveryStatus,
+      message,
       opportunities
     });
   } catch (err: any) {

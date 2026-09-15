@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
 import { MockAiProvider } from "./mockProvider.js";
 import { OllamaProvider } from "./ollamaProvider.js";
 import { OnlineGeminiProvider } from "./onlineGeminiProvider.js";
@@ -47,6 +47,9 @@ class AiService {
   }
 
   private getProviderForDecision(decision: RoutingDecision): AiProvider {
+    if (decision.modelName === "mock" || process.env.AI_PROVIDER === "mock") {
+      return this.fallbackProvider;
+    }
     if (decision.selectedProvider === "groq-online") {
       return this.groqProvider;
     }
@@ -236,6 +239,30 @@ class AiService {
       return await provider.summarizeCall(transcript, lead);
     } catch (err: any) {
       return await this.fallbackProvider.summarizeCall(transcript, lead);
+    }
+  }
+
+  async analyzeOpportunityContent(params: {
+    company: string;
+    domain: string;
+    pages: Array<{ url: string; text: string; title?: string }>;
+  }): Promise<AiOpportunityAnalysisResult> {
+    const decision = CostRouter.routeTask("STRUCTURED_EXTRACTION");
+    const provider = this.getProviderForDecision(decision);
+
+    try {
+      return await provider.analyzeOpportunityContent(params);
+    } catch (err: any) {
+      logger.warn(`[AI_OPPORTUNITY_FALLBACK] Primary AI provider failed: ${err.message}`);
+      const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
+      if (hasGroqKey && provider !== this.groqProvider) {
+        try {
+          return await this.groqProvider.analyzeOpportunityContent(params);
+        } catch (groqErr: any) {
+          logger.warn(`[AI_OPPORTUNITY_FALLBACK] Groq opportunity fallback failed: ${groqErr.message}`);
+        }
+      }
+      return await this.fallbackProvider.analyzeOpportunityContent(params);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
 import { SdrToolDecision, AiAction } from "@ai-sdr/shared";
 
 export class MockAiProvider implements AiProvider {
@@ -546,6 +546,151 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       summary: `Call conducted with ${leadName} (${company}). Discussed operational bottlenecks and integration requirements across ${turns} conversational turns. Prospect expressed interest in product capabilities.`,
       qualificationScore: Math.min(85, 50 + turns * 5),
       recommendedAction: "Follow up via email with product architecture overview and calendar confirmation."
+    };
+  }
+
+  async analyzeOpportunityContent(params: {
+    company: string;
+    domain: string;
+    pages: Array<{ url: string; text: string; title?: string }>;
+  }): Promise<AiOpportunityAnalysisResult> {
+    const { company, domain, pages } = params;
+
+    if (!pages || pages.length === 0 || pages.every(p => !p.text || p.text.trim().length < 40)) {
+      return {
+        industry: "B2B Operations",
+        facts: [],
+        signals: [],
+        inferences: [],
+        unknowns: ["No verifiable web content found"],
+        potentialProblem: "Insufficient evidence of operational bottleneck.",
+        whyItMatters: "Public sources do not show distinct operational friction.",
+        automationFit: "NONE",
+        recommendedSolution: "N/A",
+        workflow: [],
+        decisionMaker: null,
+        confidence: 0
+      };
+    }
+
+    const facts: any[] = [];
+    const inferences: any[] = [];
+    const signals: string[] = [];
+    const unknowns: string[] = ["Internal software versions not disclosed", "Private headcount unknown"];
+    let potentialProblem = "Manual operational intake and verification workflows create scaling bottlenecks.";
+    let whyItMatters = "Manual clerical overhead limits transaction throughput.";
+    let recommendedSolution = "M-EXTRACT + M-FLOW";
+    let industry = "B2B Operations";
+    let dm: any = null;
+
+    for (const page of pages) {
+      const lower = page.text.toLowerCase();
+
+      // Hiring signal
+      const hiringMatch = page.text.match(/(?:hiring|openings?|looking for|job description)\s*[:\w\s,-]{0,60}?(accounts payable|invoice|data entry|claims processor|operations coordinator|billing)/i);
+      if (hiringMatch && facts.length < 3) {
+        facts.push({
+          observedFact: `Careers page indicates active opening for: "${hiringMatch[0].trim()}".`,
+          sourceUrl: page.url,
+          category: "HIRING",
+          confidenceScore: 90
+        });
+        inferences.push({
+          aiInference: `Active hiring for ${hiringMatch[1]} indicates back-office document volume is growing and handled manually.`,
+          basedOnFact: `Careers page indicates active opening for: "${hiringMatch[0].trim()}".`,
+          confidenceScore: 85
+        });
+        signals.push("Active operational hiring");
+      }
+
+      // Workflow delay signal
+      const delayMatch = page.text.match(/(?:please allow|turnaround|processing time)\s*[:\w\s,-]{0,40}?(\d+[\s-]*(?:hours?|days?|business days?))/i);
+      if (delayMatch && facts.length < 4) {
+        facts.push({
+          observedFact: `Public workflow documentation states: "${delayMatch[0].trim()}".`,
+          sourceUrl: page.url,
+          category: "PUBLIC_WORKFLOW",
+          confidenceScore: 88
+        });
+        inferences.push({
+          aiInference: "Stated processing window suggests multi-step manual intake verification before case progression.",
+          basedOnFact: `Public workflow documentation states: "${delayMatch[0].trim()}".`,
+          confidenceScore: 82
+        });
+        signals.push("Published processing turnaround window");
+      }
+
+      // Tech mention
+      const techMatch = page.text.match(/(?:quickbooks|netsuite|sap|salesforce|spreadsheets?|manual reconciliation)/i);
+      if (techMatch && facts.length < 5) {
+        facts.push({
+          observedFact: `Operational documentation references: "${techMatch[0]}".`,
+          sourceUrl: page.url,
+          category: "TECH_SIGNAL",
+          confidenceScore: 80
+        });
+        signals.push(`Uses ${techMatch[0]}`);
+      }
+
+      // Decision Maker (Leadership)
+      if (!dm) {
+        const dmMatch = page.text.match(/(?:(?:coo|chief operating officer|head of operations|vp of operations|director of operations)\s*[-:,|]?\s*([A-Z][a-z]+ [A-Z][a-z]+)|([A-Z][a-z]+ [A-Z][a-z]+)\s*[-:,|]?\s*(?:coo|chief operating officer|head of operations|vp of operations|director of operations))/i);
+        if (dmMatch) {
+          const name = (dmMatch[1] || dmMatch[2]).trim();
+          dm = {
+            name,
+            title: "Head of Operations",
+            sourceUrl: page.url
+          };
+        }
+      }
+
+      if (lower.includes("logistics") || lower.includes("freight")) {
+        industry = "Logistics & Freight";
+        recommendedSolution = "M-EXTRACT + M-FLOW";
+      } else if (lower.includes("health") || lower.includes("medical") || lower.includes("claims")) {
+        industry = "Healthcare Operations";
+        recommendedSolution = "M-EXTRACT + M-COPILOT";
+      } else if (lower.includes("lending") || lower.includes("loan") || lower.includes("fintech")) {
+        industry = "Fintech & Lending";
+        recommendedSolution = "M-EXTRACT + M-FLOW";
+      }
+    }
+
+    if (facts.length === 0) {
+      // If no explicit hiring or workflow keywords matched, but page has general text
+      facts.push({
+        observedFact: `Website documentation for ${company} outlines public service workflows at ${pages[0].url}.`,
+        sourceUrl: pages[0].url,
+        category: "DOCUMENTATION",
+        confidenceScore: 75
+      });
+      inferences.push({
+        aiInference: "Routine client interactions appear to rely on standard email and portal submissions.",
+        basedOnFact: `Website documentation for ${company} outlines public service workflows at ${pages[0].url}.`,
+        confidenceScore: 70
+      });
+    }
+
+    return {
+      industry,
+      facts,
+      signals: signals.length > 0 ? signals : ["Standard operational intake"],
+      inferences,
+      unknowns,
+      potentialProblem,
+      whyItMatters,
+      automationFit: "GOOD",
+      recommendedSolution,
+      workflow: [
+        "1. Ingestion: Automated webhook or email intake",
+        "2. Extraction: Document parsing and field normalization",
+        "3. Verification: Cross-system ERP/CRM validation",
+        "4. Execution: Automated ledger or ticketing update",
+        "5. Human escalation on exception"
+      ],
+      decisionMaker: dm,
+      confidence: Math.min(92, 70 + facts.length * 6)
     };
   }
 }

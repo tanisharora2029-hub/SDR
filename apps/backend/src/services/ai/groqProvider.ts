@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
 import { PromptBuilder } from "./promptBuilder.js";
 import { AiAction, AiActionSchema, SdrToolDecision, SdrToolName } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
@@ -367,6 +367,109 @@ Output JSON:
       summary: `Call completed with ${lead.firstName}. Prospect engaged in discovery conversation.`,
       qualificationScore: 70,
       recommendedAction: "Follow up via email with product documentation and calendar invitation."
+    };
+  }
+
+  async analyzeOpportunityContent(params: {
+    company: string;
+    domain: string;
+    pages: Array<{ url: string; text: string; title?: string }>;
+  }): Promise<AiOpportunityAnalysisResult> {
+    const { company, domain, pages } = params;
+
+    const systemPrompt = `You are an elite evidence-first operational auditor for MachineMind automation systems.
+Your task is to analyze real crawled website content for a company and identify evidence-backed operational bottlenecks.
+
+CRITICAL ANTI-HALLUCINATION RULES:
+1. FACT: Must be verbatim or directly observed from the provided text. You MUST include the exact sourceUrl where it was found.
+2. INFERENCE: A reasonable deduction strictly grounded in one of the observed facts.
+3. UNKNOWN: Explicitly declare what is NOT confirmed by the public text.
+4. DECISION MAKER: Only include if explicitly named in the crawled text with an operational/executive title. Do NOT guess or invent names or emails. Email MUST be null.
+5. If there is NO observable operational bottleneck or insufficient text, set automationFit to "NONE", potentialProblem to "Insufficient evidence of operational bottleneck.", and facts to empty array. DO NOT invent problems.
+
+OUTPUT STRICT JSON MATCHING THIS SCHEMA:
+{
+  "industry": "string industry",
+  "facts": [
+    {
+      "observedFact": "verbatim observation",
+      "sourceUrl": "exact url from provided pages",
+      "category": "HIRING" | "PUBLIC_WORKFLOW" | "TECH_SIGNAL" | "DOCUMENTATION",
+      "confidenceScore": 80-100
+    }
+  ],
+  "signals": ["signal 1", "signal 2"],
+  "inferences": [
+    {
+      "aiInference": "reasonable deduction",
+      "basedOnFact": "the observed fact this is based on",
+      "confidenceScore": 70-95
+    }
+  ],
+  "unknowns": ["item 1", "item 2"],
+  "potentialProblem": "1-2 sentence core operational bottleneck",
+  "whyItMatters": "1-2 sentence business friction or scaling barrier",
+  "automationFit": "PERFECT" | "GOOD" | "PARTIAL" | "NONE",
+  "recommendedSolution": "M-EXTRACT" | "M-FLOW" | "M-COPILOT" | "M-AGENTS" | "System Integration" | "Compliance",
+  "workflow": [
+    "1. Ingestion: ...",
+    "2. Processing: ...",
+    "3. Verification: ...",
+    "4. Execution: ...",
+    "5. Human escalation on exception"
+  ],
+  "decisionMaker": {
+    "name": "Full Name or null",
+    "title": "Title or null",
+    "sourceUrl": "url where found or null"
+  },
+  "confidence": 0-100
+}`;
+
+    const contentDigest = pages.map((p, idx) => `PAGE ${idx + 1} [${p.url}] (${p.title || "Page"}):\n${p.text.slice(0, 1500)}`).join("\n\n---\n\n");
+    const userPrompt = `Company: ${company} (${domain})\n\nResearched Website Content:\n${contentDigest}`;
+
+    const { text } = await this.callGroq(systemPrompt, userPrompt, true);
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        return {
+          industry: parsed.industry || "B2B Operations",
+          facts: Array.isArray(parsed.facts) ? parsed.facts : [],
+          signals: Array.isArray(parsed.signals) ? parsed.signals : [],
+          inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],
+          unknowns: Array.isArray(parsed.unknowns) ? parsed.unknowns : [],
+          potentialProblem: parsed.potentialProblem || "Insufficient evidence of operational bottleneck.",
+          whyItMatters: parsed.whyItMatters || "No verified public bottleneck.",
+          automationFit: parsed.automationFit || "PARTIAL",
+          recommendedSolution: parsed.recommendedSolution || "M-FLOW",
+          workflow: Array.isArray(parsed.workflow) ? parsed.workflow : [],
+          decisionMaker: parsed.decisionMaker && parsed.decisionMaker.name ? {
+            name: parsed.decisionMaker.name,
+            title: parsed.decisionMaker.title || null,
+            sourceUrl: parsed.decisionMaker.sourceUrl || null
+          } : null,
+          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 75
+        };
+      }
+    } catch (err: any) {
+      logger.warn(`[GroqProvider] Failed to parse opportunity analysis JSON: ${err.message}`);
+    }
+
+    return {
+      industry: "B2B Operations",
+      facts: [],
+      signals: [],
+      inferences: [],
+      unknowns: ["Unable to parse structured analysis"],
+      potentialProblem: "Insufficient evidence of operational bottleneck.",
+      whyItMatters: "Public text analysis was inconclusive.",
+      automationFit: "NONE",
+      recommendedSolution: "N/A",
+      workflow: [],
+      decisionMaker: null,
+      confidence: 0
     };
   }
 }

@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
 import { PromptBuilder } from "./promptBuilder.js";
 import { AiAction, AiActionSchema, SdrToolDecision, SdrToolName } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
@@ -250,6 +250,87 @@ Output JSON:
       summary: `Call completed with ${lead.firstName}. Prospect engaged in discovery conversation.`,
       qualificationScore: 70,
       recommendedAction: "Follow up via email with product documentation and calendar invitation."
+    };
+  }
+
+  async analyzeOpportunityContent(params: {
+    company: string;
+    domain: string;
+    pages: Array<{ url: string; text: string; title?: string }>;
+  }): Promise<AiOpportunityAnalysisResult> {
+    const { company, domain, pages } = params;
+
+    const systemPrompt = `You are an elite evidence-first operational auditor for MachineMind automation systems.
+Analyze the provided real crawled website content for a company and identify evidence-backed operational bottlenecks.
+Output valid JSON only.
+
+CRITICAL ANTI-HALLUCINATION RULES:
+1. FACT: Must be verbatim or directly observed from the provided text with exact sourceUrl.
+2. INFERENCE: Reasonable deduction strictly grounded in an observed fact.
+3. UNKNOWN: Explicitly state unverified items.
+4. DECISION MAKER: Only if explicitly listed on the pages with an operational/executive title. Email must be null.
+5. If no clear operational bottleneck or insufficient text, set automationFit to "NONE", potentialProblem to "Insufficient evidence of operational bottleneck.", and facts to empty array.
+
+JSON Schema:
+{
+  "industry": "string",
+  "facts": [{ "observedFact": "...", "sourceUrl": "...", "category": "HIRING"|"PUBLIC_WORKFLOW"|"TECH_SIGNAL"|"DOCUMENTATION", "confidenceScore": 80-100 }],
+  "signals": ["..."],
+  "inferences": [{ "aiInference": "...", "basedOnFact": "...", "confidenceScore": 70-95 }],
+  "unknowns": ["..."],
+  "potentialProblem": "string",
+  "whyItMatters": "string",
+  "automationFit": "PERFECT"|"GOOD"|"PARTIAL"|"NONE",
+  "recommendedSolution": "M-EXTRACT"|"M-FLOW"|"M-COPILOT"|"M-AGENTS"|"System Integration"|"Compliance",
+  "workflow": ["1. Ingestion: ...", "2. Processing: ...", "3. Verification: ...", "4. Execution: ...", "5. Human escalation on exception"],
+  "decisionMaker": { "name": "...", "title": "...", "sourceUrl": "..." } | null,
+  "confidence": 0-100
+}`;
+
+    const contentDigest = pages.map((p, idx) => `PAGE ${idx + 1} [${p.url}] (${p.title || "Page"}):\n${p.text.slice(0, 1500)}`).join("\n\n---\n\n");
+    const userPrompt = `Company: ${company} (${domain})\n\nResearched Website Content:\n${contentDigest}`;
+
+    try {
+      const { text } = await this.callGemini(systemPrompt, userPrompt);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        return {
+          industry: parsed.industry || "B2B Operations",
+          facts: Array.isArray(parsed.facts) ? parsed.facts : [],
+          signals: Array.isArray(parsed.signals) ? parsed.signals : [],
+          inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],
+          unknowns: Array.isArray(parsed.unknowns) ? parsed.unknowns : [],
+          potentialProblem: parsed.potentialProblem || "Insufficient evidence of operational bottleneck.",
+          whyItMatters: parsed.whyItMatters || "No verified public bottleneck.",
+          automationFit: parsed.automationFit || "PARTIAL",
+          recommendedSolution: parsed.recommendedSolution || "M-FLOW",
+          workflow: Array.isArray(parsed.workflow) ? parsed.workflow : [],
+          decisionMaker: parsed.decisionMaker && parsed.decisionMaker.name ? {
+            name: parsed.decisionMaker.name,
+            title: parsed.decisionMaker.title || null,
+            sourceUrl: parsed.decisionMaker.sourceUrl || null
+          } : null,
+          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 75
+        };
+      }
+    } catch (err: any) {
+      logger.warn(`[OnlineGeminiProvider] Failed to analyze opportunity JSON: ${err.message}`);
+    }
+
+    return {
+      industry: "B2B Operations",
+      facts: [],
+      signals: [],
+      inferences: [],
+      unknowns: ["Unable to parse structured analysis"],
+      potentialProblem: "Insufficient evidence of operational bottleneck.",
+      whyItMatters: "Public text analysis was inconclusive.",
+      automationFit: "NONE",
+      recommendedSolution: "N/A",
+      workflow: [],
+      decisionMaker: null,
+      confidence: 0
     };
   }
 }

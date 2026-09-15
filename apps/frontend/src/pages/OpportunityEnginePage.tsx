@@ -120,17 +120,28 @@ export const OpportunityEnginePage: React.FC = () => {
     try {
       setIsAutopilotRunning(true);
       setError(null);
-      setAutopilotStep("Scanning verified operational sectors for MachineMind ICP...");
+      setAutopilotStep("Generating targeted ICP search queries...");
 
-      const timer1 = setTimeout(() => setAutopilotStep("Analyzing public hiring signals & intake delays..."), 1200);
-      const timer2 = setTimeout(() => setAutopilotStep("Mapping MachineMind automations & calculating 6-factor scores..."), 2400);
+      const timer1 = setTimeout(() => setAutopilotStep("Searching public web for operations & logistics companies..."), 1500);
+      const timer2 = setTimeout(() => setAutopilotStep("Crawling company websites & analyzing internal workflows..."), 3500);
+      const timer3 = setTimeout(() => setAutopilotStep("Extracting verified facts & inferences via AI Brain..."), 6000);
 
-      const res = await api.post<{ success: boolean; opportunities: Opportunity[] }>("/opportunities/autopilot");
+      const res = await api.post<{
+        success: boolean;
+        count: number;
+        discoveryStatus: string;
+        message: string;
+        opportunities: Opportunity[];
+      }>("/opportunities/autopilot");
+
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(timer3);
 
-      if (res?.opportunities) {
+      if (res?.opportunities && res.opportunities.length > 0) {
         await fetchOpportunities();
+      } else {
+        setError(res?.message || "No real businesses with confirmed operational bottlenecks were validated.");
       }
     } catch (err: any) {
       setError(err.message || "Autopilot discovery run failed.");

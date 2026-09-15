@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
 import { PromptBuilder } from "./promptBuilder.js";
 import { SdrToolDecision, SdrToolName, AiAction, AiActionSchema } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
@@ -12,7 +12,11 @@ export class OllamaProvider implements AiProvider {
     this.model = process.env.OLLAMA_MODEL || "qwen2.5:3b";
   }
 
-  private async callOllama(system: string, prompt: string): Promise<{ text: string; latencyMs: number; tokens: number }> {
+  private async callOllama(
+    system: string,
+    prompt: string,
+    opts?: { num_predict?: number; temperature?: number }
+  ): Promise<{ text: string; latencyMs: number; tokens: number }> {
     const startTime = Date.now();
     const response = await fetch(`${this.baseUrl}/api/generate`, {
       method: "POST",
@@ -24,11 +28,12 @@ export class OllamaProvider implements AiProvider {
         stream: false,
         format: "json", // Structured JSON mode
         options: {
-          temperature: 0.1, // Deterministic low temperature for structured action decisions
-          num_predict: 400
+          temperature: opts?.temperature ?? 0.1, // Deterministic low temperature for structured action decisions
+          num_predict: opts?.num_predict ?? 400
         }
       })
     });
+
 
     if (!response.ok) {
       throw new Error(`Ollama HTTP ${response.status}: ${await response.text()}`);
@@ -373,6 +378,93 @@ ${transcript.map(t => `${t.speaker}: ${t.text}`).join("\n")}`;
       summary: `Call completed with ${lead.firstName}`,
       qualificationScore: 70,
       recommendedAction: "Send recap email with calendar booking link."
+    };
+  }
+
+  async analyzeOpportunityContent(params: {
+    company: string;
+    domain: string;
+    pages: Array<{ url: string; text: string; title?: string }>;
+  }): Promise<AiOpportunityAnalysisResult> {
+    const { company, domain, pages } = params;
+
+    const systemPrompt = `You are an evidence-first operational auditor. Analyze website text for a company and identify evidence-backed operational bottlenecks.
+Output JSON only with schema:
+{
+  "industry": "string",
+  "facts": [{ "observedFact": "...", "sourceUrl": "...", "category": "HIRING"|"PUBLIC_WORKFLOW"|"TECH_SIGNAL", "confidenceScore": 85 }],
+  "signals": ["..."],
+  "inferences": [{ "aiInference": "...", "basedOnFact": "...", "confidenceScore": 80 }],
+  "unknowns": ["..."],
+  "potentialProblem": "...",
+  "whyItMatters": "...",
+  "automationFit": "PERFECT"|"GOOD"|"PARTIAL"|"NONE",
+  "recommendedSolution": "M-EXTRACT"|"M-FLOW"|"M-COPILOT"|"M-AGENTS",
+  "workflow": ["1. ...", "2. ...", "3. ...", "4. ...", "5. Human escalation on exception"],
+  "decisionMaker": { "name": "...", "title": "...", "sourceUrl": "..." } | null,
+  "confidence": 75
+}`;
+
+    const contentDigest = pages.map((p, idx) => `PAGE ${idx + 1} [${p.url}]:\n${p.text.slice(0, 1000)}`).join("\n\n");
+    const userPrompt = `Company: ${company} (${domain})\n${contentDigest}`;
+
+    try {
+      const { text } = await this.callOllama(systemPrompt, userPrompt, { num_predict: 1200, temperature: 0.1 });
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        let parsed: any;
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch {
+          // Attempt safe repair of trailing commas or truncated arrays/objects
+          let repaired = jsonMatch[0].replace(/,\s*([\]}])/g, "$1");
+          try {
+            parsed = JSON.parse(repaired);
+          } catch {
+            let openBraces = (repaired.match(/\{/g) || []).length - (repaired.match(/\}/g) || []).length;
+            let openBrackets = (repaired.match(/\[/g) || []).length - (repaired.match(/\]/g) || []).length;
+            while (openBrackets > 0) { repaired += "]"; openBrackets--; }
+            while (openBraces > 0) { repaired += "}"; openBraces--; }
+            parsed = JSON.parse(repaired);
+          }
+        }
+        return {
+          industry: parsed.industry || "B2B Operations",
+          facts: Array.isArray(parsed.facts) ? parsed.facts : [],
+          signals: Array.isArray(parsed.signals) ? parsed.signals : [],
+          inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],
+          unknowns: Array.isArray(parsed.unknowns) ? parsed.unknowns : [],
+          potentialProblem: parsed.potentialProblem || "Insufficient evidence of operational bottleneck.",
+          whyItMatters: parsed.whyItMatters || "No verified public bottleneck.",
+          automationFit: parsed.automationFit || "PARTIAL",
+          recommendedSolution: parsed.recommendedSolution || "M-FLOW",
+          workflow: Array.isArray(parsed.workflow) ? parsed.workflow : [],
+          decisionMaker: parsed.decisionMaker && parsed.decisionMaker.name ? {
+            name: parsed.decisionMaker.name,
+            title: parsed.decisionMaker.title || null,
+            sourceUrl: parsed.decisionMaker.sourceUrl || null
+          } : null,
+          confidence: typeof parsed.confidence === "number" ? parsed.confidence : 70
+        };
+      }
+    } catch (err: any) {
+      logger.warn(`[OllamaProvider] Failed to analyze opportunity: ${err.message}`);
+    }
+
+
+    return {
+      industry: "B2B Operations",
+      facts: [],
+      signals: [],
+      inferences: [],
+      unknowns: ["Analysis inconclusive"],
+      potentialProblem: "Insufficient evidence of operational bottleneck.",
+      whyItMatters: "Public text analysis was inconclusive.",
+      automationFit: "NONE",
+      recommendedSolution: "N/A",
+      workflow: [],
+      decisionMaker: null,
+      confidence: 0
     };
   }
 }

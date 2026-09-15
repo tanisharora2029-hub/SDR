@@ -1,12 +1,14 @@
 import { SsrfGuard } from "./ssrfGuard.js";
 import { OpportunityEvidenceItem, SourceQuality, DecisionMakerContact } from "./types.js";
+import { aiService } from "../ai/aiService.js";
 import { logger } from "../../lib/logger.js";
 
 export interface ResearchSourceItem {
   url: string;
   title: string;
   snippet: string;
-  rawText?: string;
+  rawText: string;
+  rawHtml?: string;
   sourceType: "OFFICIAL_WEBSITE" | "JOB_POSTING" | "CUSTOMER_REVIEW" | "PUBLIC_WORKFLOW" | "LEADERSHIP";
   sourceQuality: SourceQuality;
 }
@@ -23,6 +25,9 @@ export interface ExtractedSignals {
   decisionMaker: DecisionMakerContact;
   isSufficientEvidence: boolean;
   insufficiencyReason?: string;
+  recommendedSolution?: string;
+  automationWorkflow?: string[];
+  automationFit?: "PERFECT" | "GOOD" | "PARTIAL" | "NONE";
 }
 
 export interface ResearchProvider {
@@ -32,8 +37,25 @@ export interface ResearchProvider {
 
 export class PublicWebResearchProvider implements ResearchProvider {
   private static readonly REQUEST_TIMEOUT_MS = 8000;
+  private static readonly MAX_PAGES_PER_COMPANY = 8;
   private static readonly USER_AGENT =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NexSDR-ResearchBot/1.0";
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NexSDR-ResearchBot/2.0";
+
+  private static readonly PRIORITY_KEYWORDS = [
+    "career",
+    "jobs",
+    "services",
+    "operations",
+    "support",
+    "contact",
+    "about",
+    "solutions",
+    "resources",
+    "blog",
+    "news",
+    "compliance",
+    "workflow"
+  ];
 
   /**
    * Safely fetches a public webpage, strips markup, and extracts clean text metadata.
@@ -80,6 +102,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
         title,
         snippet,
         rawText: cleanedText,
+        rawHtml: html,
         sourceType: isJobs ? "JOB_POSTING" : isTeam ? "LEADERSHIP" : "OFFICIAL_WEBSITE",
         sourceQuality: "HIGH"
       };
@@ -90,39 +113,163 @@ export class PublicWebResearchProvider implements ResearchProvider {
   }
 
   /**
-   * Researches a target business using legitimate public web crawling and signal analysis.
+   * Dynamically researches a target business:
+   * 1. Starts at the homepage.
+   * 2. Extracts internal links dynamically from HTML.
+   * 3. Prioritizes relevant operational pages (careers, services, operations, contact, about, solutions).
+   * 4. Fetches up to 8 pages per company (8s timeout, 1MB limit, SSRF protection).
+   * 5. Sends researched text to existing AI Brain for structured extraction.
    */
   public async researchCompany(companyName: string, domain: string): Promise<ExtractedSignals> {
-    const cleanDomain = domain.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-    const baseTarget = `https://${cleanDomain}`;
+    const cleanDomain = domain.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+    const homepageUrl = `https://${cleanDomain}`;
 
-    const candidateUrls = [
-      baseTarget,
-      `${baseTarget}/careers`,
-      `${baseTarget}/jobs`,
-      `${baseTarget}/about`,
-      `${baseTarget}/team`,
-      `${baseTarget}/contact`,
-      `${baseTarget}/support`,
-      `${baseTarget}/services`
-    ];
+    logger.info(`[ResearchProvider] Starting dynamic crawl for ${companyName} at ${homepageUrl}`);
 
     const sources: ResearchSourceItem[] = [];
 
-    // Fetch pages sequentially with polite pause
-    for (const url of candidateUrls) {
-      const item = await this.fetchPage(url);
-      if (item && item.rawText && item.rawText.length > 50) {
-        sources.push(item);
-      }
-      if (sources.length >= 4) break;
+    // 1. Fetch Homepage
+    let homeItem = await this.fetchPage(homepageUrl);
+    if (!homeItem || !homeItem.rawText || homeItem.rawText.length < 50) {
+      // Try http fallback if https failed
+      homeItem = await this.fetchPage(`http://${cleanDomain}`);
     }
 
-    return this.analyzeSources(companyName, cleanDomain, sources);
+    if (!homeItem || !homeItem.rawText || homeItem.rawText.length < 50) {
+      logger.warn(`[ResearchProvider] Homepage unreachable for ${cleanDomain}`);
+      return {
+        companyName,
+        domain: cleanDomain,
+        industry: "Unknown",
+        potentialProblem: "Unable to crawl target business website.",
+        whyItMatters: "Website was unreachable or returned insufficient public content.",
+        evidenceList: [],
+        decisionMaker: {
+          name: null,
+          title: null,
+          email: null,
+          sourceUrl: null,
+          evidenceSnippet: null,
+          isConfident: false
+        },
+        isSufficientEvidence: false,
+        insufficiencyReason: "Website could not be reached via safe public HTTP."
+      };
+    }
+
+    sources.push(homeItem);
+
+    // 2. Discover internal links dynamically from homepage HTML
+    const discoveredLinks = this.discoverInternalLinks(homeItem.rawHtml || "", homepageUrl, cleanDomain);
+
+    // 3. Fetch prioritized internal pages up to limit
+    const visitedUrls = new Set<string>([homepageUrl, homeItem.url]);
+
+    for (const url of discoveredLinks) {
+      if (sources.length >= PublicWebResearchProvider.MAX_PAGES_PER_COMPANY) break;
+      if (visitedUrls.has(url)) continue;
+
+      visitedUrls.add(url);
+      const subpage = await this.fetchPage(url);
+      if (subpage && subpage.rawText && subpage.rawText.length > 50) {
+        sources.push(subpage);
+      }
+
+      // Polite inter-page pause
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    logger.info(`[ResearchProvider] Crawled ${sources.length} pages for ${companyName} (${cleanDomain})`);
+
+    // 4. Run AI Analysis via existing AI Brain
+    return this.analyzeSourcesWithAi(companyName, cleanDomain, sources);
   }
 
   /**
-   * Parses fetched sources and extracts structured evidence separating VERIFIED FACT from AI INFERENCE.
+   * Extracts and prioritizes same-origin internal links from HTML.
+   */
+  private discoverInternalLinks(html: string, baseUrl: string, cleanDomain: string): string[] {
+    const candidates: Array<{ url: string; score: number }> = [];
+    const seen = new Set<string>();
+
+    const linkRegex = /<a\s+[^>]*href=["']([^"'#\s>]+)["']/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = linkRegex.exec(html)) !== null) {
+      const rawHref = match[1];
+
+      try {
+        const resolved = new URL(rawHref, baseUrl);
+
+        // Enforce same clean domain
+        const host = resolved.hostname.toLowerCase().replace(/^www\./i, "");
+        if (host !== cleanDomain && !host.endsWith(`.${cleanDomain}`)) {
+          continue;
+        }
+
+        // Only HTTP/HTTPS
+        if (resolved.protocol !== "http:" && resolved.protocol !== "https:") {
+          continue;
+        }
+
+        // Strip query params & hash
+        resolved.search = "";
+        resolved.hash = "";
+        const cleanUrl = resolved.toString();
+
+        if (seen.has(cleanUrl) || cleanUrl === baseUrl || cleanUrl === `${baseUrl}/`) {
+          continue;
+        }
+
+        seen.add(cleanUrl);
+
+        // Score based on priority keywords
+        const pathLower = resolved.pathname.toLowerCase();
+        let score = 0;
+        for (const kw of PublicWebResearchProvider.PRIORITY_KEYWORDS) {
+          if (pathLower.includes(kw)) {
+            score += 10;
+          }
+        }
+
+        // Avoid images, downloads, media files
+        if (/\.(png|jpe?g|gif|svg|pdf|zip|tar|gz|mp4|webp|ico|css|js)$/i.test(pathLower)) {
+          continue;
+        }
+
+        candidates.push({ url: cleanUrl, score });
+      } catch {
+        // Ignore invalid URLs
+      }
+    }
+
+    // Sort candidates by score descending
+    candidates.sort((a, b) => b.score - a.score);
+
+    const resultLinks = candidates.map((c) => c.url);
+
+    // If few or no links were discovered (e.g. JS rendered menu), add standard common routes
+    if (resultLinks.length < 3) {
+      const standardRoutes = [
+        `${baseUrl}/careers`,
+        `${baseUrl}/jobs`,
+        `${baseUrl}/services`,
+        `${baseUrl}/operations`,
+        `${baseUrl}/about`,
+        `${baseUrl}/contact`
+      ];
+      for (const route of standardRoutes) {
+        if (!seen.has(route)) {
+          resultLinks.push(route);
+        }
+      }
+    }
+
+    return resultLinks.slice(0, 15);
+  }
+
+  /**
+   * Synchronous heuristic source analyzer.
    */
   public analyzeSources(
     companyName: string,
@@ -136,7 +283,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
     let whyItMatters = "";
     let detectedIndustry = "B2B Operations";
 
-    // 1. Scan for Hiring Signals (HIGH Quality Fact)
+    // 1. Scan for Hiring Signals
     const hiringRegex = /(?:hiring|openings?|looking for|job description|responsibilities)\s*[:\w\s,-]{0,100}?(accounts payable(?: clerk| specialist| coordinator)?|invoice (?:specialist|clerk)?|data entry(?: clerk)?|customer support(?: representative)?|claims processor|operations coordinator|billing clerk|support specialist)/i;
     const hiringMatch = combinedContent.match(hiringRegex);
 
@@ -214,7 +361,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
       decisionMaker = {
         name: identifiedName.trim(),
         title: identifiedTitle,
-        email: null, // Strictly null unless verified!
+        email: null,
         sourceUrl: teamSource?.url || `https://${domain}/about`,
         evidenceSnippet: dmMatch[0].trim(),
         isConfident: true
@@ -233,7 +380,6 @@ export class PublicWebResearchProvider implements ResearchProvider {
       detectedIndustry = "Legal & Compliance";
     }
 
-    // Check if evidence is sufficient
     if (evidenceList.length === 0) {
       return {
         companyName,
@@ -248,7 +394,6 @@ export class PublicWebResearchProvider implements ResearchProvider {
       };
     }
 
-    // Formulate Potential Problem & Why It Matters grounded in verified evidence
     const hasHiring = evidenceList.some((e) => e.category === "HIRING");
     const hasWf = evidenceList.some((e) => e.category === "PUBLIC_WORKFLOW");
 
@@ -275,6 +420,139 @@ export class PublicWebResearchProvider implements ResearchProvider {
       decisionMaker,
       isSufficientEvidence: true
     };
+  }
+
+  /**
+   * Analyzes researched sources using the existing AI Brain.
+   */
+  public async analyzeSourcesWithAi(
+    companyName: string,
+    domain: string,
+    sources: ResearchSourceItem[]
+  ): Promise<ExtractedSignals> {
+    if (sources.length === 0) {
+      return {
+        companyName,
+        domain,
+        industry: "Unknown",
+        potentialProblem: "Insufficient public content found.",
+        whyItMatters: "No public pages could be analyzed.",
+        evidenceList: [],
+        decisionMaker: {
+          name: null,
+          title: null,
+          email: null,
+          sourceUrl: null,
+          evidenceSnippet: null,
+          isConfident: false
+        },
+        isSufficientEvidence: false,
+        insufficiencyReason: "No crawled pages available for analysis."
+      };
+    }
+
+    try {
+      const pagePayload = sources.map((s) => ({
+        url: s.url,
+        text: s.rawText.slice(0, 2500),
+        title: s.title
+      }));
+
+      const aiResult = await aiService.analyzeOpportunityContent({
+        company: companyName,
+        domain,
+        pages: pagePayload
+      });
+
+      // Construct verified evidence items
+      const evidenceList: OpportunityEvidenceItem[] = [];
+
+      if (Array.isArray(aiResult.facts)) {
+        for (const fact of aiResult.facts) {
+          if (fact.observedFact && fact.observedFact.trim()) {
+            evidenceList.push({
+              type: "FACT",
+              category: (fact.category as any) || "PUBLIC_WORKFLOW",
+              observedFact: fact.observedFact.trim(),
+              confidenceScore: fact.confidenceScore || 85,
+              sourceName: `${companyName} Website`,
+              sourceUrl: fact.sourceUrl || sources[0].url,
+              sourceQuality: (fact.sourceQuality as any) || "HIGH"
+            });
+          }
+        }
+      }
+
+      if (Array.isArray(aiResult.inferences)) {
+        for (const inf of aiResult.inferences) {
+          if (inf.aiInference && inf.aiInference.trim()) {
+            evidenceList.push({
+              type: "INFERENCE",
+              category: "PUBLIC_WORKFLOW",
+              observedFact: inf.basedOnFact || (evidenceList[0]?.observedFact ?? "Observed operational context"),
+              aiInference: inf.aiInference.trim(),
+              confidenceScore: inf.confidenceScore || 80,
+              sourceName: `${companyName} Analysis`,
+              sourceUrl: evidenceList[0]?.sourceUrl || sources[0].url,
+              sourceQuality: "HIGH"
+            });
+          }
+        }
+      }
+
+      // Check evidence sufficiency & anti-hallucination gate
+      const isSufficient = evidenceList.length > 0 && aiResult.automationFit !== "NONE";
+
+      const decisionMaker: DecisionMakerContact = {
+        name: aiResult.decisionMaker?.name || null,
+        title: aiResult.decisionMaker?.title || null,
+        email: null, // STRICT: Never guess or invent email
+        sourceUrl: aiResult.decisionMaker?.sourceUrl || null,
+        evidenceSnippet: aiResult.decisionMaker?.name ? `Identified in leadership documentation` : null,
+        isConfident: Boolean(aiResult.decisionMaker?.name && aiResult.decisionMaker?.title)
+      };
+
+      return {
+        companyName,
+        domain,
+        industry: aiResult.industry || "B2B Operations",
+        potentialProblem: isSufficient
+          ? aiResult.potentialProblem
+          : "Insufficient evidence of operational bottleneck.",
+        whyItMatters: isSufficient
+          ? aiResult.whyItMatters
+          : "Public documentation does not show distinct manual workflow bottlenecks.",
+        evidenceList,
+        decisionMaker,
+        isSufficientEvidence: isSufficient,
+        insufficiencyReason: isSufficient
+          ? undefined
+          : "No credible operational problem or repetitive workflow signal was observable in public web data.",
+        recommendedSolution: aiResult.recommendedSolution,
+        automationWorkflow: aiResult.workflow,
+        automationFit: aiResult.automationFit
+      };
+    } catch (err: any) {
+      logger.error(`[ResearchProvider] AI analysis failed for ${companyName}: ${err.message}`);
+      return {
+        companyName,
+        domain,
+        industry: "Unknown",
+        potentialProblem: "Analysis failed due to processing error.",
+        whyItMatters: "Unable to verify operational signals.",
+        evidenceList: [],
+        decisionMaker: {
+          name: null,
+          title: null,
+          email: null,
+          sourceUrl: null,
+          evidenceSnippet: null,
+          isConfident: false
+        },
+        isSufficientEvidence: false,
+        insufficiencyReason: `AI extraction error: ${err.message}`
+      };
+    }
   }
 
   private cleanHtml(html: string): string {
