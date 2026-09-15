@@ -219,7 +219,7 @@ export class OpportunityService {
             companyName: candidate.companyName,
             companyWebsite: `https://${candidate.domain}`,
             companyIndustry: signals.industry,
-            companySize: signals.companySize || "50-250 employees",
+            companySize: signals.companySize || "Small to Mid-Sized Business",
             location: signals.location || "United States / Global",
             potentialProblem: signals.potentialProblem,
             whyItMatters: signals.whyItMatters,

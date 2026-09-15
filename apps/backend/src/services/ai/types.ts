@@ -64,6 +64,7 @@ export interface AiOpportunityInference {
 
 export interface AiOpportunityAnalysisResult {
   industry: string;
+  companySize?: string;
   facts: AiOpportunityFact[];
   signals: string[];
   inferences: AiOpportunityInference[];

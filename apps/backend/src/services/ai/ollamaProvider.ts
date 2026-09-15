@@ -389,9 +389,14 @@ ${transcript.map(t => `${t.speaker}: ${t.text}`).join("\n")}`;
     const { company, domain, pages } = params;
 
     const systemPrompt = `You are an evidence-first operational auditor. Analyze website text for a company and identify evidence-backed operational bottlenecks.
+Evaluate businesses of all sizes equally (SMBs, startups, regional firms, lean operations teams). Never reject a company because of small employee count.
+For small businesses, repetitive tasks (manual invoices/quotes/orders, spreadsheets, document processing, appointment/intake, CRM updates, or hiring operations/admin roles) are prime automation opportunities.
+Opportunity formula: OPERATIONAL PAIN × REPETITION × AUTOMATION FIT × BUSINESS IMPACT.
+Key SMB leaders: Owner, Founder, Co-Founder, CEO, President, Principal, Operations Manager, COO. Email must be null.
 Output JSON only with schema:
 {
   "industry": "string",
+  "companySize": "string detected size (e.g. '1-15 employees', '10-50 employees', '50-250 employees', or 'Small to Mid-Sized Business')",
   "facts": [{ "observedFact": "...", "sourceUrl": "...", "category": "HIRING"|"PUBLIC_WORKFLOW"|"TECH_SIGNAL", "confidenceScore": 85 }],
   "signals": ["..."],
   "inferences": [{ "aiInference": "...", "basedOnFact": "...", "confidenceScore": 80 }],
@@ -430,6 +435,7 @@ Output JSON only with schema:
         }
         return {
           industry: parsed.industry || "B2B Operations",
+          companySize: parsed.companySize || undefined,
           facts: Array.isArray(parsed.facts) ? parsed.facts : [],
           signals: Array.isArray(parsed.signals) ? parsed.signals : [],
           inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],

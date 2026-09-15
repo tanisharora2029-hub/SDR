@@ -352,12 +352,23 @@ export class PublicWebResearchProvider implements ResearchProvider {
     };
 
     const teamSource = sources.find((s) => s.sourceType === "LEADERSHIP" || s.url.includes("about") || s.url.includes("team"));
-    const dmRegex = /(?:(?:coo|chief operating officer|head of operations|vp of operations|head of automation|director of operations|founder|ceo|owner)\s*[-:,|]?\s*([A-Z][a-z]+ [A-Z][a-z]+)|([A-Z][a-z]+ [A-Z][a-z]+)\s*[-:,|]?\s*(?:coo|chief operating officer|head of operations|vp of operations|head of automation|director of operations|founder|ceo|owner))/i;
+    const dmRegex = /(?:(?:coo|chief operating officer|head of operations|vp of operations|head of automation|director of operations|operations manager|founder|co-founder|owner|ceo|president|principal|managing director)\s*[-:,|]?\s*([A-Z][a-z]+ [A-Z][a-z]+)|([A-Z][a-z]+ [A-Z][a-z]+)\s*[-:,|]?\s*(?:coo|chief operating officer|head of operations|vp of operations|head of automation|director of operations|operations manager|founder|co-founder|owner|ceo|president|principal|managing director))/i;
     const dmMatch = (teamSource?.rawText || combinedContent).match(dmRegex);
 
     if (dmMatch) {
       const identifiedName = dmMatch[1] || dmMatch[2];
-      const identifiedTitle = "Head of Operations / Leadership";
+      let identifiedTitle = "Operations Leadership";
+      const fullMatchLower = dmMatch[0].toLowerCase();
+      if (fullMatchLower.includes("owner")) identifiedTitle = "Owner";
+      else if (fullMatchLower.includes("founder")) identifiedTitle = "Founder";
+      else if (fullMatchLower.includes("ceo")) identifiedTitle = "CEO";
+      else if (fullMatchLower.includes("president")) identifiedTitle = "President";
+      else if (fullMatchLower.includes("principal")) identifiedTitle = "Principal";
+      else if (fullMatchLower.includes("operations manager")) identifiedTitle = "Operations Manager";
+      else if (fullMatchLower.includes("coo") || fullMatchLower.includes("chief operating officer")) identifiedTitle = "COO";
+      else if (fullMatchLower.includes("vp")) identifiedTitle = "VP of Operations";
+      else if (fullMatchLower.includes("head of operations")) identifiedTitle = "Head of Operations";
+
       decisionMaker = {
         name: identifiedName.trim(),
         title: identifiedTitle,
@@ -380,11 +391,21 @@ export class PublicWebResearchProvider implements ResearchProvider {
       detectedIndustry = "Legal & Compliance";
     }
 
+    // Dynamically detect company size clues
+    let detectedCompanySize = "Small to Mid-Sized Business";
+    const sizeMatch = combinedContent.match(/(?:team of\s*(\d+)|(\d+[\s-]*(?:to|-)\s*\d+|\d+)\s*employees|small team|boutique firm)/i);
+    if (sizeMatch) {
+      if (sizeMatch[1]) detectedCompanySize = `${sizeMatch[1]} employees`;
+      else if (sizeMatch[2]) detectedCompanySize = `${sizeMatch[2]} employees`;
+      else detectedCompanySize = "1-20 employees";
+    }
+
     if (evidenceList.length === 0) {
       return {
         companyName,
         domain,
         industry: detectedIndustry,
+        companySize: detectedCompanySize,
         potentialProblem: "Insufficient evidence of operational bottleneck.",
         whyItMatters: "Public sources do not exhibit distinct document or inquiry processing friction.",
         evidenceList: [],
@@ -412,7 +433,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
       companyName,
       domain,
       industry: detectedIndustry,
-      companySize: "50-250 employees",
+      companySize: detectedCompanySize,
       location: "United States / Global",
       potentialProblem,
       whyItMatters,
@@ -516,6 +537,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
         companyName,
         domain,
         industry: aiResult.industry || "B2B Operations",
+        companySize: aiResult.companySize || "Small to Mid-Sized Business",
         potentialProblem: isSufficient
           ? aiResult.potentialProblem
           : "Insufficient evidence of operational bottleneck.",

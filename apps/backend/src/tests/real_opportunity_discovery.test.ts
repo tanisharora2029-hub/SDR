@@ -5,6 +5,7 @@ import { OpportunityService } from "../services/opportunity/opportunityService.j
 import { DiscoveryQueryGenerator } from "../services/opportunity/discovery/discoveryQueryGenerator.js";
 import { PublicSearchDiscoveryProvider } from "../services/opportunity/discovery/publicSearchDiscoveryProvider.js";
 import { PublicWebResearchProvider } from "../services/opportunity/researchProvider.js";
+import { OpportunityScorer } from "../services/opportunity/opportunityScorer.js";
 import { aiService } from "../services/ai/aiService.js";
 
 describe("Real Opportunity Engine Discovery & Anti-Hallucination Pipeline", () => {
@@ -298,5 +299,150 @@ describe("Real Opportunity Engine Discovery & Anti-Hallucination Pipeline", () =
 
     const opps = await OpportunityService.runAutopilot(testOrgId, mockCandidates);
     expect(opps.length).toBe(0);
+  });
+
+  // TEST 11: SMB Multi-Scale Query Generation
+  it("11. Discovery Query Generator: creates multi-scale queries actively targeting SMBs and regional businesses alongside enterprise", () => {
+    const smbQueries = DiscoveryQueryGenerator.generateQueries({ limit: 6, scaleTier: "SMB" });
+    expect(smbQueries.length).toBe(6);
+    const smbKeywords = ["small business", "regional", "growing", "independent", "boutique", "local"];
+    const containsSmbKeyword = smbQueries.some((q) =>
+      smbKeywords.some((kw) => q.toLowerCase().includes(kw))
+    );
+    expect(containsSmbKeyword).toBe(true);
+
+    const defaultQueries = DiscoveryQueryGenerator.generateQueries({ limit: 10 });
+    expect(defaultQueries.length).toBe(10);
+    // Ensure default blends SMB variations without size bias
+    const blendsSmb = defaultQueries.some((q) =>
+      smbKeywords.some((kw) => q.toLowerCase().includes(kw))
+    );
+    expect(blendsSmb).toBe(true);
+  });
+
+  // TEST 12: Transparent Scoring — 10-person SMB with verified repetitive manual workflows outscores 500-person enterprise with low pain
+  it("12. Operational Leverage Scoring: 10-person SMB with repetitive clerical friction outscores low-pain enterprise", () => {
+    // 10-person SMB with acute repetitive manual invoicing and spreadsheet reconciliation
+    const smbScoring = OpportunityScorer.calculateScore({
+      industry: "Logistics & Freight",
+      companySize: "10 employees",
+      evidenceList: [
+        {
+          type: "FACT",
+          category: "HIRING",
+          observedFact: "Hiring Operations Coordinator to manage manual invoice entry and rate reconciliation",
+          confidenceScore: 92,
+          sourceName: "Careers",
+          sourceUrl: "https://small-carrier.com/careers",
+          sourceQuality: "HIGH"
+        },
+        {
+          type: "FACT",
+          category: "PUBLIC_WORKFLOW",
+          observedFact: "Manual spreadsheet reconciliation delays rate confirmation by 48 hours",
+          confidenceScore: 88,
+          sourceName: "Operations",
+          sourceUrl: "https://small-carrier.com/operations",
+          sourceQuality: "HIGH"
+        }
+      ],
+      automationFitLevel: "PERFECT",
+      decisionMaker: {
+        name: "David Miller",
+        title: "Owner & Founder",
+        email: null,
+        sourceUrl: "https://small-carrier.com/about",
+        evidenceSnippet: "Owner & Founder",
+        isConfident: true
+      }
+    });
+
+    // 500-person enterprise with vague or low operational friction
+    const enterpriseScoring = OpportunityScorer.calculateScore({
+      industry: "General SaaS",
+      companySize: "500 employees",
+      evidenceList: [
+        {
+          type: "FACT",
+          category: "DOCUMENTATION",
+          observedFact: "Standard platform documentation available online",
+          confidenceScore: 70,
+          sourceName: "Docs",
+          sourceUrl: "https://large-saas.com/docs",
+          sourceQuality: "LOW"
+        }
+      ],
+      automationFitLevel: "PARTIAL",
+      decisionMaker: {
+        name: null,
+        title: null,
+        email: null,
+        sourceUrl: null,
+        evidenceSnippet: null,
+        isConfident: false
+      }
+    });
+
+    // SMB with high repetition scores in HIGH tier (>= 80)
+    expect(smbScoring.score).toBeGreaterThanOrEqual(80);
+    expect(smbScoring.scoreTier).toBe("HIGH");
+    expect(smbScoring.breakdown.painSignalStrength).toBe(25); // High repetition boost
+    expect(smbScoring.breakdown.potentialBusinessImpact).toBe(10); // Lean team leverage
+
+    // Low pain enterprise scores significantly lower
+    expect(enterpriseScoring.score).toBeLessThan(60);
+    expect(enterpriseScoring.scoreTier).toBe("LOW");
+
+    // Clear proof that SMB outscores enterprise when operational friction is higher
+    expect(smbScoring.score).toBeGreaterThan(enterpriseScoring.score);
+  });
+
+  // TEST 13: SMB Executive Reachability
+  it("13. Reachability: recognizes SMB Owner / Founder with maximum reachability (5/5 pts)", () => {
+    const scoring = OpportunityScorer.calculateScore({
+      industry: "Healthcare Clinic Operations",
+      companySize: "1-15 employees",
+      evidenceList: [
+        {
+          type: "FACT",
+          category: "PUBLIC_WORKFLOW",
+          observedFact: "Manual patient intake forms and appointment reconciliation paperwork",
+          confidenceScore: 85,
+          sourceName: "Clinic Intake",
+          sourceUrl: "https://local-clinic.com/intake",
+          sourceQuality: "HIGH"
+        }
+      ],
+      automationFitLevel: "PERFECT",
+      decisionMaker: {
+        name: "Dr. Rachel Green",
+        title: "Owner & Principal",
+        email: null,
+        sourceUrl: "https://local-clinic.com/about",
+        evidenceSnippet: "Owner & Principal",
+        isConfident: true
+      }
+    });
+
+    expect(scoring.breakdown.reachability).toBe(5);
+  });
+
+  // TEST 14: Strict Grounding & Anti-Hallucination for SMBs
+  it("14. Grounding: rejects SMB if no verified operational evidence exists (size alone is never evidence)", async () => {
+    const crawler = new PublicWebResearchProvider();
+    const signals = await (crawler as any).analyzeSourcesWithAi("Small Boutique Logistics", "boutiquelogistics.com", [
+      {
+        url: "https://boutiquelogistics.com",
+        title: "Home",
+        snippet: "We are a boutique freight forwarder with a dedicated team.",
+        rawText: "We are a boutique freight forwarder with a dedicated team of 8.",
+        sourceType: "OFFICIAL_WEBSITE",
+        sourceQuality: "HIGH"
+      }
+    ]);
+
+    // Although small team is mentioned, there is NO operational bottleneck
+    expect(signals.isSufficientEvidence).toBe(false);
+    expect(signals.evidenceList.length).toBe(0);
   });
 });

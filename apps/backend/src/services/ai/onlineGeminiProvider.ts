@@ -264,8 +264,15 @@ Output JSON:
 Analyze the provided real crawled website content for a company and identify evidence-backed operational bottlenecks.
 Output valid JSON only.
 
+EVALUATE BUSINESSES OF ALL SIZES EQUALLY:
+- Actively evaluate Small Businesses (SMBs), startups, regional companies, and lean operations teams alongside mid-market and enterprise organizations.
+- DO NOT penalize or reject companies because of small employee count.
+- In small businesses, repetitive tasks (manual invoices/quotes/orders, spreadsheets, document processing, appointment/intake, CRM updates, or operations coordinator hiring) represent acute operational friction and prime automation opportunity.
+- Evaluate by: OPERATIONAL PAIN × REPETITION × AUTOMATION FIT × BUSINESS IMPACT.
+- Small business leaders: Owner, Founder, Co-Founder, CEO, President, Principal, Managing Director, Operations Manager, COO. Email must be null.
+
 CRITICAL ANTI-HALLUCINATION RULES:
-1. FACT: Must be verbatim or directly observed from the provided text with exact sourceUrl.
+1. FACT: Must be verbatim or directly observed from the provided text with exact sourceUrl. Size alone is never evidence of a problem.
 2. INFERENCE: Reasonable deduction strictly grounded in an observed fact.
 3. UNKNOWN: Explicitly state unverified items.
 4. DECISION MAKER: Only if explicitly listed on the pages with an operational/executive title. Email must be null.
@@ -274,6 +281,7 @@ CRITICAL ANTI-HALLUCINATION RULES:
 JSON Schema:
 {
   "industry": "string",
+  "companySize": "string detected size (e.g. '1-15 employees', '10-50 employees', '50-250 employees', or 'Small to Mid-Sized Business')",
   "facts": [{ "observedFact": "...", "sourceUrl": "...", "category": "HIRING"|"PUBLIC_WORKFLOW"|"TECH_SIGNAL"|"DOCUMENTATION", "confidenceScore": 80-100 }],
   "signals": ["..."],
   "inferences": [{ "aiInference": "...", "basedOnFact": "...", "confidenceScore": 70-95 }],
@@ -297,6 +305,7 @@ JSON Schema:
         const parsed = JSON.parse(match[0]);
         return {
           industry: parsed.industry || "B2B Operations",
+          companySize: parsed.companySize || undefined,
           facts: Array.isArray(parsed.facts) ? parsed.facts : [],
           signals: Array.isArray(parsed.signals) ? parsed.signals : [],
           inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],

@@ -380,16 +380,23 @@ Output JSON:
     const systemPrompt = `You are an elite evidence-first operational auditor for MachineMind automation systems.
 Your task is to analyze real crawled website content for a company and identify evidence-backed operational bottlenecks.
 
+EVALUATE BUSINESSES OF ALL SIZES EQUALLY:
+- Actively discover and evaluate Small Businesses (SMBs), startups, regional companies, and growing operations teams as well as mid-market and enterprise organizations.
+- DO NOT reject, penalize, or downgrade a company merely because it has fewer employees.
+- For small businesses and lean teams, high-volume repetitive tasks (manual invoices/quotes/orders, spreadsheets, document processing, appointment/intake workflows, repetitive customer support, CRM updates, or hiring an operations coordinator/administrative assistant) represent massive operational friction and prime automation opportunity.
+- Opportunity is determined by: OPERATIONAL PAIN × REPETITION × AUTOMATION FIT × BUSINESS IMPACT. A 10-person company with high repetitive clerical overhead is an ideal candidate for MachineMind.
+
 CRITICAL ANTI-HALLUCINATION RULES:
-1. FACT: Must be verbatim or directly observed from the provided text. You MUST include the exact sourceUrl where it was found.
+1. FACT: Must be verbatim or directly observed from the provided text. You MUST include the exact sourceUrl where it was found. Size alone is NEVER evidence of a problem.
 2. INFERENCE: A reasonable deduction strictly grounded in one of the observed facts.
 3. UNKNOWN: Explicitly declare what is NOT confirmed by the public text.
-4. DECISION MAKER: Only include if explicitly named in the crawled text with an operational/executive title. Do NOT guess or invent names or emails. Email MUST be null.
+4. DECISION MAKER: For small businesses, key operational decision makers include Owner, Founder, Co-Founder, CEO, President, Principal, Managing Director, Head of Operations, Operations Manager, or COO. Only include if explicitly named in the crawled text with their title. Do NOT guess or invent names or emails. Email MUST be null.
 5. If there is NO observable operational bottleneck or insufficient text, set automationFit to "NONE", potentialProblem to "Insufficient evidence of operational bottleneck.", and facts to empty array. DO NOT invent problems.
 
 OUTPUT STRICT JSON MATCHING THIS SCHEMA:
 {
   "industry": "string industry",
+  "companySize": "string detected size (e.g. '1-15 employees', '10-50 employees', '50-250 employees', or 'Small to Mid-Sized Business')",
   "facts": [
     {
       "observedFact": "verbatim observation",
@@ -436,6 +443,7 @@ OUTPUT STRICT JSON MATCHING THIS SCHEMA:
         const parsed = JSON.parse(match[0]);
         return {
           industry: parsed.industry || "B2B Operations",
+          companySize: parsed.companySize || undefined,
           facts: Array.isArray(parsed.facts) ? parsed.facts : [],
           signals: Array.isArray(parsed.signals) ? parsed.signals : [],
           inferences: Array.isArray(parsed.inferences) ? parsed.inferences : [],

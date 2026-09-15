@@ -581,13 +581,26 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
     let whyItMatters = "Manual clerical overhead limits transaction throughput.";
     let recommendedSolution = "M-EXTRACT + M-FLOW";
     let industry = "B2B Operations";
+    let companySize = "Small to Mid-Sized Business";
     let dm: any = null;
 
     for (const page of pages) {
       const lower = page.text.toLowerCase();
 
-      // Hiring signal
-      const hiringMatch = page.text.match(/(?:hiring|openings?|looking for|job description)\s*[:\w\s,-]{0,60}?(accounts payable|invoice|data entry|claims processor|operations coordinator|billing)/i);
+      // Detect SMB size mentions
+      const sizeMatch = page.text.match(/(?:team of\s*(\d+)|(\d+[\s-]*(?:to|-)\s*\d+|\d+)\s*employees|small team|boutique firm)/i);
+      if (sizeMatch) {
+        if (sizeMatch[1]) {
+          companySize = `${sizeMatch[1]} employees`;
+        } else if (sizeMatch[2]) {
+          companySize = `${sizeMatch[2]} employees`;
+        } else {
+          companySize = "1-20 employees";
+        }
+      }
+
+      // Hiring signal (including SMB administrative and operations coordinator roles)
+      const hiringMatch = page.text.match(/(?:hiring|openings?|looking for|job description)\s*[:\w\s,-]{0,60}?(accounts payable|invoice|data entry|claims processor|operations coordinator|administrative assistant|billing specialist|intake coordinator)/i);
       if (hiringMatch && facts.length < 3) {
         facts.push({
           observedFact: `Careers page indicates active opening for: "${hiringMatch[0].trim()}".`,
@@ -600,10 +613,10 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
           basedOnFact: `Careers page indicates active opening for: "${hiringMatch[0].trim()}".`,
           confidenceScore: 85
         });
-        signals.push("Active operational hiring");
+        signals.push(`Active hiring for ${hiringMatch[1]}`);
       }
 
-      // Workflow delay signal
+      // Workflow delay / manual processing signal
       const delayMatch = page.text.match(/(?:please allow|turnaround|processing time)\s*[:\w\s,-]{0,40}?(\d+[\s-]*(?:hours?|days?|business days?))/i);
       if (delayMatch && facts.length < 4) {
         facts.push({
@@ -620,8 +633,8 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
         signals.push("Published processing turnaround window");
       }
 
-      // Tech mention
-      const techMatch = page.text.match(/(?:quickbooks|netsuite|sap|salesforce|spreadsheets?|manual reconciliation)/i);
+      // Manual friction / spreadsheet / tools signal
+      const techMatch = page.text.match(/(?:quickbooks|netsuite|sap|salesforce|spreadsheets?|excel|manual reconciliation|google sheets|airtable)/i);
       if (techMatch && facts.length < 5) {
         facts.push({
           observedFact: `Operational documentation references: "${techMatch[0]}".`,
@@ -632,14 +645,26 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
         signals.push(`Uses ${techMatch[0]}`);
       }
 
-      // Decision Maker (Leadership)
+      // Decision Maker (Leadership - SMB Owner/Founder or Operations Lead)
       if (!dm) {
-        const dmMatch = page.text.match(/(?:(?:coo|chief operating officer|head of operations|vp of operations|director of operations)\s*[-:,|]?\s*([A-Z][a-z]+ [A-Z][a-z]+)|([A-Z][a-z]+ [A-Z][a-z]+)\s*[-:,|]?\s*(?:coo|chief operating officer|head of operations|vp of operations|director of operations))/i);
+        const dmMatch = page.text.match(/(?:(?:founder|co-founder|owner|ceo|president|principal|managing director|coo|chief operating officer|head of operations|vp of operations|director of operations|operations manager)\s*[-:,|]?\s*([A-Z][a-z]+ [A-Z][a-z]+)|([A-Z][a-z]+ [A-Z][a-z]+)\s*[-:,|]?\s*(?:founder|co-founder|owner|ceo|president|principal|managing director|coo|chief operating officer|head of operations|vp of operations|director of operations|operations manager))/i);
         if (dmMatch) {
           const name = (dmMatch[1] || dmMatch[2]).trim();
+          let title = "Operations Leadership";
+          const fullMatchLower = dmMatch[0].toLowerCase();
+          if (fullMatchLower.includes("owner")) title = "Owner";
+          else if (fullMatchLower.includes("founder")) title = "Founder";
+          else if (fullMatchLower.includes("ceo")) title = "CEO";
+          else if (fullMatchLower.includes("president")) title = "President";
+          else if (fullMatchLower.includes("principal")) title = "Principal";
+          else if (fullMatchLower.includes("operations manager")) title = "Operations Manager";
+          else if (fullMatchLower.includes("coo") || fullMatchLower.includes("chief operating officer")) title = "COO";
+          else if (fullMatchLower.includes("vp")) title = "VP of Operations";
+          else if (fullMatchLower.includes("head of operations")) title = "Head of Operations";
+
           dm = {
             name,
-            title: "Head of Operations",
+            title,
             sourceUrl: page.url
           };
         }
@@ -658,22 +683,26 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
     }
 
     if (facts.length === 0) {
-      // If no explicit hiring or workflow keywords matched, but page has general text
-      facts.push({
-        observedFact: `Website documentation for ${company} outlines public service workflows at ${pages[0].url}.`,
-        sourceUrl: pages[0].url,
-        category: "DOCUMENTATION",
-        confidenceScore: 75
-      });
-      inferences.push({
-        aiInference: "Routine client interactions appear to rely on standard email and portal submissions.",
-        basedOnFact: `Website documentation for ${company} outlines public service workflows at ${pages[0].url}.`,
-        confidenceScore: 70
-      });
+      return {
+        industry,
+        companySize,
+        facts: [],
+        signals: [],
+        inferences: [],
+        unknowns: ["No verifiable operational bottleneck observed in public web data"],
+        potentialProblem: "Insufficient evidence of operational bottleneck.",
+        whyItMatters: "Public sources do not exhibit distinct operational friction.",
+        automationFit: "NONE",
+        recommendedSolution: "N/A",
+        workflow: [],
+        decisionMaker: dm,
+        confidence: 0
+      };
     }
 
     return {
       industry,
+      companySize,
       facts,
       signals: signals.length > 0 ? signals : ["Standard operational intake"],
       inferences,
