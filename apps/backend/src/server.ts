@@ -22,6 +22,7 @@ import { appointmentRouter } from "./routes/appointment.routes.js";
 import { analyticsRouter } from "./routes/analytics.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
 import { webhookRouter } from "./routes/webhook.routes.js";
+import { opportunityRouter } from "./routes/opportunity.routes.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -96,6 +97,7 @@ app.use("/api/appointments", appointmentRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/webhooks", webhookRouter);
+app.use("/api/opportunities", opportunityRouter);
 
 // Global Error Handler
 app.use(errorHandler);

@@ -35,6 +35,8 @@ model Organization {
   activityLogs     ActivityLog[]
   subscriptions    Subscription[]
   usageRecords     UsageRecord[]
+  opportunities    Opportunity[]
+  researchRuns     ResearchRun[]
 
   @@map("organizations")
 }
@@ -275,3 +277,78 @@ model UsageRecord {
   @@index([organizationId, metricType])
   @@map("usage_records")
 }
+
+model Opportunity {
+  id                      String                @id @default(uuid())
+  organizationId          String
+  companyName             String
+  companyWebsite          String
+  companyIndustry         String?
+  companySize             String?
+  location                String?
+  potentialProblem        String
+  whyItMatters            String
+  score                   Int                   @default(0)
+  scoreBreakdown          String?
+  scoreTier               String                @default("MEDIUM")
+  confidence              Int                   @default(0)
+  recommendedSolution     String
+  solutionExplanation     String
+  automationWorkflow      String
+  potentialBusinessImpact String
+  decisionMakerName       String?
+  decisionMakerTitle      String?
+  decisionMakerEmail      String?
+  decisionMakerEvidence   String?
+  status                  String                @default("READY_FOR_REVIEW")
+  generatedSubject        String?
+  generatedEmail          String?
+  leadId                  String?
+  researchStatus          String                @default("ANALYZED")
+  lastResearchedAt        DateTime              @default(now())
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  organization            Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  evidence                OpportunityEvidence[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, scoreTier])
+  @@map("opportunities")
+}
+
+model OpportunityEvidence {
+  id              String      @id @default(uuid())
+  opportunityId   String
+  type            String      @default("FACT")
+  category        String      @default("PUBLIC_WORKFLOW")
+  observedFact    String
+  aiInference     String?
+  confidenceScore Int         @default(80)
+  sourceName      String
+  sourceUrl       String
+  sourceQuality   String      @default("HIGH")
+  verifiedAt      DateTime    @default(now())
+
+  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@map("opportunity_evidence")
+}
+
+model ResearchRun {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  mode               String       @default("AUTOPILOT")
+  targetUrl          String?
+  status             String       @default("COMPLETED")
+  opportunitiesFound Int          @default(0)
+  logs               String?
+  createdAt          DateTime     @default(now())
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("research_runs")
+}
+

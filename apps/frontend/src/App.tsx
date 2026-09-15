@@ -21,6 +21,7 @@ import { BillingPage } from "./pages/BillingPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { AdminPage } from "./pages/AdminPage.js";
 import { LeadSimulatorPage } from "./pages/LeadSimulatorPage.js";
+import { OpportunityEnginePage } from "./pages/OpportunityEnginePage.js";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +61,7 @@ export const App: React.FC = () => {
             }
           >
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="opportunities" element={<OpportunityEnginePage />} />
             <Route path="leads" element={<LeadsPage />} />
             <Route path="leads/:id" element={<LeadDetailPage />} />
             <Route path="conversations" element={<ConversationsPage />} />

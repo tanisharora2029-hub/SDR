@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Search,
   ChevronRight,
+  Radar,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
@@ -28,6 +29,7 @@ interface SidebarProps {
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Opportunity Engine", path: "/opportunities", icon: Radar, badge: "AI Intel" },
   { name: "Leads", path: "/leads", icon: Users },
   { name: "Omnichannel Inbox", path: "/conversations", icon: MessageSquare },
   { name: "Lead Simulator", path: "/lead-simulator", icon: FlaskConical, badge: "DEV" },

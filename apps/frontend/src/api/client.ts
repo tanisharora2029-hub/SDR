@@ -146,5 +146,34 @@ export const api = {
     apiRequest("/webhooks/resend/inbound/test", { method: "POST", body: JSON.stringify({ payload }) }),
 
   // Domain & DNS Checklist
-  getDomainDns: () => apiRequest("/organization/domain-dns")
+  getDomainDns: () => apiRequest("/organization/domain-dns"),
+
+  // Generic HTTP helpers
+  get: <T = any>(endpoint: string) => apiRequest<T>(endpoint),
+  post: <T = any>(endpoint: string, body?: any) =>
+    apiRequest<T>(endpoint, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  patch: <T = any>(endpoint: string, body?: any) =>
+    apiRequest<T>(endpoint, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T = any>(endpoint: string) => apiRequest<T>(endpoint, { method: "DELETE" }),
+
+  // Opportunity Engine Endpoints
+  getOpportunities: (filters?: any) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.tier) params.append("tier", filters.tier);
+    if (filters?.search) params.append("search", filters.search);
+    const qs = params.toString();
+    return apiRequest(`/opportunities${qs ? `?${qs}` : ""}`);
+  },
+  getOpportunityById: (id: string) => apiRequest(`/opportunities/${id}`),
+  runAutopilot: () => apiRequest("/opportunities/autopilot", { method: "POST" }),
+  analyzeBusinessUrl: (url: string) =>
+    apiRequest("/opportunities/analyze-url", { method: "POST", body: JSON.stringify({ url }) }),
+  generateTop10Leads: () => apiRequest("/opportunities/generate-top-10", { method: "POST" }),
+  approveOpportunity: (id: string, data?: any) =>
+    apiRequest(`/opportunities/${id}/approve`, { method: "POST", body: JSON.stringify(data || {}) }),
+  rejectOpportunity: (id: string) =>
+    apiRequest(`/opportunities/${id}/reject`, { method: "POST" }),
+  sendOpportunityOutreach: (id: string) =>
+    apiRequest(`/opportunities/${id}/send`, { method: "POST" })
 };
