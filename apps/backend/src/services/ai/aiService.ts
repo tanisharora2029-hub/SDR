@@ -61,8 +61,9 @@ class AiService {
 
   private shouldAllowMockFallback(): boolean {
     if (process.env.NODE_ENV === "production") return false;
-    if (process.env.AI_PROVIDER === "mock") return true;
     if (process.env.AI_PROVIDER === "groq") return false;
+    if (process.env.AI_PROVIDER === "mock") return true;
+    if (process.env.NODE_ENV === "test") return true;
     const hasGroqKey = Boolean(process.env.GROQ_API_KEY?.trim());
     const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
     return !hasGroqKey && !hasGeminiKey;

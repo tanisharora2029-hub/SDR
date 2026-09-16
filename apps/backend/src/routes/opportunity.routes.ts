@@ -35,12 +35,24 @@ opportunityRouter.get("/:id", authenticate, async (req: Request, res: Response) 
   }
 });
 
+// 2b. Get latest research run telemetry
+opportunityRouter.get("/research-runs/latest", authenticate, async (req: Request, res: Response) => {
+  try {
+    const run = await OpportunityService.getLatestResearchRun(req.organizationId!);
+    res.json({ success: true, run });
+  } catch (err: any) {
+    logger.error(`Error fetching latest research run: ${err.message}`);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 3. Mode 1: Run Autopilot discovery
 opportunityRouter.post("/autopilot", authenticate, async (req: Request, res: Response) => {
   try {
     const opportunities = await OpportunityService.runAutopilot(req.organizationId!);
     const count = Array.isArray(opportunities) ? opportunities.length : 0;
     const discoveryStatus = (opportunities as any).discoveryStatus || (count > 0 ? "SUCCESS" : "NO_RESULTS");
+    const metrics = (opportunities as any).metrics || null;
     const message =
       (opportunities as any).message ||
       (count > 0
@@ -52,6 +64,7 @@ opportunityRouter.post("/autopilot", authenticate, async (req: Request, res: Res
       count,
       discoveryStatus,
       message,
+      metrics,
       opportunities
     });
   } catch (err: any) {

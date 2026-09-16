@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Sparkles,
   Search,
@@ -20,7 +21,13 @@ import {
   Workflow,
   Check,
   Briefcase,
-  FileText
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  HelpCircle,
+  Activity,
+  FileCheck
 } from "lucide-react";
 
 interface EvidenceItem {
@@ -56,6 +63,12 @@ interface Opportunity {
   decisionMakerTitle?: string;
   decisionMakerEmail?: string;
   decisionMakerEvidence?: string;
+  discoveryQuery?: string;
+  discoverySource?: string;
+  pagesRead?: number;
+  sourceUrls?: string;
+  unknowns?: string;
+  decisionMakerSource?: string;
   status: string;
   generatedSubject?: string;
   generatedEmail?: string;
@@ -65,10 +78,43 @@ interface Opportunity {
   evidence?: EvidenceItem[];
 }
 
+interface DiscoveryTrailItem {
+  query: string;
+  source: string;
+  url: string;
+  domain: string;
+  title: string;
+  snippet: string;
+  isAccepted: boolean;
+  rejectReason?: string;
+}
+
+interface ResearchRunMetrics {
+  id?: string;
+  queriesGenerated: number;
+  searchResultsCount: number;
+  candidatesDiscovered: number;
+  candidatesVerified: number;
+  websitesCrawled: number;
+  pagesRead: number;
+  evidenceExtracted: number;
+  aiAnalysesCompleted: number;
+  candidatesRejected: number;
+  opportunitiesQualified: number;
+  status?: string;
+  createdAt?: string;
+  discoveryTrail?: DiscoveryTrailItem[];
+}
+
 export const OpportunityEnginePage: React.FC = () => {
+  const { organization } = useAuth();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Telemetry & Transparency states
+  const [latestRun, setLatestRun] = useState<ResearchRunMetrics | null>(null);
+  const [showTrail, setShowTrail] = useState(false);
 
   // Filter states
   const [selectedTier, setSelectedTier] = useState<string>("ALL");
@@ -111,32 +157,107 @@ export const OpportunityEnginePage: React.FC = () => {
     }
   };
 
+  // Fetch latest research run telemetry
+  const fetchLatestRun = async () => {
+    try {
+      const res = await api.get<{ success: boolean; run: any }>("/opportunities/research-runs/latest");
+      if (res?.run) {
+        let trail: DiscoveryTrailItem[] = [];
+        if (res.run.metricsJson) {
+          try {
+            const m = JSON.parse(res.run.metricsJson);
+            if (Array.isArray(m.discoveryTrail)) trail = m.discoveryTrail;
+          } catch {}
+        }
+        setLatestRun({
+          ...res.run,
+          discoveryTrail: trail
+        });
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     fetchOpportunities();
+    fetchLatestRun();
   }, []);
 
-  // Run Autopilot Discovery
+  // Real-time WebSocket connection for live discovery progress
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL;
+      let wsUrl = "";
+      if (apiBase && apiBase.startsWith("http")) {
+        wsUrl = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "/ws");
+      } else {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const host = window.location.host;
+        if (host.includes("nexsdr.in") || host.includes("onrender.com")) {
+          wsUrl = "wss://sdr-backend-6o2x.onrender.com/ws";
+        } else {
+          wsUrl = `${protocol}//${host}/ws`;
+        }
+      }
+      const token = localStorage.getItem("token");
+      if (token) {
+        wsUrl += (wsUrl.includes("?") ? "&" : "?") + `token=${encodeURIComponent(token)}`;
+      }
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        if (organization?.id) {
+          ws?.send(JSON.stringify({ type: "SUBSCRIBE_ORG", organizationId: organization.id, token }));
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "DISCOVERY_PROGRESS") {
+            const p = data.payload;
+            if (p?.step === "GENERATING_QUERIES") {
+              setAutopilotStep(p.message || `Generating ${p.count || 3} targeted ICP queries...`);
+            } else if (p?.step === "SEARCHING_WEB") {
+              setAutopilotStep(p.message || "Searching public web with ICP queries...");
+            } else if (p?.step === "CANDIDATES_DISCOVERED") {
+              setAutopilotStep(`Discovered ${p.count} candidate businesses. Verifying domain safety...`);
+            } else if (p?.step === "CRAWLING") {
+              setAutopilotStep(`Crawling public website for ${p.companyName} (${p.domain})...`);
+            } else if (p?.step === "OPPORTUNITY_QUALIFIED") {
+              setAutopilotStep(`✓ Validated opportunity for ${p.companyName} (${p.score}/100)`);
+            } else if (p?.step === "CANDIDATE_REJECTED") {
+              setAutopilotStep(`Filtered ${p.companyName}: ${p.reason}`);
+            }
+          } else if (data.type === "OPPORTUNITIES_UPDATED") {
+            fetchOpportunities();
+            fetchLatestRun();
+          }
+        } catch {}
+      };
+    } catch {}
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [organization?.id]);
+
+  // Run Autopilot Discovery (Real-time WebSocket progress — ZERO fake setTimeout timers)
   const handleRunAutopilot = async () => {
     try {
       setIsAutopilotRunning(true);
       setError(null);
-      setAutopilotStep("Generating targeted ICP search queries...");
-
-      const timer1 = setTimeout(() => setAutopilotStep("Searching public web for operations & logistics companies..."), 1500);
-      const timer2 = setTimeout(() => setAutopilotStep("Crawling company websites & analyzing internal workflows..."), 3500);
-      const timer3 = setTimeout(() => setAutopilotStep("Extracting verified facts & inferences via AI Brain..."), 6000);
+      setAutopilotStep("Initializing autonomous discovery pipeline...");
 
       const res = await api.post<{
         success: boolean;
         count: number;
         discoveryStatus: string;
         message: string;
+        metrics?: any;
         opportunities: Opportunity[];
       }>("/opportunities/autopilot");
 
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
+      if (res?.metrics) {
+        setLatestRun(res.metrics);
+      }
 
       if (res?.opportunities && res.opportunities.length > 0) {
         await fetchOpportunities();
@@ -148,6 +269,7 @@ export const OpportunityEnginePage: React.FC = () => {
     } finally {
       setIsAutopilotRunning(false);
       setAutopilotStep("");
+      fetchLatestRun();
     }
   };
 
@@ -406,6 +528,127 @@ export const OpportunityEnginePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Research Run Transparency Card */}
+      {latestRun && (
+        <div className="rounded-2xl border border-violet-500/20 bg-[#0e0f26]/80 backdrop-blur-xl p-5 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-300">
+                <Activity className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Live Autonomous Research Pipeline Telemetry</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    REAL WEB DISCOVERY
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Full end-to-end transparency: Search Queries → Web Hits → Crawled Sites → Evidence Extraction → Qualification
+                </p>
+              </div>
+            </div>
+
+            {latestRun.discoveryTrail && latestRun.discoveryTrail.length > 0 && (
+              <button
+                onClick={() => setShowTrail((prev) => !prev)}
+                className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs font-semibold text-violet-300 border border-white/[0.08] transition flex items-center gap-1.5"
+              >
+                <span>{showTrail ? "Hide Discovery Trail" : `View Discovery Trail (${latestRun.discoveryTrail.length})`}</span>
+                {showTrail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+
+          {/* 10-Stage Telemetry Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2.5 text-center">
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Queries</span>
+              <span className="text-base font-black text-white mt-0.5 block">{latestRun.queriesGenerated}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Web Hits</span>
+              <span className="text-base font-black text-white mt-0.5 block">{latestRun.searchResultsCount}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Discovered</span>
+              <span className="text-base font-black text-cyan-300 mt-0.5 block">{latestRun.candidatesDiscovered}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Verified</span>
+              <span className="text-base font-black text-cyan-300 mt-0.5 block">{latestRun.candidatesVerified}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Crawled</span>
+              <span className="text-base font-black text-indigo-300 mt-0.5 block">{latestRun.websitesCrawled}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Pages Read</span>
+              <span className="text-base font-black text-indigo-300 mt-0.5 block">{latestRun.pagesRead}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Evidence</span>
+              <span className="text-base font-black text-violet-300 mt-0.5 block">{latestRun.evidenceExtracted}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">AI Analyzed</span>
+              <span className="text-base font-black text-violet-300 mt-0.5 block">{latestRun.aiAnalysesCompleted}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
+              <span className="text-[9px] uppercase tracking-wider text-amber-500/80 font-semibold block">Filtered</span>
+              <span className="text-base font-black text-amber-400 mt-0.5 block">{latestRun.candidatesRejected}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+              <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold block">Qualified</span>
+              <span className="text-base font-black text-emerald-300 mt-0.5 block">{latestRun.opportunitiesQualified}</span>
+            </div>
+          </div>
+
+          {/* Expandable Discovery Trail */}
+          {showTrail && latestRun.discoveryTrail && latestRun.discoveryTrail.length > 0 && (
+            <div className="pt-3 border-t border-white/[0.06] space-y-2">
+              <span className="text-[11px] font-bold text-white block">Discovery Trail & Verification Audit Log:</span>
+              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-2 scrollbar-thin text-[11px]">
+                {latestRun.discoveryTrail.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-lg bg-black/50 border border-white/[0.04] flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white truncate">{item.domain}</span>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-slate-500 hover:text-slate-300"
+                        >
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                        <span className="text-[10px] text-slate-500 font-mono truncate max-w-xs">
+                          via &quot;{item.query}&quot;
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.snippet || item.title}</p>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold shrink-0 ${
+                        item.isAccepted
+                          ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                      }`}
+                    >
+                      {item.isAccepted ? "Accepted" : item.rejectReason || "Filtered"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Metrics Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -700,6 +943,8 @@ export const OpportunityEnginePage: React.FC = () => {
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   {selectedOpp.companyIndustry} • {selectedOpp.location || "United States"} • {selectedOpp.confidence}% Confidence
+                  {selectedOpp.pagesRead ? ` • ${selectedOpp.pagesRead} pages crawled` : ""}
+                  {selectedOpp.discoveryQuery ? ` • Query: "${selectedOpp.discoveryQuery}"` : ""}
                 </p>
               </div>
 
@@ -794,6 +1039,64 @@ export const OpportunityEnginePage: React.FC = () => {
                     <p className="text-slate-500">No atomic evidence records attached.</p>
                   )}
                 </div>
+
+                {/* 2b. Crawled Pages & Verification Audit */}
+                {(() => {
+                  try {
+                    const urls: string[] = selectedOpp.sourceUrls ? JSON.parse(selectedOpp.sourceUrls) : [];
+                    if (!urls || urls.length === 0) return null;
+                    return (
+                      <div className="p-3.5 rounded-xl border border-white/[0.06] bg-[#0c0d1b]/60 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-white">
+                          <span className="flex items-center gap-1.5 text-cyan-400">
+                            <Globe className="w-3.5 h-3.5" />
+                            Crawled Public Pages ({urls.length})
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">Live Safe HTTP Fetch</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {urls.map((u, i) => (
+                            <a
+                              key={i}
+                              href={u}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.06] truncate max-w-xs flex items-center gap-1"
+                            >
+                              <span className="truncate">{u}</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0 text-slate-500" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
+
+                {/* 2c. Unknowns & Unverified Details */}
+                {(() => {
+                  try {
+                    const unks: string[] = selectedOpp.unknowns ? JSON.parse(selectedOpp.unknowns) : [];
+                    if (!unks || unks.length === 0) return null;
+                    return (
+                      <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-950/10 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+                          <HelpCircle className="w-3.5 h-3.5" />
+                          <span>Deliberate Unknowns (Anti-Hallucination Guard)</span>
+                        </div>
+                        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-300">
+                          {unks.map((u, i) => (
+                            <li key={i}>{u}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
               </div>
 
               {/* 3. Recommended MachineMind Solution & Automation Workflow */}

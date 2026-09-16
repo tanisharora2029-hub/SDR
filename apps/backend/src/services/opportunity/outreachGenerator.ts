@@ -42,8 +42,8 @@ export class OutreachGenerator {
     const subject = `Question about your ${subjectTopic} at ${companyName}`;
 
     // Extract primary observable signals
-    const firstEvidence = evidenceList[0]?.observedFact || "your public workflow documentation";
-    const secondEvidence = evidenceList[1]?.observedFact || "recent operational postings";
+    const firstEvidence = evidenceList[0]?.observedFact || "your public operational documentation";
+    const secondEvidence = evidenceList.length > 1 ? evidenceList[1]?.observedFact : null;
 
     // Construct step-by-step workflow preview string
     const workflowPreview = solution.workflowSteps
@@ -51,11 +51,13 @@ export class OutreachGenerator {
       .map((step, idx) => `  ${idx + 1}. ${step}`)
       .join("\n");
 
+    const evidenceText = secondEvidence
+      ? `I was researching ${companyName} and noticed that ${this.softenFact(firstEvidence)}.\n\nI also came across ${this.softenFact(secondEvidence)}.`
+      : `I was researching ${companyName} and noticed that ${this.softenFact(firstEvidence)}.`;
+
     const body = `Hi ${recipientName},
 
-I was researching ${companyName} and noticed that ${this.softenFact(firstEvidence)}.
-
-I also came across ${this.softenFact(secondEvidence)}.
+${evidenceText}
 
 That made me wonder whether ${this.softenProblem(potentialProblem)} may be creating repetitive manual overhead for your operational team.
 

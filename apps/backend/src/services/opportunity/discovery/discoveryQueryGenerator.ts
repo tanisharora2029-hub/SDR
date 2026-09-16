@@ -58,11 +58,11 @@ export class DiscoveryQueryGenerator {
 
   private static readonly QUERY_PATTERNS = [
     "{scale} {industry} companies hiring {pain}",
-    "{scale} {industry} {pain}",
-    "{industry} companies hiring {pain}",
-    "{scale} {industry} operations {pain}",
-    "companies hiring {pain} in {industry}",
-    "US {scale} {industry} services {pain}"
+    "{scale} {industry} company {pain}",
+    "{industry} company hiring {pain}",
+    "{scale} {industry} services company {pain}",
+    "{scale} {industry} business operations {pain}",
+    "companies hiring {pain} in {industry}"
   ];
 
   /**

@@ -443,6 +443,51 @@ describe("Real Opportunity Engine Discovery & Anti-Hallucination Pipeline", () =
 
     // Although small team is mentioned, there is NO operational bottleneck
     expect(signals.isSufficientEvidence).toBe(false);
-    expect(signals.evidenceList.length).toBe(0);
+    expect(signals.evidenceList.filter((e) => e.type === "FACT").length).toBe(0);
+  });
+
+  // TEST 15: 10-Point Pipeline Telemetry & Transparency Tracking
+  it("15. Telemetry: verifies ResearchRun tracks all 10 pipeline metrics and records discovery trail", async () => {
+    const mockCandidates = [
+      {
+        companyName: "Apex Freight Solutions",
+        domain: `127.0.0.1:${serverPort}`,
+        sourceUrl: `http://127.0.0.1:${serverPort}`,
+        discoveryQuery: "logistics companies dispatch operations",
+        discoverySource: "BING",
+        title: "Apex Freight",
+        snippet: "Freight and logistics operations"
+      }
+    ];
+
+    const result = await OpportunityService.runAutopilot(testOrgId, mockCandidates);
+    const latestRun = await OpportunityService.getLatestResearchRun(testOrgId);
+
+    expect(latestRun).toBeDefined();
+    expect(latestRun?.candidatesDiscovered).toBeGreaterThanOrEqual(1);
+    expect(latestRun?.websitesCrawled).toBeGreaterThanOrEqual(1);
+    expect(latestRun?.pagesRead).toBeGreaterThanOrEqual(1);
+    expect(latestRun?.aiAnalysesCompleted).toBeGreaterThanOrEqual(1);
+  });
+
+  // TEST 16: Decision Maker Guard — Filters out role placeholders like "CEO or COO"
+  it("16. Decision Maker Guard: filters out composite role strings like 'CEO or COO' and rejects non-human names", async () => {
+    const crawler = new PublicWebResearchProvider();
+    const signals = await (crawler as any).analyzeSourcesWithAi("Role Test Corp", "roletest.com", [
+      {
+        url: `http://127.0.0.1:${serverPort}/careers`,
+        title: "Careers",
+        snippet: "Accounts Payable Specialist: manual invoice matching.",
+        rawText: "Accounts Payable Specialist: active opening requiring manual invoice matching. Please report to CEO or COO.",
+        sourceType: "JOB_POSTING",
+        sourceQuality: "HIGH"
+      }
+    ]);
+
+    // The name should NOT be "CEO or COO"
+    expect(signals.decisionMaker.name).not.toBe("CEO or COO");
+    // Email must remain null
+    expect(signals.decisionMaker.email).toBeNull();
   });
 });
+

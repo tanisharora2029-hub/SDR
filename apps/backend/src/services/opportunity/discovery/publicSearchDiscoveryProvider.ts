@@ -12,11 +12,24 @@ export interface DiscoveredCompanyCandidate {
   snippet: string;
 }
 
+export interface DiscoveryTrailItem {
+  query: string;
+  source: string;
+  url: string;
+  domain: string;
+  title: string;
+  snippet: string;
+  isAccepted: boolean;
+  rejectReason?: string;
+}
+
 export interface DiscoveryResult {
   candidates: DiscoveredCompanyCandidate[];
   status: "SUCCESS" | "NO_RESULTS" | "FAILED" | "DISCOVERY_UNAVAILABLE";
   reason?: string;
   queriesUsed: string[];
+  totalSearchResults: number;
+  discoveryTrail: DiscoveryTrailItem[];
 }
 
 export class PublicSearchDiscoveryProvider {
@@ -24,7 +37,7 @@ export class PublicSearchDiscoveryProvider {
   private static readonly USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 NexSDR-Discovery/2.0";
 
-  // Blacklist of aggregators, social networks, search engines, and directories
+  // Blacklist of aggregators, directories, social networks, search engines, and info portals
   private static readonly DOMAIN_BLOCKLIST = new Set([
     "duckduckgo.com",
     "google.com",
@@ -52,8 +65,19 @@ export class PublicSearchDiscoveryProvider {
     "trustpilot.com",
     "yelp.com",
     "yellowpages.com",
+    "justdial.com",
+    "indiamart.com",
+    "tradeindia.com",
+    "sulekha.com",
+    "zaubacorp.com",
+    "tofler.in",
+    "instafinancials.com",
+    "naukri.com",
+    "shine.com",
+    "monsterindia.com",
     "indeed.com",
     "glassdoor.com",
+    "glassdoor.co.in",
     "ziprecruiter.com",
     "monster.com",
     "crunchbase.com",
@@ -91,10 +115,13 @@ export class PublicSearchDiscoveryProvider {
     "thecalculatorsite.com",
     "calculator.net",
     "rapidtables.com",
-    "convertunits.com"
+    "convertunits.com",
+    "worldatlas.com",
+    "mapsofindia.com",
+    "vajiramandravi.com",
+    "drishtiias.com",
+    "tripadvisor.com"
   ]);
-
-
 
   /**
    * Discovers real businesses matching generated MachineMind ICP search queries.
@@ -103,6 +130,8 @@ export class PublicSearchDiscoveryProvider {
     const candidates: DiscoveredCompanyCandidate[] = [];
     const seenDomains = new Set<string>();
     const queriesUsed: string[] = [];
+    const discoveryTrail: DiscoveryTrailItem[] = [];
+    let totalSearchResults = 0;
 
     for (const query of queries) {
       if (candidates.length >= maxCandidates) break;
@@ -112,27 +141,74 @@ export class PublicSearchDiscoveryProvider {
 
       try {
         const results = await this.searchWeb(query);
+        totalSearchResults += results.length;
 
         for (const item of results) {
-          if (candidates.length >= maxCandidates) break;
-
           const domain = this.extractCleanDomain(item.url);
-          if (!domain) continue;
+          if (!domain) {
+            discoveryTrail.push({
+              query,
+              source: "PUBLIC_WEB_SEARCH",
+              url: item.url,
+              domain: "unknown",
+              title: item.title,
+              snippet: item.snippet,
+              isAccepted: false,
+              rejectReason: "Malformed URL or unresolvable domain"
+            });
+            continue;
+          }
 
           // Check blocklist
-          if (this.isBlockedDomain(domain)) continue;
+          if (this.isBlockedDomain(domain)) {
+            discoveryTrail.push({
+              query,
+              source: "PUBLIC_WEB_SEARCH",
+              url: item.url,
+              domain,
+              title: item.title,
+              snippet: item.snippet,
+              isAccepted: false,
+              rejectReason: "Blocked aggregator, directory, or non-commercial domain"
+            });
+            continue;
+          }
 
           // Deduplicate within run
-          if (seenDomains.has(domain)) continue;
+          if (seenDomains.has(domain)) {
+            discoveryTrail.push({
+              query,
+              source: "PUBLIC_WEB_SEARCH",
+              url: item.url,
+              domain,
+              title: item.title,
+              snippet: item.snippet,
+              isAccepted: false,
+              rejectReason: "Duplicate domain in search run"
+            });
+            continue;
+          }
 
           // Verify DNS and reachability
           const isReachable = await this.verifyDnsAndPublicReachability(domain);
-          if (!isReachable) continue;
+          if (!isReachable) {
+            discoveryTrail.push({
+              query,
+              source: "PUBLIC_WEB_SEARCH",
+              url: item.url,
+              domain,
+              title: item.title,
+              snippet: item.snippet,
+              isAccepted: false,
+              rejectReason: "Failed DNS lookup or private IP verification"
+            });
+            continue;
+          }
 
           const companyName = this.extractCompanyName(item.title, domain);
 
           seenDomains.add(domain);
-          candidates.push({
+          const candidate: DiscoveredCompanyCandidate = {
             companyName,
             domain,
             sourceUrl: item.url,
@@ -140,11 +216,24 @@ export class PublicSearchDiscoveryProvider {
             discoverySource: "PUBLIC_WEB_SEARCH",
             title: item.title,
             snippet: item.snippet
+          };
+
+          candidates.push(candidate);
+          discoveryTrail.push({
+            query,
+            source: "PUBLIC_WEB_SEARCH",
+            url: item.url,
+            domain,
+            title: item.title,
+            snippet: item.snippet,
+            isAccepted: true
           });
+
+          if (candidates.length >= maxCandidates) break;
         }
 
         // Polite pause between search queries
-        if (queries.indexOf(query) < queries.length - 1) {
+        if (queries.indexOf(query) < queries.length - 1 && candidates.length < maxCandidates) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
       } catch (err: any) {
@@ -157,14 +246,18 @@ export class PublicSearchDiscoveryProvider {
         candidates: [],
         status: "NO_RESULTS",
         reason: "No real businesses discovered from public search queries matching criteria.",
-        queriesUsed
+        queriesUsed,
+        totalSearchResults,
+        discoveryTrail
       };
     }
 
     return {
       candidates,
       status: "SUCCESS",
-      queriesUsed
+      queriesUsed,
+      totalSearchResults,
+      discoveryTrail
     };
   }
 
@@ -242,7 +335,7 @@ export class PublicSearchDiscoveryProvider {
       let url: string | null = null;
 
       // Extract direct URL from base64-encoded click redirect (u=a1...)
-      const uMatch = block.match(/href="https:\/\/www\.bing\.com\/ck\/a\?[^"]*u=a1([a-zA-Z0-9_\-]+)/);
+      const uMatch = block.match(/[?&;]u=a1([a-zA-Z0-9_\-]+)/);
       if (uMatch) {
         try {
           let b64 = uMatch[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -361,8 +454,13 @@ export class PublicSearchDiscoveryProvider {
       lower.endsWith(".test") ||
       lower.endsWith(".local") ||
       lower.endsWith(".edu") ||
+      lower.includes(".edu.") ||
       lower.endsWith(".gov") ||
+      lower.includes(".gov.") ||
+      lower.endsWith(".nic.in") ||
       lower.endsWith(".mil") ||
+      lower.endsWith(".ac.in") ||
+      lower.endsWith(".ac.uk") ||
       lower === "localhost"
     ) {
       return true;

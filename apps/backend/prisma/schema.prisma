@@ -305,6 +305,12 @@ model Opportunity {
   generatedEmail          String?
   leadId                  String?
   researchStatus          String                @default("ANALYZED")
+  discoveryQuery          String?
+  discoverySource         String?
+  pagesRead               Int                   @default(0)
+  sourceUrls              String?
+  unknowns                String?
+  decisionMakerSource     String?
   lastResearchedAt        DateTime              @default(now())
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -337,16 +343,27 @@ model OpportunityEvidence {
 }
 
 model ResearchRun {
-  id                 String       @id @default(uuid())
-  organizationId     String
-  mode               String       @default("AUTOPILOT")
-  targetUrl          String?
-  status             String       @default("COMPLETED")
-  opportunitiesFound Int          @default(0)
-  logs               String?
-  createdAt          DateTime     @default(now())
+  id                     String       @id @default(uuid())
+  organizationId         String
+  mode                   String       @default("AUTOPILOT")
+  targetUrl              String?
+  status                 String       @default("COMPLETED")
+  opportunitiesFound     Int          @default(0)
+  queriesGenerated       Int          @default(0)
+  searchResultsCount     Int          @default(0)
+  candidatesDiscovered   Int          @default(0)
+  candidatesVerified     Int          @default(0)
+  websitesCrawled        Int          @default(0)
+  pagesRead              Int          @default(0)
+  evidenceExtracted      Int          @default(0)
+  aiAnalysesCompleted    Int          @default(0)
+  candidatesRejected     Int          @default(0)
+  opportunitiesQualified Int          @default(0)
+  metricsJson            String?
+  logs                   String?
+  createdAt              DateTime     @default(now())
 
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@map("research_runs")

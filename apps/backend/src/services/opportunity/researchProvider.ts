@@ -13,6 +13,18 @@ export interface ResearchSourceItem {
   sourceQuality: SourceQuality;
 }
 
+export interface WebResearchPackage {
+  companyName: string;
+  domain: string;
+  homepage: string;
+  pagesRead: string[];
+  sourceUrls: string[];
+  extractedText: string[];
+  discoveryQuery?: string;
+  discoverySource?: string;
+  researchTimestamp: string;
+}
+
 export interface ExtractedSignals {
   companyName: string;
   domain: string;
@@ -28,11 +40,19 @@ export interface ExtractedSignals {
   recommendedSolution?: string;
   automationWorkflow?: string[];
   automationFit?: "PERFECT" | "GOOD" | "PARTIAL" | "NONE";
+  pagesRead: string[];
+  sourceUrls: string[];
+  unknowns: string[];
+  researchPackage?: WebResearchPackage;
 }
 
 export interface ResearchProvider {
   fetchPage(url: string): Promise<ResearchSourceItem | null>;
-  researchCompany(companyName: string, domain: string): Promise<ExtractedSignals>;
+  researchCompany(
+    companyName: string,
+    domain: string,
+    context?: { discoveryQuery?: string; discoverySource?: string }
+  ): Promise<ExtractedSignals>;
 }
 
 export class PublicWebResearchProvider implements ResearchProvider {
@@ -120,7 +140,11 @@ export class PublicWebResearchProvider implements ResearchProvider {
    * 4. Fetches up to 8 pages per company (8s timeout, 1MB limit, SSRF protection).
    * 5. Sends researched text to existing AI Brain for structured extraction.
    */
-  public async researchCompany(companyName: string, domain: string): Promise<ExtractedSignals> {
+  public async researchCompany(
+    companyName: string,
+    domain: string,
+    context?: { discoveryQuery?: string; discoverySource?: string }
+  ): Promise<ExtractedSignals> {
     const cleanDomain = domain.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
     const homepageUrl = `https://${cleanDomain}`;
 
@@ -153,7 +177,10 @@ export class PublicWebResearchProvider implements ResearchProvider {
           isConfident: false
         },
         isSufficientEvidence: false,
-        insufficiencyReason: "Website could not be reached via safe public HTTP."
+        insufficiencyReason: "Website could not be reached via safe public HTTP.",
+        pagesRead: [],
+        sourceUrls: [],
+        unknowns: ["Homepage unreachable"]
       };
     }
 
@@ -181,8 +208,22 @@ export class PublicWebResearchProvider implements ResearchProvider {
 
     logger.info(`[ResearchProvider] Crawled ${sources.length} pages for ${companyName} (${cleanDomain})`);
 
+    const pagesRead = sources.map((s) => s.url);
+    const sourceUrls = Array.from(new Set(pagesRead));
+    const researchPackage: WebResearchPackage = {
+      companyName,
+      domain: cleanDomain,
+      homepage: homepageUrl,
+      pagesRead,
+      sourceUrls,
+      extractedText: sources.map((s) => s.rawText.slice(0, 500)),
+      discoveryQuery: context?.discoveryQuery,
+      discoverySource: context?.discoverySource,
+      researchTimestamp: new Date().toISOString()
+    };
+
     // 4. Run AI Analysis via existing AI Brain
-    return this.analyzeSourcesWithAi(companyName, cleanDomain, sources);
+    return this.analyzeSourcesWithAi(companyName, cleanDomain, sources, researchPackage);
   }
 
   /**
@@ -411,7 +452,10 @@ export class PublicWebResearchProvider implements ResearchProvider {
         evidenceList: [],
         decisionMaker,
         isSufficientEvidence: false,
-        insufficiencyReason: "No credible operational problem or repetitive workflow signal was observable in public web data."
+        insufficiencyReason: "No credible operational problem or repetitive workflow signal was observable in public web data.",
+        pagesRead: sources.map((s) => s.url),
+        sourceUrls: Array.from(new Set(sources.map((s) => s.url))),
+        unknowns: ["No operational bottleneck signals observable in public web pages."]
       };
     }
 
@@ -439,7 +483,10 @@ export class PublicWebResearchProvider implements ResearchProvider {
       whyItMatters,
       evidenceList,
       decisionMaker,
-      isSufficientEvidence: true
+      isSufficientEvidence: true,
+      pagesRead: sources.map((s) => s.url),
+      sourceUrls: Array.from(new Set(sources.map((s) => s.url))),
+      unknowns: []
     };
   }
 
@@ -449,7 +496,8 @@ export class PublicWebResearchProvider implements ResearchProvider {
   public async analyzeSourcesWithAi(
     companyName: string,
     domain: string,
-    sources: ResearchSourceItem[]
+    sources: ResearchSourceItem[],
+    researchPackage?: WebResearchPackage
   ): Promise<ExtractedSignals> {
     if (sources.length === 0) {
       return {
@@ -468,7 +516,11 @@ export class PublicWebResearchProvider implements ResearchProvider {
           isConfident: false
         },
         isSufficientEvidence: false,
-        insufficiencyReason: "No crawled pages available for analysis."
+        insufficiencyReason: "No crawled pages available for analysis.",
+        pagesRead: [],
+        sourceUrls: [],
+        unknowns: ["No crawled pages available for analysis."],
+        researchPackage
       };
     }
 
@@ -497,7 +549,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
               observedFact: fact.observedFact.trim(),
               confidenceScore: fact.confidenceScore || 85,
               sourceName: `${companyName} Website`,
-              sourceUrl: fact.sourceUrl || sources[0].url,
+              sourceUrl: fact.sourceUrl || sources[0]?.url || `https://${domain}`,
               sourceQuality: (fact.sourceQuality as any) || "HIGH"
             });
           }
@@ -514,24 +566,68 @@ export class PublicWebResearchProvider implements ResearchProvider {
               aiInference: inf.aiInference.trim(),
               confidenceScore: inf.confidenceScore || 80,
               sourceName: `${companyName} Analysis`,
-              sourceUrl: evidenceList[0]?.sourceUrl || sources[0].url,
+              sourceUrl: evidenceList[0]?.sourceUrl || sources[0]?.url || `https://${domain}`,
               sourceQuality: "HIGH"
             });
           }
         }
       }
 
-      // Check evidence sufficiency & anti-hallucination gate
-      const isSufficient = evidenceList.length > 0 && aiResult.automationFit !== "NONE";
+      const unknowns: string[] = Array.isArray(aiResult.unknowns) ? aiResult.unknowns.filter(Boolean) : [];
+      for (const unknownItem of unknowns) {
+        evidenceList.push({
+          type: "UNKNOWN",
+          category: "PUBLIC_WORKFLOW",
+          observedFact: `Unverified / Not publicly disclosed: ${unknownItem}`,
+          aiInference: "Public pages do not specify or confirm this operational detail.",
+          confidenceScore: 50,
+          sourceName: `${companyName} Public Assessment`,
+          sourceUrl: sources[0]?.url || `https://${domain}`,
+          sourceQuality: "MEDIUM"
+        });
+      }
+
+      // Check evidence sufficiency & anti-hallucination gate: Must have at least one verified FACT
+      const hasFacts = evidenceList.some((e) => e.type === "FACT");
+      const isSufficient = hasFacts && aiResult.automationFit !== "NONE";
+
+      // Strict Decision-Maker Validation:
+      // Filter out role placeholders or non-human names (e.g., "CEO or COO", "Operations Team", "Manager")
+      let dmName = aiResult.decisionMaker?.name ? aiResult.decisionMaker.name.trim() : null;
+      let dmTitle = aiResult.decisionMaker?.title ? aiResult.decisionMaker.title.trim() : null;
+
+      const invalidNamePatterns = /\b(or|and|&|team|department|staff|operations|support|sales|management|unknown|none|n\/a)\b/i;
+      const titleKeywords = /\b(ceo|coo|cfo|cto|president|director|manager|lead|head|founder|officer|partner|vp)\b/i;
+
+      if (dmName) {
+        if (invalidNamePatterns.test(dmName)) {
+          // If it's a title like "CEO or COO", don't treat it as a human name
+          if (!dmTitle && titleKeywords.test(dmName)) {
+            dmTitle = dmName;
+          }
+          dmName = null;
+        } else {
+          // Verify it looks like an actual person's name (2-4 words, uppercase starts)
+          const words = dmName.split(/\s+/);
+          const looksLikePerson =
+            words.length >= 2 && words.length <= 4 && words.every((w) => /^[A-Z][a-zA-Z'\-.]+$/.test(w));
+          if (!looksLikePerson) {
+            dmName = null;
+          }
+        }
+      }
 
       const decisionMaker: DecisionMakerContact = {
-        name: aiResult.decisionMaker?.name || null,
-        title: aiResult.decisionMaker?.title || null,
+        name: dmName,
+        title: dmTitle,
         email: null, // STRICT: Never guess or invent email
-        sourceUrl: aiResult.decisionMaker?.sourceUrl || null,
-        evidenceSnippet: aiResult.decisionMaker?.name ? `Identified in leadership documentation` : null,
-        isConfident: Boolean(aiResult.decisionMaker?.name && aiResult.decisionMaker?.title)
+        sourceUrl: aiResult.decisionMaker?.sourceUrl || (dmName ? sources[0]?.url : null),
+        evidenceSnippet: dmName ? `Identified in leadership documentation` : null,
+        isConfident: Boolean(dmName && dmTitle)
       };
+
+      const pagesRead = researchPackage?.pagesRead || sources.map((s) => s.url);
+      const sourceUrls = researchPackage?.sourceUrls || Array.from(new Set(sources.map((s) => s.url)));
 
       return {
         companyName,
@@ -552,7 +648,11 @@ export class PublicWebResearchProvider implements ResearchProvider {
           : "No credible operational problem or repetitive workflow signal was observable in public web data.",
         recommendedSolution: aiResult.recommendedSolution,
         automationWorkflow: aiResult.workflow,
-        automationFit: aiResult.automationFit
+        automationFit: aiResult.automationFit,
+        pagesRead,
+        sourceUrls,
+        unknowns,
+        researchPackage
       };
     } catch (err: any) {
       logger.error(`[ResearchProvider] AI analysis failed for ${companyName}: ${err.message}`);
@@ -572,7 +672,11 @@ export class PublicWebResearchProvider implements ResearchProvider {
           isConfident: false
         },
         isSufficientEvidence: false,
-        insufficiencyReason: `AI extraction error: ${err.message}`
+        insufficiencyReason: `AI extraction error: ${err.message}`,
+        pagesRead: researchPackage?.pagesRead || sources.map((s) => s.url),
+        sourceUrls: researchPackage?.sourceUrls || Array.from(new Set(sources.map((s) => s.url))),
+        unknowns: [`AI extraction error: ${err.message}`],
+        researchPackage
       };
     }
   }

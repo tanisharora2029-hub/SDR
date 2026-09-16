@@ -53,6 +53,20 @@ export class OpportunityService {
     const logs: string[] = ["Autopilot initialized"];
     const createdOpportunities: any[] = [];
 
+    const telemetry = {
+      queriesGenerated: 0,
+      searchResultsCount: 0,
+      candidatesDiscovered: 0,
+      candidatesVerified: 0,
+      websitesCrawled: 0,
+      pagesRead: 0,
+      evidenceExtracted: 0,
+      aiAnalysesCompleted: 0,
+      candidatesRejected: 0,
+      opportunitiesQualified: 0,
+      discoveryTrail: [] as any[]
+    };
+
     // 1. Discover candidates
     let candidatesToResearch: DiscoveredCompanyCandidate[] = [];
 
@@ -65,20 +79,43 @@ export class OpportunityService {
       } else {
         candidatesToResearch = candidateOverrides;
       }
+      telemetry.candidatesDiscovered = candidatesToResearch.length;
+      telemetry.candidatesVerified = candidatesToResearch.length;
     } else if (process.env.NODE_ENV === "test") {
       logger.info("[OpportunityEngine] Using test fixture candidates for vitest runner.");
       candidatesToResearch = this.TEST_FIXTURE_CANDIDATES;
+      telemetry.candidatesDiscovered = candidatesToResearch.length;
+      telemetry.candidatesVerified = candidatesToResearch.length;
     } else {
       // Generate dynamic targeted queries from MachineMind's ICP
       const queries = DiscoveryQueryGenerator.generateQueries({ limit: 3 });
+      telemetry.queriesGenerated = queries.length;
       logs.push(`Generated discovery queries: ${queries.join(" | ")}`);
 
       broadcastToOrganization(organizationId, {
         type: "DISCOVERY_PROGRESS",
-        payload: { step: "DISCOVERING", message: `Searching public web with ${queries.length} ICP queries...` }
+        payload: {
+          step: "GENERATING_QUERIES",
+          count: queries.length,
+          queries,
+          message: `Generated ${queries.length} targeted search queries.`
+        }
+      });
+
+      broadcastToOrganization(organizationId, {
+        type: "DISCOVERY_PROGRESS",
+        payload: {
+          step: "SEARCHING_WEB",
+          queries,
+          message: `Searching public web with ${queries.length} ICP queries...`
+        }
       });
 
       const discoveryResult = await this.discoveryProvider.discoverCandidates(queries, 6);
+      telemetry.searchResultsCount = discoveryResult.totalSearchResults || 0;
+      telemetry.candidatesDiscovered = discoveryResult.candidates.length;
+      telemetry.candidatesVerified = discoveryResult.candidates.length;
+      telemetry.discoveryTrail = discoveryResult.discoveryTrail || [];
 
       if (discoveryResult.candidates.length === 0) {
         logger.info(`[OpportunityEngine] Discovery completed with 0 results: ${discoveryResult.reason}`);
@@ -89,6 +126,12 @@ export class OpportunityService {
           data: {
             status: discoveryResult.status === "NO_RESULTS" ? "NO_RESULTS" : "FAILED",
             opportunitiesFound: 0,
+            queriesGenerated: telemetry.queriesGenerated,
+            searchResultsCount: telemetry.searchResultsCount,
+            candidatesDiscovered: telemetry.candidatesDiscovered,
+            candidatesVerified: telemetry.candidatesVerified,
+            candidatesRejected: telemetry.candidatesRejected,
+            metricsJson: JSON.stringify(telemetry),
             logs: JSON.stringify(logs)
           }
         });
@@ -96,6 +139,7 @@ export class OpportunityService {
         const emptyResult: any = [];
         emptyResult.discoveryStatus = discoveryResult.status;
         emptyResult.message = discoveryResult.reason || "No real businesses discovered matching MachineMind ICP.";
+        emptyResult.metrics = telemetry;
         return emptyResult;
       }
 
@@ -124,7 +168,17 @@ export class OpportunityService {
         });
 
         if (existingOpp) {
+          telemetry.candidatesRejected++;
           logs.push(`Candidate ${candidate.companyName} already analyzed. Skipping duplicate.`);
+          broadcastToOrganization(organizationId, {
+            type: "DISCOVERY_PROGRESS",
+            payload: {
+              step: "CANDIDATE_REJECTED",
+              companyName: candidate.companyName,
+              domain: candidate.domain,
+              reason: "Duplicate candidate already analyzed in database"
+            }
+          });
           continue;
         }
 
@@ -140,17 +194,40 @@ export class OpportunityService {
         });
 
         if (existingLead) {
+          telemetry.candidatesRejected++;
           logs.push(`Company ${candidate.companyName} already exists in CRM. Skipping.`);
+          broadcastToOrganization(organizationId, {
+            type: "DISCOVERY_PROGRESS",
+            payload: {
+              step: "CANDIDATE_REJECTED",
+              companyName: candidate.companyName,
+              domain: candidate.domain,
+              reason: "Company already exists in CRM leads"
+            }
+          });
           continue;
         }
 
+        telemetry.websitesCrawled++;
         broadcastToOrganization(organizationId, {
           type: "DISCOVERY_PROGRESS",
-          payload: { step: "CRAWLING", companyName: candidate.companyName, domain: candidate.domain }
+          payload: {
+            step: "CRAWLING",
+            companyName: candidate.companyName,
+            domain: candidate.domain,
+            message: `Crawling public website for ${candidate.companyName}...`
+          }
         });
 
         // Research candidate dynamically (crawls homepage + priority subpages)
-        const signals = await this.researchProvider.researchCompany(candidate.companyName, candidate.domain);
+        const signals = await this.researchProvider.researchCompany(candidate.companyName, candidate.domain, {
+          discoveryQuery: candidate.discoveryQuery,
+          discoverySource: candidate.discoverySource
+        });
+
+        telemetry.pagesRead += signals.pagesRead?.length || 1;
+        telemetry.evidenceExtracted += signals.evidenceList?.length || 0;
+        telemetry.aiAnalysesCompleted++;
 
         // Under test fixture execution only, provide grounded mock signals if test domain
         if (process.env.NODE_ENV === "test" && candidate.domain.endsWith(".test") && signals.evidenceList.length === 0) {
@@ -184,6 +261,16 @@ export class OpportunityService {
         // EVIDENCE VALIDATION GATE
         // Reject opportunity if no meaningful evidence found or if automation fit is NONE
         if (!signals.isSufficientEvidence || signals.evidenceList.length === 0 || signals.automationFit === "NONE") {
+          telemetry.candidatesRejected++;
+          broadcastToOrganization(organizationId, {
+            type: "DISCOVERY_PROGRESS",
+            payload: {
+              step: "CANDIDATE_REJECTED",
+              companyName: candidate.companyName,
+              domain: candidate.domain,
+              reason: signals.insufficiencyReason || "Insufficient evidence or no MachineMind fit"
+            }
+          });
           logs.push(`Candidate ${candidate.companyName} rejected: Insufficient evidence or no MachineMind fit.`);
           continue;
         }
@@ -193,6 +280,21 @@ export class OpportunityService {
           signals.potentialProblem,
           signals.evidenceList.map((e) => e.observedFact)
         );
+
+        if (!solution) {
+          telemetry.candidatesRejected++;
+          broadcastToOrganization(organizationId, {
+            type: "DISCOVERY_PROGRESS",
+            payload: {
+              step: "CANDIDATE_REJECTED",
+              companyName: candidate.companyName,
+              domain: candidate.domain,
+              reason: "No compatible MachineMind automation fit"
+            }
+          });
+          logs.push(`Candidate ${candidate.companyName} rejected: No compatible MachineMind automation fit.`);
+          continue;
+        }
 
         // Score opportunity
         const scoring = OpportunityScorer.calculateScore({
@@ -235,6 +337,12 @@ export class OpportunityService {
             decisionMakerTitle: signals.decisionMaker.title,
             decisionMakerEmail: signals.decisionMaker.email, // STRICTLY null unless verified
             decisionMakerEvidence: signals.decisionMaker.evidenceSnippet,
+            discoveryQuery: candidate.discoveryQuery || null,
+            discoverySource: candidate.discoverySource || null,
+            pagesRead: signals.pagesRead?.length || 1,
+            sourceUrls: JSON.stringify(signals.sourceUrls || []),
+            unknowns: JSON.stringify(signals.unknowns || []),
+            decisionMakerSource: signals.decisionMaker.sourceUrl || null,
             status: "READY_FOR_REVIEW",
             generatedSubject: outreach.subject,
             generatedEmail: outreach.body,
@@ -255,9 +363,22 @@ export class OpportunityService {
           include: { evidence: true }
         });
 
+        telemetry.opportunitiesQualified++;
         createdOpportunities.push(opp);
         logs.push(`Successfully validated and scored ${candidate.companyName}: ${scoring.score}/100 (${scoring.scoreTier})`);
+
+        broadcastToOrganization(organizationId, {
+          type: "DISCOVERY_PROGRESS",
+          payload: {
+            step: "OPPORTUNITY_QUALIFIED",
+            companyName: candidate.companyName,
+            domain: candidate.domain,
+            score: scoring.score,
+            tier: scoring.scoreTier
+          }
+        });
       } catch (err: any) {
+        telemetry.candidatesRejected++;
         logger.error(`Error processing candidate ${candidate.companyName}: ${err.message}`);
         logs.push(`Failed candidate ${candidate.companyName}: ${err.message}`);
       }
@@ -268,17 +389,29 @@ export class OpportunityService {
       data: {
         status: createdOpportunities.length > 0 ? "COMPLETED" : "NO_RESULTS",
         opportunitiesFound: createdOpportunities.length,
+        queriesGenerated: telemetry.queriesGenerated,
+        searchResultsCount: telemetry.searchResultsCount,
+        candidatesDiscovered: telemetry.candidatesDiscovered,
+        candidatesVerified: telemetry.candidatesVerified,
+        websitesCrawled: telemetry.websitesCrawled,
+        pagesRead: telemetry.pagesRead,
+        evidenceExtracted: telemetry.evidenceExtracted,
+        aiAnalysesCompleted: telemetry.aiAnalysesCompleted,
+        candidatesRejected: telemetry.candidatesRejected,
+        opportunitiesQualified: telemetry.opportunitiesQualified,
+        metricsJson: JSON.stringify(telemetry),
         logs: JSON.stringify(logs)
       }
     });
 
     broadcastToOrganization(organizationId, {
       type: "OPPORTUNITIES_UPDATED",
-      payload: { count: createdOpportunities.length }
+      payload: { count: createdOpportunities.length, metrics: telemetry }
     });
 
     const resultList: any = createdOpportunities;
     resultList.discoveryStatus = createdOpportunities.length > 0 ? "SUCCESS" : "NO_RESULTS";
+    resultList.metrics = telemetry;
     resultList.message =
       createdOpportunities.length > 0
         ? `Autopilot discovery completed. Validated ${createdOpportunities.length} opportunities.`
@@ -308,9 +441,11 @@ export class OpportunityService {
     }
 
     // 2. Fetch and research public sources dynamically
-    const signals: ExtractedSignals = await this.researchProvider.researchCompany(companyName, domain);
+    const signals: ExtractedSignals = await this.researchProvider.researchCompany(companyName, domain, {
+      discoverySource: "DIRECT_URL_ANALYSIS"
+    });
 
-    // If live fetch returned nothing, handle gracefully with anti-hallucination guard
+    // If live fetch returned nothing or insufficient content, handle gracefully with anti-hallucination guard
     if (!signals.isSufficientEvidence && signals.evidenceList.length === 0) {
       // Create record marked as INSUFFICIENT_EVIDENCE
       const opp = await prisma.opportunity.create({
@@ -328,6 +463,11 @@ export class OpportunityService {
           solutionExplanation: "MachineMind requires verifiable public operational signals to design an evidence-backed automation.",
           automationWorkflow: JSON.stringify(["Public web signals insufficient to establish workflow"]),
           potentialBusinessImpact: "Unverified",
+          discoverySource: "DIRECT_URL_ANALYSIS",
+          pagesRead: signals.pagesRead?.length || 1,
+          sourceUrls: JSON.stringify(signals.sourceUrls || []),
+          unknowns: JSON.stringify(signals.unknowns || []),
+          decisionMakerSource: signals.decisionMaker?.sourceUrl || null,
           status: "READY_FOR_REVIEW",
           researchStatus: "INSUFFICIENT_EVIDENCE"
         }
@@ -340,6 +480,37 @@ export class OpportunityService {
       signals.potentialProblem,
       signals.evidenceList.map((e) => e.observedFact)
     );
+
+    if (!solution) {
+      // Create record marked as NO_AUTOMATION_OPPORTUNITY_FOUND
+      const opp = await prisma.opportunity.create({
+        data: {
+          organizationId,
+          companyName,
+          companyWebsite: parsedUrl.toString(),
+          companyIndustry: signals.industry || "Business Services",
+          companySize: signals.companySize,
+          location: signals.location,
+          potentialProblem: signals.potentialProblem || "No relevant operational bottleneck found.",
+          whyItMatters: signals.whyItMatters || "Observed business workflows do not exhibit problems matching MachineMind automation.",
+          score: 30,
+          scoreTier: "LOW",
+          confidence: 30,
+          recommendedSolution: "N/A — No Automation Fit",
+          solutionExplanation: "MachineMind automations target specific document, workflow, copilot, or integration bottlenecks which were not identified in this business.",
+          automationWorkflow: JSON.stringify(["No compatible MachineMind workflow identified"]),
+          potentialBusinessImpact: "Unverified",
+          discoverySource: "DIRECT_URL_ANALYSIS",
+          pagesRead: signals.pagesRead?.length || 1,
+          sourceUrls: JSON.stringify(signals.sourceUrls || []),
+          unknowns: JSON.stringify(signals.unknowns || []),
+          decisionMakerSource: signals.decisionMaker?.sourceUrl || null,
+          status: "READY_FOR_REVIEW",
+          researchStatus: "NO_AUTOMATION_OPPORTUNITY_FOUND"
+        }
+      });
+      return opp;
+    }
 
     // 4. Score
     const scoring = OpportunityScorer.calculateScore({
@@ -382,6 +553,11 @@ export class OpportunityService {
         decisionMakerTitle: signals.decisionMaker.title,
         decisionMakerEmail: signals.decisionMaker.email,
         decisionMakerEvidence: signals.decisionMaker.evidenceSnippet,
+        discoverySource: "DIRECT_URL_ANALYSIS",
+        pagesRead: signals.pagesRead?.length || 1,
+        sourceUrls: JSON.stringify(signals.sourceUrls || []),
+        unknowns: JSON.stringify(signals.unknowns || []),
+        decisionMakerSource: signals.decisionMaker?.sourceUrl || null,
         status: "READY_FOR_REVIEW",
         generatedSubject: outreach.subject,
         generatedEmail: outreach.body,
@@ -408,6 +584,13 @@ export class OpportunityService {
     });
 
     return opp;
+  }
+
+  public static async getLatestResearchRun(organizationId: string) {
+    return prisma.researchRun.findFirst({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" }
+    });
   }
 
   /**

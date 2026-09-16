@@ -41,6 +41,7 @@ export interface MachineMindSolutionMapping {
   whyItFits: string;
   workflowSteps: string[];
   potentialBusinessImpact: string;
+  isFit?: boolean;
 }
 
 export interface DecisionMakerContact {

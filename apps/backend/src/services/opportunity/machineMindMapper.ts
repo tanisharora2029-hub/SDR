@@ -13,7 +13,7 @@ export interface ProblemSignalMatch {
 export class MachineMindMapper {
   private static readonly SOLUTION_CATALOG: ProblemSignalMatch[] = [
     {
-      keywords: ["invoice", "invoices", "payable", "billing", "settlement"],
+      keywords: ["invoice", "invoices", "payable", "receivable", "billing", "settlement", "accounts", "bookkeeping"],
       problem: "Manual invoice ingestion and accounts payable reconciliation create operational backlogs.",
       primaryProduct: "M-EXTRACT",
       supportingProducts: ["M-FLOW"],
@@ -28,7 +28,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Eliminates up to 85% of manual invoice entry time, speeds up payment cycles, and reduces duplicate invoice risk."
     },
     {
-      keywords: ["document", "documents", "intake", "pdf", "claims", "forms", "kyc"],
+      keywords: ["document", "documents", "intake", "pdf", "claims", "forms", "kyc", "paperwork", "onboarding", "contract"],
       problem: "Heavy manual document classification, verification, and data extraction slow down core business operations.",
       primaryProduct: "M-EXTRACT",
       supportingProducts: ["M-AGENTS"],
@@ -43,7 +43,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Reduces document turnaround time from days to minutes while preventing clerical processing errors."
     },
     {
-      keywords: ["support", "ticket", "tickets", "inquiry", "inquiries", "customer", "copilot"],
+      keywords: ["support", "ticket", "tickets", "inquiry", "inquiries", "customer", "copilot", "helpdesk", "scheduling", "booking", "appointment"],
       problem: "High volume of customer inquiries and support tickets leads to delayed response times and agent burnout.",
       primaryProduct: "M-COPILOT",
       supportingProducts: ["M-FLOW"],
@@ -58,7 +58,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Cuts initial response times by up to 70% and enables support teams to handle growing customer scale without linear hiring."
     },
     {
-      keywords: ["back-office", "data entry", "browser", "rpa", "reconciliation", "clerical"],
+      keywords: ["back-office", "data entry", "browser", "rpa", "reconciliation", "clerical", "manual entry", "order processing", "dispatch", "routing", "status tracking"],
       problem: "Repetitive back-office data entry across disparate web portals and legacy applications creates operational bottlenecks.",
       primaryProduct: "M-FLOW",
       supportingProducts: ["M-AGENTS"],
@@ -73,7 +73,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Reclaims hundreds of operational hours per month and prevents copy-paste errors across disconnected tools."
     },
     {
-      keywords: ["disconnected", "siloed", "silo", "spreadsheet", "spreadsheets", "integration", "legacy software"],
+      keywords: ["disconnected", "siloed", "silo", "spreadsheet", "spreadsheets", "integration", "legacy software", "excel", "csv", "manual sync"],
       problem: "Siloed software platforms require manual CSV exports and spreadsheet consolidation to maintain reporting.",
       primaryProduct: "System Integration",
       supportingProducts: ["M-FLOW"],
@@ -88,7 +88,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Eliminates fragmented records, ensures unified reporting, and removes manual data reconciliation overhead."
     },
     {
-      keywords: ["compliance", "regulatory", "audit", "sop", "checklist"],
+      keywords: ["compliance", "regulatory", "audit", "sop", "checklist", "licensing", "inspection"],
       problem: "Stringent regulatory and SOP checklists require repetitive manual verification and audit tracking.",
       primaryProduct: "Compliance",
       supportingProducts: ["M-AGENTS"],
@@ -103,7 +103,7 @@ export class MachineMindMapper {
       potentialBusinessImpact: "Drastically reduces compliance audit preparation overhead and mitigates regulatory risk."
     },
     {
-      keywords: ["multi-step", "multi-stage", "autonomous", "agents", "procurement"],
+      keywords: ["multi-step", "multi-stage", "autonomous", "agents", "procurement", "fulfillment", "logistics coordination", "freight coordination"],
       problem: "Complex multi-stage workflows involving multiple departments suffer from communication lags and dropped tasks.",
       primaryProduct: "M-AGENTS",
       supportingProducts: ["M-FLOW", "M-EXTRACT"],
@@ -121,11 +121,12 @@ export class MachineMindMapper {
 
   /**
    * Maps an operational problem or observed signals to a verified MachineMind solution.
+   * Returns null if no legitimate operational signal matches MachineMind automation capabilities.
    */
   public static mapSignalsToSolution(
     potentialProblem: string,
     observedSignals: string[] = []
-  ): MachineMindSolutionMapping {
+  ): MachineMindSolutionMapping | null {
     const combinedText = `${potentialProblem} ${observedSignals.join(" ")}`.toLowerCase();
 
     // Find best match in catalog with exact word boundary matching
@@ -137,23 +138,9 @@ export class MachineMindMapper {
       }
     }
 
-    // Default fallback to M-FLOW + M-COPILOT if generic operational workload
+    // STRICT: Do NOT force a solution if no relevant operational bottleneck was found
     if (!bestMatch) {
-      bestMatch = {
-        keywords: ["general"],
-        problem: "Repetitive operational tasks and manual information routing create workflow bottlenecks.",
-        primaryProduct: "M-FLOW",
-        supportingProducts: ["M-COPILOT"],
-        whyItFits: "MachineMind M-FLOW and M-COPILOT automate repetitive digital workflows and inquiry handling while maintaining human oversight.",
-        workflowSteps: [
-          "Operational request or task ingested",
-          "Automated classifier extracts key parameters and evaluates routing rules",
-          "M-FLOW executes standardized workflow steps across target systems",
-          "Prepares exception summary for human approval when non-standard criteria arise",
-          "Logs completion details in central audit trail"
-        ],
-        potentialBusinessImpact: "Reduces repetitive manual operational overhead and accelerates turnaround speed."
-      };
+      return null;
     }
 
     const allProducts = [bestMatch.primaryProduct, ...(bestMatch.supportingProducts || [])];
@@ -164,7 +151,8 @@ export class MachineMindMapper {
       displayTitle,
       whyItFits: bestMatch.whyItFits,
       workflowSteps: bestMatch.workflowSteps,
-      potentialBusinessImpact: bestMatch.potentialBusinessImpact
+      potentialBusinessImpact: bestMatch.potentialBusinessImpact,
+      isFit: true
     };
   }
 }
