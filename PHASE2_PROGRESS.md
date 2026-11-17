@@ -75,6 +75,8 @@ Eight files had uncommitted AI and discovery edits at the start. Their changes a
 
 ## Phone Studio reply investigation
 
+- Render runtime logs confirmed Groq HTTP 404 model_not_found for both Llama 3.3 70B and Llama 3.1 8B. The code incorrectly classified supported GPT-OSS models as retired and forced requests to these Llama models. Updated provider and CostRouter to preserve GPT-OSS configurations and migrate retired Llama configurations. Groq's deprecation documentation confirms the replacement models.
+
 - Recognized speech can appear in the transcript before the backend turn succeeds. The old UI logged turn failures only to the browser console. It also waited for neural audio before rendering the reply and skipped audio entirely if the neural TTS request failed.
 - Phone Studio now shows turn errors beside the transcript, bounds neural audio requests, and speaks generated text through browser TTS when neural audio is unavailable. The processing state stays active until the turn request settles.
 - Supported workspaces now pass their industry, qualification questions and saved profile context to the voice prompt. Phone Studio and Settings link directly to the business profile.

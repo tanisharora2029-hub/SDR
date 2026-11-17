@@ -131,7 +131,7 @@ describe("Groq Inbound & AI Recovery Test Suite", () => {
     expect(interceptedGroqCalls.length).toBeGreaterThanOrEqual(1);
 
     // Verify model used was llama-3.3-70b-versatile
-    expect(interceptedGroqCalls[0].body.model).toBe("llama-3.3-70b-versatile");
+    expect(interceptedGroqCalls[0].body.model).toBe("openai/gpt-oss-120b");
   });
 
   it("Test B: Groq failure -> clear error, no fake/mock response silently presented as real AI", async () => {
@@ -347,17 +347,26 @@ describe("Groq Inbound & AI Recovery Test Suite", () => {
     expect(interceptedResendEmails[0].to).toContain(testLead.email);
   });
 
-  it("Test F: Decommissioned models automatically migrate to llama-3.3-70b-versatile", () => {
+  it("Test F: Retired Llama models migrate while supported GPT-OSS selections survive", () => {
     process.env.GROQ_MODEL = "llama-3.1-70b-versatile";
     const groq = new GroqProvider();
     const resolvedModel = groq.resolveModel();
-    expect(resolvedModel).toBe("llama-3.3-70b-versatile");
+    expect(resolvedModel).toBe("openai/gpt-oss-120b");
 
     process.env.GROQ_MODEL = "llama3-70b-8192";
-    expect(groq.resolveModel()).toBe("llama-3.3-70b-versatile");
+    expect(groq.resolveModel()).toBe("openai/gpt-oss-120b");
 
     const costRouterDecision = CostRouter.routeTask("EMAIL_DRAFTING");
-    expect(costRouterDecision.modelName).toBe("llama-3.3-70b-versatile");
+    expect(costRouterDecision.modelName).toBe("openai/gpt-oss-120b");
+    for (const retired of ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]) {
+      process.env.GROQ_MODEL = retired;
+      expect(groq.resolveModel()).toBe("openai/gpt-oss-120b");
+    }
+    for (const supported of ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]) {
+      process.env.GROQ_MODEL = supported;
+      expect(groq.resolveModel()).toBe(supported);
+      expect(CostRouter.routeTask("EMAIL_DRAFTING").modelName).toBe(supported);
+    }
   });
 
   it("Test G: Security check: API keys are never exposed in errors or logs", async () => {
