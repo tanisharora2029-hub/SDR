@@ -1,6 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const AUTH_TIMEOUT_MS = 65_000;
 
-export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T = any>(
+  endpoint: string,
+  options: RequestInit = {},
+  timeoutMs = 25_000
+): Promise<T> {
   const token = localStorage.getItem("token");
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -12,7 +17,7 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -36,6 +41,9 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     return data;
   } catch (err: any) {
     if (err.name === "AbortError") {
+      if (controller.signal.aborted && timeoutMs === AUTH_TIMEOUT_MS) {
+        throw new Error("The sign-in service did not respond in time. Please wait a moment and try again.");
+      }
       throw new Error("Request timed out. The server is taking longer than expected to respond.");
     }
     throw err;
@@ -46,7 +54,8 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
 
 export const api = {
   // Auth
-  login: (credentials: any) => apiRequest("/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
+  login: (credentials: any) =>
+    apiRequest("/auth/login", { method: "POST", body: JSON.stringify(credentials) }, AUTH_TIMEOUT_MS),
   register: (data: any) => apiRequest("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   getMe: () => apiRequest("/auth/me"),
 
