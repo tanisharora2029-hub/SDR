@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult, AiResearchStage } from "./types.js";
 import { MockAiProvider } from "./mockProvider.js";
 import { OllamaProvider } from "./ollamaProvider.js";
 import { OnlineGeminiProvider } from "./onlineGeminiProvider.js";
@@ -265,6 +265,41 @@ class AiService {
       }
       return await this.fallbackProvider.analyzeOpportunityContent(params);
     }
+  }
+
+  async analyzeOpportunityStage(
+    stage: AiResearchStage,
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<any> {
+    const decision = CostRouter.routeTask("STRUCTURED_EXTRACTION");
+    const provider = this.getProviderForDecision(decision);
+
+    try {
+      if (provider.analyzeOpportunityStage) {
+        const res = await provider.analyzeOpportunityStage(stage, systemPrompt, userPrompt);
+        if (res) return res;
+      }
+    } catch (err: any) {
+      logger.warn(`[AI_STAGE_FALLBACK] Primary AI provider stage ${stage} failed: ${err.message}`);
+    }
+
+    const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
+    if (hasGroqKey && provider !== this.groqProvider) {
+      try {
+        if (this.groqProvider.analyzeOpportunityStage) {
+          const res = await this.groqProvider.analyzeOpportunityStage(stage, systemPrompt, userPrompt);
+          if (res) return res;
+        }
+      } catch (groqErr: any) {
+        logger.warn(`[AI_STAGE_FALLBACK] Groq stage ${stage} fallback failed: ${groqErr.message}`);
+      }
+    }
+
+    if (this.fallbackProvider.analyzeOpportunityStage) {
+      return await this.fallbackProvider.analyzeOpportunityStage(stage, systemPrompt, userPrompt);
+    }
+    return null;
   }
 }
 

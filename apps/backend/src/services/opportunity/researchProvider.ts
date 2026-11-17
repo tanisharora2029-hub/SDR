@@ -1,6 +1,14 @@
 import { SsrfGuard } from "./ssrfGuard.js";
-import { OpportunityEvidenceItem, SourceQuality, DecisionMakerContact } from "./types.js";
+import { OpportunityEvidenceItem, SourceQuality, DecisionMakerContact, ResearchFailureState } from "./types.js";
 import { aiService } from "../ai/aiService.js";
+import {
+  BusinessAnalysis,
+  OperationsAnalysis,
+  OpportunityAnalysis,
+  EvidenceCriticResult,
+  AiOpportunityFact,
+  AiOpportunityInference
+} from "../ai/types.js";
 import { logger } from "../../lib/logger.js";
 
 export interface ResearchSourceItem {
@@ -37,12 +45,19 @@ export interface ExtractedSignals {
   decisionMaker: DecisionMakerContact;
   isSufficientEvidence: boolean;
   insufficiencyReason?: string;
+  failureState?: ResearchFailureState;
   recommendedSolution?: string;
   automationWorkflow?: string[];
   automationFit?: "PERFECT" | "GOOD" | "PARTIAL" | "NONE";
   pagesRead: string[];
   sourceUrls: string[];
   unknowns: string[];
+  operationalSignals?: string[];
+  aiInferences?: string[];
+  businessAnalysis?: BusinessAnalysis;
+  operationsAnalysis?: OperationsAnalysis;
+  criticVerdict?: "SUPPORTED" | "WEAK" | "UNSUPPORTED";
+  criticNotes?: string;
   researchPackage?: WebResearchPackage;
 }
 
@@ -51,7 +66,7 @@ export interface ResearchProvider {
   researchCompany(
     companyName: string,
     domain: string,
-    context?: { discoveryQuery?: string; discoverySource?: string }
+    context?: { discoveryQuery?: string; discoverySource?: string; onProgress?: (stage: string, details?: any) => void }
   ): Promise<ExtractedSignals>;
 }
 
@@ -85,31 +100,45 @@ export class PublicWebResearchProvider implements ResearchProvider {
       const parsedUrl = SsrfGuard.validateAndNormalizeUrl(rawUrl);
       await SsrfGuard.verifyResolvedIp(parsedUrl.hostname);
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), PublicWebResearchProvider.REQUEST_TIMEOUT_MS);
-
       const response = await fetch(parsedUrl.toString(), {
         method: "GET",
-        signal: controller.signal,
+        redirect: "manual",
+        signal: AbortSignal.timeout(PublicWebResearchProvider.REQUEST_TIMEOUT_MS),
         headers: {
           "User-Agent": PublicWebResearchProvider.USER_AGENT,
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         }
       });
-      clearTimeout(timeout);
-
       if (!response.ok) {
+        await response.body?.cancel();
         logger.warn(`[ResearchProvider] HTTP ${response.status} fetching ${parsedUrl.hostname}`);
         return null;
       }
 
       const contentType = response.headers.get("content-type") || "";
       if (!contentType.includes("text/html") && !contentType.includes("text/plain")) {
+        await response.body?.cancel();
         return null;
       }
 
-      // Read max 1MB
-      const html = await response.text();
+      const reader = response.body?.getReader();
+      if (!reader) return null;
+      const decoder = new TextDecoder();
+      let html = "";
+      let bytes = 0;
+      try {
+        for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+          bytes += chunk.value.byteLength;
+          if (bytes > 1_048_576) {
+            await reader.cancel();
+            return null;
+          }
+          html += decoder.decode(chunk.value, { stream: true });
+        }
+        html += decoder.decode();
+      } finally {
+        reader.releaseLock();
+      }
       const cleanedText = this.cleanHtml(html);
       const title = this.extractTitle(html) || parsedUrl.hostname;
       const snippet = cleanedText.slice(0, 300);
@@ -491,6 +520,363 @@ export class PublicWebResearchProvider implements ResearchProvider {
   }
 
   /**
+   * 4-Stage Multi-Pass AI Sales Research Brain reasoning pipeline:
+   * 1. Business Analyst: Understand business, offerings, scale, and customer base
+   * 2. Operations Analyst: Detect workflows, intake channels, tools, and friction points
+   * 3. Opportunity Analyst: Map problems to MachineMind products and formulate automation workflow
+   * 4. Evidence Critic: Audits evidence grounding, rejects fabricated facts, determines overall verdict
+   */
+  public async runMultiPassAnalysis(
+    companyName: string,
+    domain: string,
+    sources: ResearchSourceItem[],
+    researchPackage?: WebResearchPackage,
+    onProgress?: (stage: string, details?: any) => void
+  ): Promise<ExtractedSignals | null> {
+    const pagePayload = sources
+      .map((s, idx) => `PAGE ${idx + 1} [${s.url}] (${s.title || "Page"}):\n${s.rawText.slice(0, 2000)}`)
+      .join("\n\n---\n\n");
+
+    try {
+      // ──────────────────────────────────────────────
+      // STAGE 1: Business Analyst
+      // ──────────────────────────────────────────────
+      onProgress?.("BUSINESS_ANALYST", { message: `Stage 1: Business Analyst evaluating ${companyName}...` });
+      const stage1System = `You are an elite Business Analyst for MachineMind.
+Analyze the provided crawled website text for a company and determine what the business actually does.
+Prioritize small businesses, startups, regional/growing companies, and lean operations teams as well as mid-market firms.
+
+OUTPUT STRICT JSON:
+{
+  "companyName": "${companyName}",
+  "whatTheyDo": "Concise summary of their core product/service",
+  "industry": "Specific industry",
+  "companySize": "e.g. 1-15 employees, 10-50 employees, or detected size",
+  "location": "Detected city/state/country or 'Global'",
+  "customerType": "e.g. B2B, B2C, SMBs, Consumers, Enterprise",
+  "servicesOffered": ["service 1", "service 2"]
+}`;
+
+      const stage1User = `Company: ${companyName} (${domain})\n\nCrawled Content:\n${pagePayload}`;
+      const businessAnalysis: BusinessAnalysis | null = await aiService.analyzeOpportunityStage(
+        "BUSINESS_ANALYST",
+        stage1System,
+        stage1User
+      );
+
+      if (!businessAnalysis || !businessAnalysis.whatTheyDo) {
+        logger.warn(`[MultiPassAI] Stage 1 (Business Analyst) yielded empty output for ${companyName}`);
+        return null;
+      }
+
+      // ──────────────────────────────────────────────
+      // STAGE 2: Operations Analyst
+      // ──────────────────────────────────────────────
+      onProgress?.("OPERATIONS_ANALYST", { message: `Stage 2: Operations Analyst inspecting workflows at ${companyName}...` });
+      const stage2System = `You are an elite Operations & Workflow Analyst for MachineMind.
+Analyze the company context and crawled website text to identify observable operational workflows, intake channels, and repetitive task signals.
+
+LOOK FOR SIGNALS OF:
+- Repetitive data entry, manual document processing, spreadsheets
+- High-volume customer inquiries, support requests, intake forms
+- Order entry, invoicing, quotes, reconciliation, billing
+- Hiring for administrative, coordinator, customer support, or operations roles
+- Turnaround time SLAs, manual email handoffs, disconnected tools
+
+CRITICAL: Every observed workflow and signal MUST cite the exact sourceUrl where it was found in the text.
+
+OUTPUT STRICT JSON:
+{
+  "observedWorkflows": [
+    {
+      "workflow": "Description of manual/observed workflow",
+      "sourceUrl": "exact URL from crawled pages",
+      "evidenceSnippet": "short verbatim snippet from text"
+    }
+  ],
+  "operationalSignals": [
+    {
+      "signal": "e.g. Hiring for Operations Coordinator",
+      "type": "HIRING",
+      "sourceUrl": "exact URL",
+      "snippet": "verbatim text"
+    }
+  ],
+  "technologyMentions": ["software/tools mentioned in text"],
+  "hiringSignals": ["job roles mentioned"]
+}`;
+
+      const stage2User = `Company: ${companyName} (${domain})\nBusiness Summary: ${businessAnalysis.whatTheyDo}\nIndustry: ${businessAnalysis.industry}\n\nCrawled Content:\n${pagePayload}`;
+      const operationsAnalysis: OperationsAnalysis | null = await aiService.analyzeOpportunityStage(
+        "OPERATIONS_ANALYST",
+        stage2System,
+        stage2User
+      );
+
+      // ──────────────────────────────────────────────
+      // STAGE 3: Opportunity Analyst
+      // ──────────────────────────────────────────────
+      onProgress?.("OPPORTUNITY_ANALYST", { message: `Stage 3: Opportunity Analyst synthesizing automation fit for ${companyName}...` });
+      const stage3System = `You are an elite Opportunity Analyst for MachineMind.
+Evaluate the business context and operational signals to determine where MachineMind automation can provide high operational leverage.
+
+MachineMind Products:
+- M-EXTRACT: Document, invoice, form, and data extraction from PDFs, emails, unstructured files.
+- M-FLOW: Workflow automation, cross-system data entry, repetitive clerical task execution.
+- M-COPILOT: Intelligent customer support triaging, inquiry drafting, SOP knowledge base retrieval.
+- M-AGENTS: Multi-stage operations coordination, tracking, and autonomous execution with human-in-the-loop.
+- System Integration: Connecting disconnected software and spreadsheets to eliminate manual data transfers.
+- Compliance: Audit trails, regulatory checklists, and verification workflows.
+
+CRITICAL ANTI-HALLUCINATION RULES:
+1. Every FACT must be verbatim or directly observed with exact sourceUrl.
+2. Every INFERENCE must cite which fact it is based on.
+3. Every UNKNOWN must state what is unconfirmed by public text.
+4. Decision Maker: Owner, Founder, CEO, COO, Operations Director/Manager only if explicitly named in text. Email MUST be null.
+5. If there is NO observable operational bottleneck, set automationFit to "NONE" and facts to [].
+
+OUTPUT STRICT JSON:
+{
+  "potentialProblem": "1-2 sentence core operational bottleneck",
+  "whyItMatters": "1-2 sentence business friction or scaling barrier",
+  "automationFit": "PERFECT" | "GOOD" | "PARTIAL" | "NONE",
+  "recommendedSolution": "M-EXTRACT" | "M-FLOW" | "M-COPILOT" | "M-AGENTS" | "System Integration" | "Compliance" | "M-EXTRACT + M-FLOW" | "M-COPILOT + M-FLOW",
+  "workflow": [
+    "1. Ingestion: ...",
+    "2. Processing: ...",
+    "3. Verification: ...",
+    "4. Execution: ...",
+    "5. Human escalation on exception"
+  ],
+  "facts": [
+    {
+      "observedFact": "verbatim observation",
+      "sourceUrl": "exact url",
+      "category": "HIRING" | "PUBLIC_WORKFLOW" | "TECH_SIGNAL" | "DOCUMENTATION",
+      "confidenceScore": 85
+    }
+  ],
+  "inferences": [
+    {
+      "aiInference": "logical deduction",
+      "basedOnFact": "the observed fact",
+      "confidenceScore": 80
+    }
+  ],
+  "unknowns": ["item not publicly verified"],
+  "decisionMaker": {
+    "name": "Full Name or null",
+    "title": "Title or null",
+    "sourceUrl": "url or null"
+  },
+  "confidence": 75
+}`;
+
+      const stage3User = `Company: ${companyName} (${domain})\nWhat They Do: ${businessAnalysis.whatTheyDo}\nWorkflows Detected: ${JSON.stringify(operationsAnalysis?.observedWorkflows || [])}\nOperational Signals: ${JSON.stringify(operationsAnalysis?.operationalSignals || [])}\n\nCrawled Content:\n${pagePayload}`;
+      const opportunityAnalysis: OpportunityAnalysis | null = await aiService.analyzeOpportunityStage(
+        "OPPORTUNITY_ANALYST",
+        stage3System,
+        stage3User
+      );
+
+      if (!opportunityAnalysis) {
+        logger.warn(`[MultiPassAI] Stage 3 (Opportunity Analyst) failed for ${companyName}`);
+        return null;
+      }
+
+      // ──────────────────────────────────────────────
+      // STAGE 4: Evidence Critic
+      // ──────────────────────────────────────────────
+      onProgress?.("EVIDENCE_CRITIC", { message: `Stage 4: Evidence Critic stress-testing evidence for ${companyName}...` });
+      const stage4System = `You are a strict, skeptical Evidence Critic for MachineMind.
+Your sole job is to audit the proposed opportunity against the actual crawled text and reject any ungrounded claims, fabricated facts, or generic assumptions.
+
+AUDIT RULES:
+1. Examine each fact: Is it genuinely supported by the text and sourceUrl? If not, REJECT it.
+2. Size alone is NEVER evidence of an operational problem.
+3. Industry alone is NEVER evidence of an operational problem.
+4. Check inferences: Are they reasonable deductions or wild guesses?
+5. Determine overall verdict:
+   - "SUPPORTED": At least one verifiable operational fact grounded in text.
+   - "WEAK": Generic signals with minimal verifiable friction.
+   - "UNSUPPORTED": Zero verified facts or fabricated/hallucinated claims. MUST be rejected.
+
+OUTPUT STRICT JSON:
+{
+  "verifiedFacts": [
+    {
+      "observedFact": "grounded fact",
+      "sourceUrl": "url",
+      "category": "category",
+      "confidenceScore": 85
+    }
+  ],
+  "rejectedFacts": [
+    {
+      "fact": "rejected claim",
+      "reason": "why it was rejected"
+    }
+  ],
+  "strengthenedInferences": [
+    {
+      "aiInference": "sound inference",
+      "basedOnFact": "grounded fact",
+      "confidenceScore": 80
+    }
+  ],
+  "overallVerdict": "SUPPORTED" | "WEAK" | "UNSUPPORTED",
+  "critiqueNotes": "brief audit notes",
+  "adjustedConfidence": 75
+}`;
+
+      const stage4User = `Proposed Opportunity for ${companyName} (${domain}):
+Problem: ${opportunityAnalysis.potentialProblem}
+Facts Claimed: ${JSON.stringify(opportunityAnalysis.facts || [])}
+Inferences: ${JSON.stringify(opportunityAnalysis.inferences || [])}
+
+Actual Crawled Content to Verify Against:
+${pagePayload}`;
+
+      const criticResult: EvidenceCriticResult | null = await aiService.analyzeOpportunityStage(
+        "EVIDENCE_CRITIC",
+        stage4System,
+        stage4User
+      );
+
+      // Audit decision:
+      const verifiedFacts = (criticResult?.verifiedFacts || []).filter((fact) =>
+        this.findFactSource(fact, sources)
+      );
+
+      const verifiedInferences = (criticResult?.strengthenedInferences && criticResult.strengthenedInferences.length > 0)
+        ? criticResult.strengthenedInferences
+        : (opportunityAnalysis.inferences || []);
+
+      const overallVerdict = criticResult?.overallVerdict || "UNSUPPORTED";
+
+      // Evidence Gate:
+      const isCriticRejected = overallVerdict === "UNSUPPORTED" || verifiedFacts.length === 0 || opportunityAnalysis.automationFit === "NONE";
+      const isSufficient = !isCriticRejected;
+
+      // Construct evidence list
+      const evidenceList: OpportunityEvidenceItem[] = [];
+      for (const fact of verifiedFacts) {
+        if (fact.observedFact && fact.observedFact.trim()) {
+          evidenceList.push({
+            type: "FACT",
+            category: (fact.category as any) || "PUBLIC_WORKFLOW",
+            observedFact: fact.observedFact.trim(),
+            confidenceScore: fact.confidenceScore || 85,
+            sourceName: `${companyName} Website`,
+            sourceUrl: fact.sourceUrl || sources[0]?.url || `https://${domain}`,
+            sourceQuality: (fact.sourceQuality as any) || "HIGH"
+          });
+        }
+      }
+
+      for (const inf of verifiedInferences) {
+        if (inf.aiInference && inf.aiInference.trim()) {
+          evidenceList.push({
+            type: "INFERENCE",
+            category: "PUBLIC_WORKFLOW",
+            observedFact: inf.basedOnFact || (evidenceList[0]?.observedFact ?? "Observed operational context"),
+            aiInference: inf.aiInference.trim(),
+            confidenceScore: inf.confidenceScore || 80,
+            sourceName: `${companyName} Analysis`,
+            sourceUrl: evidenceList[0]?.sourceUrl || sources[0]?.url || `https://${domain}`,
+            sourceQuality: "HIGH"
+          });
+        }
+      }
+
+      const unknowns = Array.isArray(opportunityAnalysis.unknowns) ? opportunityAnalysis.unknowns.filter(Boolean) : [];
+      for (const unknownItem of unknowns) {
+        evidenceList.push({
+          type: "UNKNOWN",
+          category: "PUBLIC_WORKFLOW",
+          observedFact: `Unverified / Not publicly disclosed: ${unknownItem}`,
+          aiInference: "Public pages do not specify or confirm this operational detail.",
+          confidenceScore: 50,
+          sourceName: `${companyName} Public Assessment`,
+          sourceUrl: sources[0]?.url || `https://${domain}`,
+          sourceQuality: "MEDIUM"
+        });
+      }
+
+      // Decision Maker handling
+      let dmName = opportunityAnalysis.decisionMaker?.name ? opportunityAnalysis.decisionMaker.name.trim() : null;
+      let dmTitle = opportunityAnalysis.decisionMaker?.title ? opportunityAnalysis.decisionMaker.title.trim() : null;
+      const invalidNamePatterns = /\b(or|and|&|team|department|staff|operations|support|sales|management|unknown|none|n\/a)\b/i;
+      const titleKeywords = /\b(ceo|coo|cfo|cto|president|director|manager|lead|head|founder|officer|partner|vp)\b/i;
+
+      if (dmName) {
+        if (invalidNamePatterns.test(dmName)) {
+          if (!dmTitle && titleKeywords.test(dmName)) {
+            dmTitle = dmName;
+          }
+          dmName = null;
+        } else {
+          const words = dmName.split(/\s+/);
+          const looksLikePerson =
+            words.length >= 2 && words.length <= 4 && words.every((w) => /^[A-Z][a-zA-Z'\-.]+$/.test(w));
+          if (!looksLikePerson) {
+            dmName = null;
+          }
+        }
+      }
+
+      const decisionMaker: DecisionMakerContact = {
+        name: dmName,
+        title: dmTitle,
+        email: null,
+        sourceUrl: opportunityAnalysis.decisionMaker?.sourceUrl || (dmName ? sources[0]?.url : null),
+        evidenceSnippet: dmName ? "Identified in leadership documentation" : null,
+        isConfident: Boolean(dmName && dmTitle)
+      };
+
+      const pagesRead = researchPackage?.pagesRead || sources.map((s) => s.url);
+      const sourceUrls = researchPackage?.sourceUrls || Array.from(new Set(sources.map((s) => s.url)));
+
+      return {
+        companyName,
+        domain,
+        industry: businessAnalysis.industry || "B2B Operations",
+        companySize: businessAnalysis.companySize || "Small to Mid-Sized Business",
+        location: businessAnalysis.location || "United States / Global",
+        potentialProblem: isSufficient
+          ? opportunityAnalysis.potentialProblem
+          : "Insufficient evidence of operational bottleneck.",
+        whyItMatters: isSufficient
+          ? opportunityAnalysis.whyItMatters
+          : "Public documentation does not show distinct manual workflow bottlenecks.",
+        evidenceList,
+        decisionMaker,
+        isSufficientEvidence: isSufficient,
+        failureState: isSufficient ? "SUCCESS" : (overallVerdict === "UNSUPPORTED" ? "EVIDENCE_CRITIC_REJECTED" : "INSUFFICIENT_EVIDENCE"),
+        insufficiencyReason: isSufficient
+          ? undefined
+          : (criticResult?.critiqueNotes || "Evidence Critic rejected opportunity or insufficient operational evidence."),
+        recommendedSolution: opportunityAnalysis.recommendedSolution,
+        automationWorkflow: opportunityAnalysis.workflow,
+        automationFit: opportunityAnalysis.automationFit,
+        pagesRead,
+        sourceUrls,
+        unknowns,
+        operationalSignals: (operationsAnalysis?.operationalSignals || []).map(s => s.signal),
+        aiInferences: verifiedInferences.map(i => i.aiInference),
+        businessAnalysis,
+        operationsAnalysis: operationsAnalysis || undefined,
+        criticVerdict: overallVerdict,
+        criticNotes: criticResult?.critiqueNotes,
+        researchPackage
+      };
+    } catch (err: any) {
+      logger.warn(`[MultiPassAI] 4-stage pipeline encountered error for ${companyName}: ${err.message}. Falling back.`);
+      return null;
+    }
+  }
+
+  /**
    * Analyzes researched sources using the existing AI Brain.
    */
   public async analyzeSourcesWithAi(
@@ -525,6 +911,13 @@ export class PublicWebResearchProvider implements ResearchProvider {
     }
 
     try {
+      // 1. Try 4-Stage Multi-Pass AI Sales Research Brain reasoning pipeline
+      const multiPassResult = await this.runMultiPassAnalysis(companyName, domain, sources, researchPackage);
+      if (multiPassResult) {
+        return multiPassResult;
+      }
+
+      // 2. Resilient fallback to single-pass extraction if multi-pass returned null
       const pagePayload = sources.map((s) => ({
         url: s.url,
         text: s.rawText.slice(0, 2500),
@@ -542,7 +935,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
 
       if (Array.isArray(aiResult.facts)) {
         for (const fact of aiResult.facts) {
-          if (fact.observedFact && fact.observedFact.trim()) {
+          if (this.findFactSource(fact, sources)) {
             evidenceList.push({
               type: "FACT",
               category: (fact.category as any) || "PUBLIC_WORKFLOW",
@@ -679,6 +1072,18 @@ export class PublicWebResearchProvider implements ResearchProvider {
         researchPackage
       };
     }
+  }
+
+  private findFactSource(
+    fact: { observedFact?: string; sourceUrl?: string },
+    sources: ResearchSourceItem[]
+  ) {
+    const quote = fact.observedFact?.trim().replace(/\s+/g, " ").toLowerCase();
+    if (!quote || quote.length < 12) return undefined;
+    return sources.find((source) =>
+      source.url === fact.sourceUrl &&
+      source.rawText.replace(/\s+/g, " ").toLowerCase().includes(quote)
+    );
   }
 
   private cleanHtml(html: string): string {

@@ -12,6 +12,18 @@ export type SourceQuality = "HIGH" | "MEDIUM" | "LOW";
 
 export type OpportunityScoreTier = "HIGH" | "MEDIUM" | "LOW";
 
+export type ResearchFailureState =
+  | "SUCCESS"
+  | "NO_RESULTS"
+  | "FAILED"
+  | "INSUFFICIENT_EVIDENCE"
+  | "DISCOVERY_UNAVAILABLE"
+  | "INSUFFICIENT_RESEARCH"
+  | "REJECTED_LOW_AUTOMATION_FIT"
+  | "AI_ANALYSIS_FAILED"
+  | "EVIDENCE_CRITIC_REJECTED"
+  | "WEBSITE_UNREACHABLE";
+
 export interface ScoreBreakdown {
   icpFit: number; // Max 25
   painSignalStrength: number; // Max 25

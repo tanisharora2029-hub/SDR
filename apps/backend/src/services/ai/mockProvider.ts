@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult, AiResearchStage } from "./types.js";
 import { SdrToolDecision, AiAction } from "@ai-sdr/shared";
 
 export class MockAiProvider implements AiProvider {
@@ -195,13 +195,18 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
     );
     if (isPricingInquiry) {
       const allText = `${sdr.pricingInfo || ""} ${sdr.knowledgeBase || ""}`;
-      const hasVerifiedPrice = allText.includes("$") || /pricing:/i.test(allText) || /tier/i.test(allText);
+      const hasVerifiedPrice = Boolean(sdr.pricingInfo?.trim()) || /[$₹]|\bINR\b|pricing:/i.test(allText);
 
       let reply = "";
       if (hasVerifiedPrice && sdr.pricingInfo) {
-        reply = `Our standard commercial pricing is: ${sdr.pricingInfo}. How does that align with your operational requirements at ${company}?`;
+        const price = sdr.pricingInfo.trim().replace(/\.+$/, "");
+        const isPriceObjection = /\b(expensive|worth|why should|cheaper)\b/i.test(lower);
+        const compliance = sdr.complianceInfo?.trim();
+        reply = isPriceObjection && compliance
+          ? `Our standard pricing is ${price}. That includes ${compliance.replace(/\.+$/, "")}. Which of those requirements matters most to your team?`
+          : `Our standard pricing is ${price}. How does that align with your operational requirements at ${company}?`;
       } else if (hasVerifiedPrice && sdr.knowledgeBase) {
-        const pricingLine = sdr.knowledgeBase.split("\n").find(l => l.includes("$") || /pricing/i.test(l));
+        const pricingLine = sdr.knowledgeBase.split("\n").find(l => /[$₹]|\bINR\b|pricing:/i.test(l));
         reply = pricingLine
           ? `Our pricing is: ${pricingLine.trim()}. How does that fit with your current setup?`
           : "I don't have verified pricing information available right now. I can connect you with a human specialist to discuss pricing tailored to your scale.";
@@ -721,5 +726,89 @@ ${sdr.personaTitle} | ${sdr.organizationName}`;
       decisionMaker: dm,
       confidence: Math.min(92, 70 + facts.length * 6)
     };
+  }
+
+  async analyzeOpportunityStage(
+    stage: AiResearchStage,
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<any> {
+    if (stage === "BUSINESS_ANALYST") {
+      return {
+        companyName: "Mock Company",
+        whatTheyDo: "Provides operational services requiring document processing and workflow coordination.",
+        industry: "B2B Operations",
+        companySize: "10-50 employees",
+        location: "United States",
+        customerType: "Small to mid-market businesses",
+        servicesOffered: ["Document processing", "Workflow management", "Operations consulting"]
+      };
+    }
+    if (stage === "OPERATIONS_ANALYST") {
+      return {
+        observedWorkflows: [{
+          workflow: "Manual document intake and classification",
+          sourceUrl: "https://mock.test/services",
+          evidenceSnippet: "Our team manually reviews and categorizes incoming documents"
+        }],
+        operationalSignals: [{
+          signal: "Hiring for Operations Coordinator role",
+          type: "HIRING",
+          sourceUrl: "https://mock.test/careers",
+          snippet: "Looking for Operations Coordinator to handle daily document processing"
+        }],
+        technologyMentions: ["spreadsheet", "manual entry"],
+        hiringSignals: ["Operations Coordinator", "Data Entry Clerk"]
+      };
+    }
+    if (stage === "OPPORTUNITY_ANALYST") {
+      return {
+        potentialProblem: "Manual document intake and classification creates operational bottleneck.",
+        whyItMatters: "Growing volume of documents requires linear headcount scaling.",
+        automationFit: "GOOD",
+        recommendedSolution: "M-EXTRACT",
+        workflow: [
+          "1. Document received via email or portal",
+          "2. M-EXTRACT classifies and extracts fields",
+          "3. Validation against business rules",
+          "4. Data exported to operational system",
+          "5. Human review on exceptions"
+        ],
+        facts: [{
+          observedFact: "Company careers page lists active hiring for Operations Coordinator.",
+          sourceUrl: "https://mock.test/careers",
+          category: "HIRING",
+          confidenceScore: 85
+        }],
+        inferences: [{
+          aiInference: "Active hiring for operations roles suggests growing manual workload.",
+          basedOnFact: "Company careers page lists active hiring for Operations Coordinator.",
+          confidenceScore: 80
+        }],
+        unknowns: ["Exact document volume not publicly disclosed"],
+        decisionMaker: null,
+        confidence: 75
+      };
+    }
+    if (stage === "EVIDENCE_CRITIC") {
+      return {
+        verifiedFacts: [{
+          observedFact: "Company careers page lists active hiring for Operations Coordinator.",
+          sourceUrl: "https://mock.test/careers",
+          category: "HIRING",
+          confidenceScore: 85
+        }],
+        rejectedFacts: [],
+        strengthenedInferences: [{
+          aiInference: "Active hiring for operations roles suggests growing manual workload.",
+          basedOnFact: "Company careers page lists active hiring for Operations Coordinator.",
+          confidenceScore: 80
+        }],
+        overallVerdict: "SUPPORTED",
+        critiqueNotes: "Evidence is grounded in observable hiring patterns.",
+        adjustedConfidence: 75
+      };
+    }
+    return null;
   }
 }

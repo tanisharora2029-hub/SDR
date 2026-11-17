@@ -1,4 +1,4 @@
-import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult } from "./types.js";
+import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResponse, AiOpportunityAnalysisResult, AiResearchStage } from "./types.js";
 import { PromptBuilder } from "./promptBuilder.js";
 import { AiAction, AiActionSchema, SdrToolDecision, SdrToolName } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
@@ -341,5 +341,22 @@ JSON Schema:
       decisionMaker: null,
       confidence: 0
     };
+  }
+
+  async analyzeOpportunityStage(
+    stage: AiResearchStage,
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<any> {
+    const { text } = await this.callGemini(systemPrompt, userPrompt);
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        return JSON.parse(match[0]);
+      }
+    } catch (err: any) {
+      logger.warn(`[GeminiProvider] Failed to parse ${stage} stage JSON: ${err.message}`);
+    }
+    return null;
   }
 }

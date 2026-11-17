@@ -82,6 +82,71 @@ export interface AiOpportunityAnalysisResult {
   confidence: number;
 }
 
+// ──────────────────────────────────────────────────
+// Multi-Pass AI Sales Research Brain — 4-Stage Types
+// ──────────────────────────────────────────────────
+
+export type AiResearchStage =
+  | "BUSINESS_ANALYST"
+  | "OPERATIONS_ANALYST"
+  | "OPPORTUNITY_ANALYST"
+  | "EVIDENCE_CRITIC";
+
+export interface BusinessAnalysis {
+  companyName: string;
+  whatTheyDo: string;
+  industry: string;
+  companySize: string;
+  location: string;
+  customerType: string;
+  servicesOffered: string[];
+}
+
+export interface OperationsAnalysis {
+  observedWorkflows: Array<{
+    workflow: string;
+    sourceUrl: string;
+    evidenceSnippet: string;
+  }>;
+  operationalSignals: Array<{
+    signal: string;
+    type: "HIRING" | "PUBLIC_WORKFLOW" | "TECH_SIGNAL" | "DOCUMENTATION" | "REVIEWS" | "LEADERSHIP";
+    sourceUrl: string;
+    snippet: string;
+  }>;
+  technologyMentions: string[];
+  hiringSignals: string[];
+}
+
+export interface OpportunityAnalysis {
+  potentialProblem: string;
+  whyItMatters: string;
+  automationFit: "PERFECT" | "GOOD" | "PARTIAL" | "NONE";
+  recommendedSolution: string;
+  workflow: string[];
+  facts: AiOpportunityFact[];
+  inferences: AiOpportunityInference[];
+  unknowns: string[];
+  decisionMaker: { name: string | null; title: string | null; sourceUrl: string | null } | null;
+  confidence: number;
+}
+
+export interface EvidenceCriticResult {
+  verifiedFacts: AiOpportunityFact[];
+  rejectedFacts: Array<{ fact: string; reason: string }>;
+  strengthenedInferences: AiOpportunityInference[];
+  overallVerdict: "SUPPORTED" | "WEAK" | "UNSUPPORTED";
+  critiqueNotes: string;
+  adjustedConfidence: number;
+}
+
+export interface AiStageResult {
+  stage: AiResearchStage;
+  raw: any;
+  success: boolean;
+  error?: string;
+}
+
 export interface AiProvider {
   generateOutreach(sdr: SdrContext, lead: LeadContext): Promise<AiCompletionResponse>;
   respondToMessage(sdr: SdrContext, lead: LeadContext, history: ConversationTurn[], latestMessage: string): Promise<AiCompletionResponse>;
@@ -103,4 +168,9 @@ export interface AiProvider {
     domain: string;
     pages: Array<{ url: string; text: string; title?: string }>;
   }): Promise<AiOpportunityAnalysisResult>;
+  analyzeOpportunityStage?(
+    stage: AiResearchStage,
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<any>;
 }
