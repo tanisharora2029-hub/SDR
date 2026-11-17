@@ -95,6 +95,7 @@ export const api = {
     const token = localStorage.getItem("token");
     const response = await fetch(`${API_BASE}/calls/tts`, {
       method: "POST",
+      signal: AbortSignal.timeout(4_000),
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {})

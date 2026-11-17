@@ -103,7 +103,9 @@ export class VoiceSessionController {
       this.watchdogTimer = null;
     }
 
-    if (currentState === "PROCESSING" || currentState === "AI_SPEAKING") {
+    // The turn request owns its timeout. Reopening the mic state before it
+    // settles can allow two turns to write to the same call simultaneously.
+    if (currentState === "AI_SPEAKING") {
       this.watchdogTimer = setTimeout(() => {
         if (this.isActive && (this.state === "PROCESSING" || this.state === "AI_SPEAKING")) {
           console.warn(`[WATCHDOG] State ${this.state} timed out. Recovering to LISTENING.`);
@@ -128,12 +130,7 @@ export class VoiceSessionController {
 
     if (initialGreeting) {
       this.config.onTranscriptUpdate("sdr", initialGreeting, this.turnId);
-      if (initialAudioBlob) {
-        await this.playAudioResponse(initialAudioBlob, initialGreeting);
-      } else {
-        this.transition("LISTENING", "session_started_no_audio");
-        this.ensureRecognitionRunning();
-      }
+      await this.playAudioResponse(initialAudioBlob, initialGreeting);
     } else {
       this.transition("LISTENING", "session_started");
       this.ensureRecognitionRunning();
@@ -250,15 +247,15 @@ export class VoiceSessionController {
     try {
       const llmStart = Date.now();
       const backendRes = await this.config.sendTurnBackend(this.turnId, utterance);
+      if (!this.isActive) return;
       if (this.latencyMaskerTimer) {
         clearTimeout(this.latencyMaskerTimer);
         this.latencyMaskerTimer = null;
       }
       const llmDuration = Date.now() - llmStart;
 
-      this.config.onTranscriptUpdate("sdr", backendRes.sdrSpeech, this.turnId);
-
-      if (backendRes.audioBlob) {
+      if (backendRes.sdrSpeech.trim()) {
+        this.config.onTranscriptUpdate("sdr", backendRes.sdrSpeech, this.turnId);
         await this.playAudioResponse(backendRes.audioBlob, backendRes.sdrSpeech, {
           sttDurationMs: backendRes.sttLatencyMs || sttDuration,
           llmDurationMs: backendRes.latencyMs || llmDuration
@@ -269,6 +266,7 @@ export class VoiceSessionController {
         this.ensureRecognitionRunning();
       }
     } catch (err: any) {
+      if (!this.isActive) return;
       if (this.latencyMaskerTimer) {
         clearTimeout(this.latencyMaskerTimer);
         this.latencyMaskerTimer = null;
@@ -301,11 +299,21 @@ export class VoiceSessionController {
   /**
    * Plays SDR speech and guarantees return to LISTENING on end or error
    */
-  public async playAudioResponse(audioBlob: Blob, text: string, metrics: Partial<VoiceEventLog> = {}) {
+  public async playAudioResponse(audioBlob: Blob | undefined, text: string, metrics: Partial<VoiceEventLog> = {}) {
     this.stopAudioPlayback();
     this.transition("AI_SPEAKING", "playback_started", metrics);
 
     const playbackStart = Date.now();
+    if (!audioBlob?.size) {
+      this.fallbackBrowserTts(text, (reason) => {
+        if (this.isActive && this.state === "AI_SPEAKING") {
+          this.transition("LISTENING", reason);
+          this.ensureRecognitionRunning();
+        }
+      });
+      return;
+    }
+
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
     this.currentAudio = audio;
@@ -323,13 +331,19 @@ export class VoiceSessionController {
     };
 
     audio.onended = () => handlePlaybackFinish("audio_ended_normally");
-    audio.onerror = () => handlePlaybackFinish("audio_error_recovery");
+    let fallbackStarted = false;
+    const playFallback = () => {
+      if (fallbackStarted || this.currentAudio !== audio) return;
+      fallbackStarted = true;
+      this.fallbackBrowserTts(text, handlePlaybackFinish);
+    };
+    audio.onerror = playFallback;
 
     try {
       await audio.play();
     } catch (err) {
       console.warn("Audio play rejected, falling back to speech synthesis:", err);
-      this.fallbackBrowserTts(text, handlePlaybackFinish);
+      playFallback();
     }
   }
 
@@ -338,9 +352,15 @@ export class VoiceSessionController {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.05;
       utterance.onend = () => onDone("browser_tts_ended");
-      utterance.onerror = () => onDone("browser_tts_error_recovery");
+      utterance.onerror = (event) => {
+        if (event.error !== "interrupted" && event.error !== "canceled") {
+          this.config.onError("Audio playback failed. The reply is available in the transcript.");
+          onDone("browser_tts_error_recovery");
+        }
+      };
       window.speechSynthesis.speak(utterance);
     } else {
+      this.config.onError("Audio playback is unavailable. The reply is available in the transcript.");
       onDone("no_tts_available_recovery");
     }
   }

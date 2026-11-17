@@ -17,6 +17,9 @@ it("saves a demo transcript without applying simulated outreach, opt-outs, or qu
     data: {
       id: organizationId,
       name: "Phone Studio test",
+      industry: "SALON",
+      products: "Bridal makeup and hair styling",
+      pricingInfo: "Hair styling starts at ₹800",
       sdrProfiles: { create: {} },
       leads: {
         create: { firstName: "Demo", lastName: "Lead", email: "demo@example.com", companyName: "Example" }
@@ -27,7 +30,7 @@ it("saves a demo transcript without applying simulated outreach, opt-outs, or qu
   const lead = organization.leads[0];
   const tool = vi.spyOn(ToolExecutor, "executeTool");
   vi.spyOn(WhisperService, "updateLiveWhisperAssist").mockResolvedValue(null as never);
-  vi.spyOn(aiService, "respondToVoiceMessage").mockResolvedValue({
+  const respond = vi.spyOn(aiService, "respondToVoiceMessage").mockResolvedValue({
     content: "Understood.",
     toolDecision: { toolName: "send_email", arguments: { lead_id: lead.id } },
     latencyMs: 10,
@@ -40,6 +43,17 @@ it("saves a demo transcript without applying simulated outreach, opt-outs, or qu
     const { session } = await PhoneService.initiateCall(organizationId, lead.id, "INBOUND", true);
     expect(session.callSid).toMatch(/^demo_/);
     await PhoneService.processCallTurn(organizationId, session.callSid, "Please stop contacting me");
+    expect(respond).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personaTitle: "salon receptionist",
+        products: "Bridal makeup and hair styling",
+        pricingInfo: "Hair styling starts at ₹800",
+        customInstructions: expect.stringContaining("Which service or occasion")
+      }),
+      expect.anything(),
+      expect.any(Array),
+      "Please stop contacting me"
+    );
     expect(tool).not.toHaveBeenCalled();
     const result = await PhoneService.completeCall(organizationId, session.callSid, 0);
     expect(result.session).toMatchObject({ status: "COMPLETED", durationSeconds: 0, aiSummary: "Demo ended" });

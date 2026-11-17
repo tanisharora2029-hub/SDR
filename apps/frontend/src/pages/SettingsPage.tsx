@@ -310,6 +310,9 @@ export const SettingsPage: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">
             Configure official domain (<a href="https://nexsdr.in" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">https://nexsdr.in</a>), AI SDR sender identity, DNS records, and outbound/inbound email pipeline.
           </p>
+          <a href="#business-profile" className="mt-2 inline-block text-sm text-indigo-300">
+            Edit business profile and industry
+          </a>
         </div>
 
         {saved && (

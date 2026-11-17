@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
 import { VoiceSessionController, VoiceState } from "../lib/voiceSessionController.js";
@@ -38,6 +39,7 @@ export const PhoneStudioPage: React.FC = () => {
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [callStatus, setCallStatus] = useState<"IDLE" | "IN_PROGRESS" | "COMPLETED">("IDLE");
   const [callSid, setCallSid] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string; timestamp?: number }>>([]);
   const [userInput, setUserInput] = useState("");
   const [callDuration, setCallDuration] = useState(0);
@@ -267,6 +269,7 @@ export const PhoneStudioPage: React.FC = () => {
   const handleStartCall = async () => {
     if (!selectedLeadId) return;
     setLoading(true);
+    setVoiceError(null);
     setTranscript([]);
     setCallAnalysis(null);
     setCallDuration(0);
@@ -303,9 +306,10 @@ export const PhoneStudioPage: React.FC = () => {
           setTranscript((prev) => [...prev, { speaker, text, timestamp: Date.now() }]);
         },
         onError: (errStr) => {
-          console.error("Voice controller error:", errStr);
+          setVoiceError(errStr);
         },
         sendTurnBackend: async (_turnId, utterance) => {
+          setVoiceError(null);
           const t0 = performance.now();
           const turnRes = await api.sendCallTurn(res.session.callSid, utterance);
           const llmLatency = Math.round(performance.now() - t0);
@@ -428,6 +432,9 @@ export const PhoneStudioPage: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">
             Browser audio engine using your local microphone, hardware VU meter, voice activity detection (VAD), instant barge-in, and neural TTS synthesis (Zero carrier cost).
           </p>
+          <Link to="/settings#business-profile" className="mt-2 inline-block text-sm text-indigo-300">
+            Set up your business profile
+          </Link>
         </div>
 
         {/* Live Status Badges */}
@@ -791,6 +798,7 @@ export const PhoneStudioPage: React.FC = () => {
               </span>
             </div>
 
+            {voiceError && <p role="alert" className="mb-3 rounded-lg bg-red-950/50 p-3 text-sm text-red-200">{voiceError}</p>}
             {/* Transcript Area */}
             <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
               {transcript.length === 0 ? (

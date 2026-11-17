@@ -5,6 +5,8 @@ import { WhisperService } from "./whisperService.js";
 import { SdrContext, LeadContext, ConversationTurn } from "./ai/types.js";
 import { logger } from "../lib/logger.js";
 import { randomUUID } from "node:crypto";
+import { INDUSTRIES } from "@ai-sdr/shared";
+import { getWorkspaceConfiguration } from "./workspaceConfigurationService.js";
 
 const SIMULATION_PREFIX = "demo_";
 
@@ -67,6 +69,8 @@ export class PhoneService {
     const lead = session.lead;
 
     if (!org || !sdr || !lead) throw new Error("Context missing for call turn");
+    const business = simulation ? await getWorkspaceConfiguration(organizationId) : null;
+    const industry = org.industry === "SALON" || org.industry === "REAL_ESTATE" ? INDUSTRIES[org.industry] : null;
 
     const transcript: Array<{ speaker: string; text: string; timestamp: number }> = JSON.parse(
       session.transcriptJson || "[]"
@@ -118,7 +122,9 @@ export class PhoneService {
       knowledgeBase: org.knowledgeBase,
       objectionRules: org.objectionRules,
       personaName: sdr.personaName,
-      personaTitle: sdr.title,
+      personaTitle: simulation && industry
+        ? org.industry === "SALON" ? "salon receptionist" : "Indian property consultant"
+        : sdr.title,
       tone: "Natural spoken conversation, crisp phone dialogue, consultative",
       qualificationFramework: sdr.qualificationFramework,
       customInstructions: `CRITICAL VOICE CALL RULES:
@@ -128,7 +134,12 @@ export class PhoneService {
 - NEVER output raw JSON, internal tool syntax, or function names in your spoken reply.
 - NEVER generate long paragraphs.
 - Ask at most ONE clear question at a time to keep conversational turns fast and responsive.
-${simulation ? "- This is a browser simulation. Do not claim that a booking, call, opt-out, email or other real-world action has occurred. You may capture a preference for staff review. Respect the user's request to end the conversation." : ""}`
+${simulation ? `- This is a browser simulation. Use reply only. Do not claim that a booking, call, opt-out, email or other real-world action has occurred. You may capture a preference for staff review. Respect the user's request to end the conversation.
+- Answer the latest question first. Match the caller's language. Never invent availability, prices, discounts or business policies.
+${business?.location ? `Business location: ${business.location}\n` : ""}${business?.serviceAreas ? `Service areas: ${business.serviceAreas}\n` : ""}${business?.businessHours ? `Business hours: ${business.businessHours}\n` : ""}
+Qualification questions to use when relevant:
+${business?.qualificationQuestions || industry?.qualificationQuestions.join("\n") || ""}
+${business?.aiInstructions || ""}` : ""}`
     };
 
     const leadContext: LeadContext = {
@@ -176,7 +187,12 @@ ${simulation ? "- This is a browser simulation. Do not claim that a booking, cal
     }
 
     // 2. Generate SDR voice response using Online Provider by default (zero GPU)
-    const aiResponse = await aiService.respondToVoiceMessage(sdrContext, leadContext, turns, leadUtterance);
+    const aiResponse = await aiService.respondToVoiceMessage(sdrContext, leadContext, turns, leadUtterance)
+      .catch((error: unknown) => {
+        if (!simulation) throw error;
+        logger.warn("Phone Studio voice provider could not generate a response");
+        throw Object.assign(new Error("The AI voice service is unavailable. Please try another turn in a moment."), { status: 503 });
+      });
 
     // Sanitize spoken speech for live audio telephony (Bug 4)
     let cleanSpeech = (aiResponse.content || "")

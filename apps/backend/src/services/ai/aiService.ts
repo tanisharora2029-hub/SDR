@@ -79,6 +79,7 @@ class AiService {
     history: ConversationTurn[],
     latestMessage: string
   ): Promise<AiCompletionResponse> {
+    let enhancedSdr = sdr;
     try {
       // 1. Zero-Shot Tone Mirroring
       const tone = ToneMirroringService.analyzeTone(latestMessage, "voice");
@@ -91,21 +92,28 @@ class AiService {
       );
       const compDirective = CompetitorRagService.formatPromptDirectives(compEvidence);
 
-      const enhancedSdr: SdrContext = {
+      enhancedSdr = {
         ...sdr,
         customInstructions: `${sdr.customInstructions || ""}\n\n${tone.promptDirective}${compDirective}`
       };
 
-      return await this.voiceProvider.respondToMessage(enhancedSdr, lead, history, latestMessage);
+      const response = await this.voiceProvider.respondToMessage(enhancedSdr, lead, history, latestMessage);
+      if (!response.content.trim()) throw new Error("Voice model returned no reply");
+      return response;
     } catch (err: any) {
       logger.warn(`[AI_VOICE_FALLBACK] Voice online provider failed: ${err.message}`);
-      const hasGroqKey = Boolean(process.env.GROQ_API_KEY);
-      if (hasGroqKey && this.voiceProvider !== this.groqProvider) {
+      const fallback = this.voiceProvider !== this.groqProvider && process.env.GROQ_API_KEY?.trim()
+        ? this.groqProvider
+        : !(this.voiceProvider instanceof OnlineGeminiProvider) && process.env.GEMINI_API_KEY?.trim()
+          ? new OnlineGeminiProvider()
+          : null;
+      if (fallback) {
         try {
-          logger.info("[AI_VOICE_FALLBACK] Attempting Groq provider for voice...");
-          return await this.groqProvider.respondToMessage(sdr, lead, history, latestMessage);
-        } catch (groqErr: any) {
-          logger.warn(`[AI_VOICE_FALLBACK] Groq voice fallback also failed: ${groqErr.message}`);
+          const response = await fallback.respondToMessage(enhancedSdr, lead, history, latestMessage);
+          if (!response.content.trim()) throw new Error("Fallback voice model returned no reply");
+          return response;
+        } catch (fallbackError: any) {
+          logger.warn(`[AI_VOICE_FALLBACK] Voice fallback failed: ${fallbackError.message}`);
         }
       }
       if (!this.shouldAllowMockFallback()) {

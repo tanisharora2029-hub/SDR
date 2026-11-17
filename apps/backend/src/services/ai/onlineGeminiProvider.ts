@@ -13,6 +13,7 @@ export class OnlineGeminiProvider implements AiProvider {
   }
 
   private async callGemini(systemPrompt: string, userPrompt: string): Promise<{ text: string; latencyMs: number }> {
+    if (!this.apiKey.trim()) throw new Error("Gemini API key is not configured");
     const startTime = Date.now();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
 
@@ -37,6 +38,7 @@ export class OnlineGeminiProvider implements AiProvider {
 
     const res = await fetch(url, {
       method: "POST",
+      signal: AbortSignal.timeout(9_000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
@@ -44,12 +46,13 @@ export class OnlineGeminiProvider implements AiProvider {
     const latencyMs = Date.now() - startTime;
 
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Gemini API error [${res.status}]: ${errText}`);
+      await res.body?.cancel();
+      throw new Error(`Gemini API error [${res.status}]`);
     }
 
     const data: any = await res.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text.trim()) throw new Error("Gemini returned no text");
     return { text, latencyMs };
   }
 

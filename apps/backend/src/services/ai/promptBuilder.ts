@@ -10,6 +10,7 @@ export class PromptBuilder {
 
     return `You are ${sdr.personaName}, a ${sdr.personaTitle} representing ${sdr.organizationName}.
 Your tone is: ${sdr.tone}.
+${sdr.customInstructions ? `\nAdditional conversation instructions, subject to the grounding rules below:\n${sdr.customInstructions}\n` : ""}
 
 ==================================================
 1. SYSTEM SAFETY & ANTI-HALLUCINATION RULES (STRICT)
