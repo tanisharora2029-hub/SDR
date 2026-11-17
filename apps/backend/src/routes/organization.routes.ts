@@ -3,16 +3,19 @@ import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validator.js";
 import { UpdateOrganizationSchema } from "@ai-sdr/shared";
+import { getWorkspaceConfiguration, saveWorkspaceConfiguration } from "../services/workspaceConfigurationService.js";
 
 export const organizationRouter = Router();
 organizationRouter.use(authMiddleware);
 
 organizationRouter.get("/", async (req, res, next) => {
   try {
-    const org = await prisma.organization.findUnique({
-      where: { id: req.organizationId! }
-    });
-    res.json({ success: true, organization: org });
+    const organizationId = req.organizationId!;
+    const [organization, configuration] = await Promise.all([
+      prisma.organization.findUnique({ where: { id: organizationId } }),
+      getWorkspaceConfiguration(organizationId)
+    ]);
+    res.json({ success: true, organization, configuration });
   } catch (err) {
     next(err);
   }
@@ -20,9 +23,15 @@ organizationRouter.get("/", async (req, res, next) => {
 
 organizationRouter.put("/", validateBody(UpdateOrganizationSchema), async (req, res, next) => {
   try {
-    const updated = await prisma.organization.update({
-      where: { id: req.organizationId! },
-      data: req.body
+    const organizationId = req.organizationId!;
+    const { configuration, ...business } = req.body;
+    const updated = await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.update({
+        where: { id: organizationId },
+        data: business
+      });
+      if (configuration) await saveWorkspaceConfiguration(tx, organizationId, configuration);
+      return organization;
     });
     res.json({ success: true, organization: updated });
   } catch (err) {

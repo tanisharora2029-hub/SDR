@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api/client.js";
+import { INDUSTRIES, INDUSTRY_IDS } from "@ai-sdr/shared";
+import type { WorkspaceConfiguration } from "@ai-sdr/shared";
 import {
   Settings,
   Mail,
@@ -20,10 +23,32 @@ import {
   FileText
 } from "lucide-react";
 
+const emptyConfiguration: WorkspaceConfiguration = {
+  location: "",
+  serviceAreas: "",
+  businessHours: "",
+  qualificationQuestions: "",
+  aiInstructions: "",
+  communicationPreferences: ""
+};
+
+const configurationFields: Array<{ key: keyof WorkspaceConfiguration; label: string; maxLength: number }> = [
+  { key: "location", label: "Business location", maxLength: 250 },
+  { key: "serviceAreas", label: "Service areas", maxLength: 2000 },
+  { key: "businessHours", label: "Business hours", maxLength: 2000 },
+  { key: "qualificationQuestions", label: "Qualification questions", maxLength: 4000 },
+  { key: "aiInstructions", label: "AI instructions", maxLength: 6000 },
+  { key: "communicationPreferences", label: "Communication preferences", maxLength: 2000 }
+];
+
 export const SettingsPage: React.FC = () => {
+  const { hash } = useLocation();
   const [org, setOrg] = useState<any>(null);
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
+  const [configuration, setConfiguration] = useState(emptyConfiguration);
+  const industryId = INDUSTRY_IDS.find((id) => id === industry);
+  const industryDefaults = industryId ? INDUSTRIES[industryId] : undefined;
   const [website, setWebsite] = useState("");
   const [targetIcp, setTargetIcp] = useState("");
   const [valueProp, setValueProp] = useState("");
@@ -108,6 +133,7 @@ export const SettingsPage: React.FC = () => {
         setOrg(orgRes.organization);
         setName(orgRes.organization.name || "");
         setIndustry(orgRes.organization.industry || "");
+        setConfiguration(orgRes.configuration ?? emptyConfiguration);
         setWebsite(orgRes.organization.website || "");
         setTargetIcp(orgRes.organization.targetCustomerIcp || "");
         setValueProp(orgRes.organization.valueProposition || "");
@@ -136,6 +162,12 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    if (hash === "#business-profile") {
+      document.getElementById("business-profile")?.scrollIntoView();
+    }
+  }, [hash, org]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -153,7 +185,8 @@ export const SettingsPage: React.FC = () => {
         complianceInfo,
         competitors,
         knowledgeBase,
-        objectionRules
+        objectionRules,
+        configuration
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -990,7 +1023,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* SECTION 6: COMPANY PROFILE, KNOWLEDGE BASE & PLAYBOOK (PRODUCT TRUTH) */}
-      <form onSubmit={handleSave} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+      <form id="business-profile" onSubmit={handleSave} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -1031,11 +1064,15 @@ export const SettingsPage: React.FC = () => {
             <label className="text-slate-300 font-medium block mb-1">Industry / Domain</label>
             <input
               type="text"
+              list="workspace-industries"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              placeholder="e.g. AI Financial Services Automation"
+              placeholder="Select or enter an industry"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
+            <datalist id="workspace-industries">
+              {INDUSTRY_IDS.map((id) => <option key={id} value={id}>{INDUSTRIES[id].label}</option>)}
+            </datalist>
           </div>
 
           <div>
@@ -1048,6 +1085,33 @@ export const SettingsPage: React.FC = () => {
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          {configurationFields.map(({ key, label, maxLength }) => (
+            <label key={key} className="text-slate-300 font-medium">
+              {label}
+              <textarea
+                rows={key === "location" ? 1 : 3}
+                maxLength={maxLength}
+                value={configuration[key]}
+                onChange={(event) => setConfiguration({ ...configuration, [key]: event.target.value })}
+                className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200"
+              />
+              {key === "qualificationQuestions" && industryDefaults && (
+                <button
+                  type="button"
+                  className="text-indigo-300 mt-1"
+                  onClick={() => setConfiguration({
+                    ...configuration,
+                    qualificationQuestions: industryDefaults.qualificationQuestions.join("\n")
+                  })}
+                >
+                  Use {industryDefaults.label} questions
+                </button>
+              )}
+            </label>
+          ))}
         </div>
 
         {/* Company Overview & Value Proposition */}

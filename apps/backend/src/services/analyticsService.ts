@@ -36,6 +36,7 @@ export class AnalyticsService {
 
     const recentActivities = await prisma.activityLog.findMany({
       where: { organizationId },
+      select: { id: true, action: true, category: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 10
     });

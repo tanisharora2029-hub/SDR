@@ -1,11 +1,24 @@
 import { z } from "zod";
+import { INDUSTRY_IDS } from "./industries.js";
 
 export const RegisterSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
-  organizationName: z.string().min(2)
+  organizationName: z.string().min(2),
+  industry: z.enum(INDUSTRY_IDS).optional()
 });
+
+export const WorkspaceConfigurationSchema = z.object({
+  location: z.string().trim().max(250),
+  serviceAreas: z.string().trim().max(2000),
+  businessHours: z.string().trim().max(2000),
+  qualificationQuestions: z.string().trim().max(4000),
+  aiInstructions: z.string().trim().max(6000),
+  communicationPreferences: z.string().trim().max(2000)
+}).strict();
+
+export type WorkspaceConfiguration = z.infer<typeof WorkspaceConfigurationSchema>;
 
 export const LoginSchema = z.object({
   email: z.string().email(),
@@ -24,7 +37,8 @@ export const UpdateOrganizationSchema = z.object({
   complianceInfo: z.string().optional(),
   competitors: z.string().optional(),
   knowledgeBase: z.string().optional(),
-  objectionRules: z.string().optional()
+  objectionRules: z.string().optional(),
+  configuration: WorkspaceConfigurationSchema.optional()
 });
 
 export const UpdateSdrProfileSchema = z.object({

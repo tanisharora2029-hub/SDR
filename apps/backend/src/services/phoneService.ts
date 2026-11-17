@@ -4,16 +4,24 @@ import { ToolExecutor } from "./toolExecutor.js";
 import { WhisperService } from "./whisperService.js";
 import { SdrContext, LeadContext, ConversationTurn } from "./ai/types.js";
 import { logger } from "../lib/logger.js";
+import { randomUUID } from "node:crypto";
+
+const SIMULATION_PREFIX = "demo_";
 
 export class PhoneService {
-  static async initiateCall(organizationId: string, leadId: string, direction: "OUTBOUND" | "INBOUND" = "OUTBOUND") {
+  static async initiateCall(
+    organizationId: string,
+    leadId: string,
+    direction: "OUTBOUND" | "INBOUND" = "OUTBOUND",
+    simulation = false
+  ) {
     const org = await prisma.organization.findUnique({ where: { id: organizationId } });
     const sdr = await prisma.sdrProfile.findFirst({ where: { organizationId } });
     const lead = await prisma.lead.findFirst({ where: { id: leadId, organizationId } });
 
     if (!org || !sdr || !lead) throw new Error("Missing organization, SDR, or lead");
 
-    const callSid = `call_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const callSid = `${simulation ? SIMULATION_PREFIX : "call_"}${randomUUID()}`;
 
     // Initial greeting from SDR with neutral fallback
     const hasLeadFirstName = Boolean(lead.firstName && lead.firstName.trim() && lead.firstName.toLowerCase() !== "unknown");
@@ -52,6 +60,7 @@ export class PhoneService {
     if (!session || session.organizationId !== organizationId) {
       throw new Error("Call session not found or unauthorized");
     }
+    const simulation = session.callSid.startsWith(SIMULATION_PREFIX);
 
     const org = await prisma.organization.findUnique({ where: { id: organizationId } });
     const sdr = await prisma.sdrProfile.findFirst({ where: { organizationId } });
@@ -67,7 +76,7 @@ export class PhoneService {
     transcript.push({ speaker: "lead", text: leadUtterance, timestamp: Date.now() });
 
     // Live STOP / DNC opt-out safety check
-    if (/\b(stop|unsubscribe|do not call|don't call|remove me|opt out)\b/i.test(leadUtterance)) {
+    if (!simulation && /\b(stop|unsubscribe|do not call|don't call|remove me|opt out)\b/i.test(leadUtterance)) {
       await prisma.lead.updateMany({
         where: { id: lead.id, organizationId },
         data: { isOptedOut: true, status: "OPTED_OUT" }
@@ -118,7 +127,8 @@ export class PhoneService {
 - NEVER use markdown, bullet points, numbered lists, asterisks, bolding, or headers.
 - NEVER output raw JSON, internal tool syntax, or function names in your spoken reply.
 - NEVER generate long paragraphs.
-- Ask exactly ONE clear question at a time to keep conversational turns fast and responsive.`
+- Ask at most ONE clear question at a time to keep conversational turns fast and responsive.
+${simulation ? "- This is a browser simulation. Do not claim that a booking, call, opt-out, email or other real-world action has occurred. You may capture a preference for staff review. Respect the user's request to end the conversation." : ""}`
     };
 
     const leadContext: LeadContext = {
@@ -219,7 +229,7 @@ export class PhoneService {
 
     // If tool was decided during call (e.g. calendar booking or handoff)
     let toolResult = null;
-    if (aiResponse.toolDecision) {
+    if (aiResponse.toolDecision && !simulation) {
       toolResult = await ToolExecutor.executeTool(organizationId, aiResponse.toolDecision);
     }
 
@@ -272,19 +282,20 @@ export class PhoneService {
       where: { callSid },
       data: {
         status: "COMPLETED",
-        durationSeconds: durationSeconds || 45,
+        durationSeconds: durationSeconds ?? 0,
         aiSummary: analysis.summary,
         qualificationScore: analysis.qualificationScore
       }
     });
 
-    // Update lead intent score based on call outcome
-    await prisma.lead.update({
-      where: { id: session.leadId },
-      data: {
-        intentScore: Math.max(session.lead.intentScore, analysis.qualificationScore)
-      }
-    });
+    if (!session.callSid.startsWith(SIMULATION_PREFIX)) {
+      await prisma.lead.update({
+        where: { id: session.leadId },
+        data: {
+          intentScore: Math.max(session.lead.intentScore, analysis.qualificationScore)
+        }
+      });
+    }
 
     return { session: updated, analysis };
   }

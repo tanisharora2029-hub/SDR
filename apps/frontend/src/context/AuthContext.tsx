@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api } from "../api/client.js";
+import type { IndustryId } from "@ai-sdr/shared";
 
 interface User {
   id: string;
@@ -27,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginAsDemo: () => Promise<void>;
-  register: (name: string, email: string, password: string, organizationName: string) => Promise<void>;
+  register: (name: string, email: string, password: string, organizationName: string, industry?: IndustryId) => Promise<void>;
   logout: () => void;
   refreshOrg: () => Promise<void>;
 }
@@ -77,8 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (name: string, email: string, password: string, organizationName: string) => {
-    const res = await api.register({ name, email, password, organizationName });
+  const register = async (name: string, email: string, password: string, organizationName: string, industry?: IndustryId) => {
+    const res = await api.register({ name, email, password, organizationName, industry });
     localStorage.setItem("token", res.token);
     setToken(res.token);
     setUser(res.user);

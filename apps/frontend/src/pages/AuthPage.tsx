@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import { Sparkles, ArrowRight, Lock, Mail, Building, User } from "lucide-react";
+import { INDUSTRIES, INDUSTRY_IDS } from "@ai-sdr/shared";
+import type { IndustryId } from "@ai-sdr/shared";
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -10,6 +12,7 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
+  const [industry, setIndustry] = useState<IndustryId | "">("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,11 +26,11 @@ export const AuthPage: React.FC = () => {
 
     try {
       if (isSignUp) {
-        await register(name, email, password, organizationName || `${name}'s Org`);
+        await register(name, email, password, organizationName, industry || undefined);
       } else {
         await login(email, password);
       }
-      navigate("/dashboard");
+      navigate(isSignUp ? "/settings#business-profile" : "/dashboard");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
     } finally {
@@ -132,6 +135,18 @@ export const AuthPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <label className="text-xs font-medium text-slate-300 block">
+                Industry
+                <select
+                  required
+                  value={industry}
+                  onChange={(event) => setIndustry(INDUSTRY_IDS.find((id) => id === event.target.value) ?? "")}
+                  className="mt-1 w-full bg-[#090914] border border-white/[0.08] rounded-xl px-3.5 py-2.5 text-white"
+                >
+                  <option value="">Select your industry</option>
+                  {INDUSTRY_IDS.map((id) => <option key={id} value={id}>{INDUSTRIES[id].label}</option>)}
+                </select>
+              </label>
             </>
           )}
 

@@ -68,13 +68,16 @@ callRouter.post("/tts", voiceLimiter, async (req, res, next) => {
   }
 });
 
-// Initiate mock or real voice call
+// Start a browser simulation.
 callRouter.post("/initiate", async (req, res, next) => {
   try {
     const { leadId, direction } = req.body;
     if (!leadId) return res.status(400).json({ success: false, error: "leadId is required" });
 
-    const result = await PhoneService.initiateCall(req.organizationId!, leadId, direction || "OUTBOUND");
+    if (typeof leadId !== "string" || (direction !== undefined && direction !== "OUTBOUND" && direction !== "INBOUND")) {
+      return res.status(400).json({ success: false, error: "Invalid leadId or call direction" });
+    }
+    const result = await PhoneService.initiateCall(req.organizationId!, leadId, direction || "OUTBOUND", true);
     res.json({ success: true, ...result });
   } catch (err) {
     next(err);
@@ -120,7 +123,9 @@ callRouter.post("/turn", async (req, res, next) => {
 callRouter.post("/complete", async (req, res, next) => {
   try {
     const { callSid, durationSeconds } = req.body;
-    if (!callSid) return res.status(400).json({ success: false, error: "callSid is required" });
+    if (typeof callSid !== "string" || !callSid || !Number.isSafeInteger(durationSeconds) || durationSeconds < 0) {
+      return res.status(400).json({ success: false, error: "Valid callSid and durationSeconds are required" });
+    }
 
     const result = await PhoneService.completeCall(req.organizationId!, callSid, durationSeconds);
     res.json({ success: true, ...result });
