@@ -1,112 +1,86 @@
-# NexSDR — Autonomous AI Sales Development Representative Platform
+# NexSDR
 
-NexSDR (Official Domain: [https://nexsdr.in](https://nexsdr.in)) is a production-grade, multi-tenant AI SDR platform built from scratch. It allows businesses to onboard, train an autonomous AI SDR (Alex Rivers, `alex@nexsdr.in`) on their verified product knowledge and ICP, manage leads, automate multi-channel outreach (Email, Phone Voice Studio, WhatsApp), execute BANT qualification conversations, run follow-up cadences, and escalate high-value enterprise accounts to human sales representatives with full 360-degree dossiers.
+**An India-first sales workspace for finding prospects, qualifying enquiries, and managing follow-ups.** A salon can give its AI receptionist a menu and bridal pricing. A real estate team can configure a property consultant with service areas, budget questions, and site-visit instructions. Both use the same CRM and can practise conversations in the browser.
 
----
+[Open NexSDR](https://nexsdr.in) · [Explore Opportunity Atlas](https://nexsdr.in/opportunities) · [Run locally](#run-locally)
 
-## ⚡ Key Highlights & Architecture
+![Opportunity Atlas in a local test workspace, showing public prospect discovery and targeted company research](docs/images/opportunity-atlas.jpg)
 
-- **Low-Cost Production Inference**: Benchmarked and locked on **Qwen 2.5 3B** (~50 tok/s, sub-2s latency, 100% GPU VRAM fit on 4GB NVIDIA RTX 5050 GPU with zero paging, 8x-10x cheaper cloud inference cost).
-- **Strict Tool-Calling Architecture**: The LLM *never* directly executes actions.
-  $$\text{LLM} \longrightarrow \text{Structured Tool Decision} \longrightarrow \text{Backend Validation (Auth, Opt-out, Rate Limits)} \longrightarrow \text{Service Execution} \longrightarrow \text{Result to LLM}$$
-- **10 Core SDR Tools**:
-  1. `send_email`
-  2. `read_email`
-  3. `check_calendar_availability`
-  4. `create_calendar_event`
-  5. `create_followup`
-  6. `update_lead`
-  7. `qualify_lead`
-  8. `schedule_call`
-  9. `log_call`
-  10. `human_handoff`
-- **Zero-Cost Local First Stack**:
-  - **Database**: Prisma ORM with SQLite for instant local zero-friction execution, pre-configured with a 1-line switch to PostgreSQL (`provider = "postgresql"`).
-  - **AI Provider**: Seamless switching between local Ollama (`qwen2.5:3b`), Cloud LLM (OpenAI/Gemini), and deterministic offline Mock Provider.
-  - **Telephony**: Interactive in-browser **Phone Voice Studio** using Web Audio and Speech Synthesis for real-time calls without carrier fees.
-  - **Payments**: SaaS subscription billing with an India-compatible Razorpay / Stripe sandbox checkout.
+## Try it in three minutes
 
----
+1. **Set up a business.** Choose **Create workspace**, select an industry, then open **Settings → Business profile**. Enter the services, location, pricing, and qualification questions the agent should use.
+2. **Review a prospect.** In **Opportunity Engine**, enter a public company page under targeted research or run **Find opportunities**. Inspect the source and evidence before approving a result for the CRM. Businesses without enough public evidence may yield no qualified results. A business listing alone does not establish customer buying intent.
+3. **Practise a conversation.** Add a test lead in **Leads**, select it in **Phone Studio**, allow microphone access, and start a simulation. For a salon, try *“I need bridal makeup in Pune next month. What does your package include?”* Ask a follow-up, then end the session and review the transcript and summary. Phone Studio uses browser audio and does not dial mobile numbers.
 
-## 🚀 Quick Start
+## What works in the project
 
-### 1. Requirements
-- Node.js v18+ (tested on Node v24.18)
-- Ollama with `qwen2.5:3b` (`ollama pull qwen2.5:3b`)
+| Area | Implementation |
+| --- | --- |
+| Discovery | Opportunity Atlas searches public sources or researches a supplied URL. The research trail records pages read, evidence, and qualification outcomes. |
+| CRM | Create or import leads from CSV, inspect a lead’s history, track qualification, schedule follow-ups, and hand a conversation to a person. |
+| Voice practice | Browser microphone, voice activity detection, speech recognition, contextual AI replies, audio playback, interruption handling, and a text fallback. Live AI responses depend on a working provider. |
+| Email | Resend integration for configured outbound and inbound email, thread tracking, STOP/opt-out handling, and human takeover. Invalid AI email payloads are blocked before delivery. |
+| Workspace dashboard | Lead and appointment counts, response rate, scheduled follow-ups, recent conversations, and activity from the workspace database. |
 
-### 2. Installation & Setup
-```bash
-# Clone or navigate to the repository on D: drive
-cd D:\ai-sdr-platform
+Browser calls are simulations. SMS and WhatsApp dispatch are mock channels in this version. Live email is a separate integration and needs sender configuration.
 
-# Install dependencies across all workspaces
-npm install
+## Run locally
 
-# Build shared package
+Use **Node.js 22 or 24**, npm, and a fresh local SQLite database. From the repository root:
+
+```sh
+git clone https://github.com/tanisharora2029-hub/SDR.git
+cd SDR
+npm ci
 npm run build -w packages/shared
+```
 
-# Push Prisma schema to local database
+Create **`apps/backend/.env`** with the following development settings. Generate a signing secret with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` and paste the output in place of the placeholder.
+
+```dotenv
+NODE_ENV=development
+PORT=5000
+DATABASE_URL="file:./dev.db"
+JWT_SECRET=replace-with-your-generated-secret
+CORS_ORIGIN=http://localhost:3000
+AI_PROVIDER=mock
+EMAIL_PROVIDER=ETHEREAL
+```
+
+Leave `VITE_API_BASE_URL` unset for local development. Vite proxies `/api` and `/ws` to the backend. Initialise the **local** database and start both apps:
+
+```sh
 npm run prisma:push -w apps/backend
-
-# Seed rich enterprise demo data (CRM company, Alex Rivers SDR, 5 test leads)
-npm run seed
+npm run dev
 ```
 
-### 3. Run Backend & Frontend
-```bash
-# Start backend API (Port 5000)
-npm run dev -w apps/backend
+Open [localhost:3000](http://localhost:3000) and create a workspace. The [API health endpoint](http://localhost:5000/api/health) should report healthy. Seeding is optional. **The seed script deletes existing records before inserting demo data**, so use it only with a disposable database.
 
-# Start frontend SaaS dashboard (Port 3000)
-npm run dev -w apps/frontend
+### Provider options
+
+- **Offline walkthrough:** `AI_PROVIDER=mock` gives deterministic responses for exploring CRM workflows. It does not demonstrate live model reasoning.
+- **Local inference:** Run Ollama, pull the model with `ollama pull qwen2.5:3b`, and set `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL=http://localhost:11434`, and `OLLAMA_MODEL=qwen2.5:3b`.
+- **Hosted inference:** Configure the backend with `AI_PROVIDER=groq` and `GROQ_API_KEY` for Groq. Voice routing has its own configuration. See the [provider implementations](apps/backend/src/services/ai) and [environment example](.env.example).
+- **Live email:** Configure `EMAIL_PROVIDER=RESEND`, `RESEND_API_KEY`, and `RESEND_FROM_EMAIL` for a verified sender. Inbound webhook verification uses `RESEND_WEBHOOK_SECRET`. Keep provider keys in the backend environment.
+
+## Architecture
+
+| Directory | Responsibility |
+| --- | --- |
+| [apps/frontend](apps/frontend) | React, TypeScript, Vite, and Tailwind. The Atlas UI includes discovery, CRM, the inbox, and Phone Studio. |
+| [apps/backend](apps/backend) | Express API, JWT authentication, workspace-scoped services, WebSocket updates, AI routing, and email integrations. |
+| [apps/backend/prisma](apps/backend/prisma) | Prisma schema for organisations, users, leads, messages, research runs, appointments, and simulation sessions. Local development uses SQLite, with PostgreSQL support for hosted environments. |
+| [packages/shared](packages/shared) | Shared TypeScript types, Zod validation schemas, industry configuration, and SDR tool definitions. |
+
+## Verification
+
+After local setup, run from the repository root against a **disposable local database**:
+
+```sh
+npm test
+npm run build
 ```
-Open **`http://localhost:3000`** in your browser.
 
-- **Demo Credentials**:
-  - Email: `demo@cloudflow.ai`
-  - Password: `password123`
-  - Or click **"1-Click Sign In with Demo Account"** on the login page.
+The Atlas release passed **139 automated tests across 21 files** and the production build. Local Chrome checks opened all 19 routes and exercised mobile discovery layout and the Add Lead dialog. Microphone quality, hosted model availability, and real inbox delivery require live checks with the intended browser and provider accounts.
 
----
-
-## 🧪 Running Automated Tests
-
-Run the comprehensive end-to-end verification suite:
-```bash
-npx tsx apps/backend/src/tests/run_tests.ts
-```
-The test suite validates all 7 core workflows:
-1. Cold outreach email generation & tool call.
-2. Inbound lead reply & objection handling.
-3. Calendar intent detection & meeting booking.
-4. Enterprise escalation & human handoff inbox.
-5. Opt-out (STOP / Unsubscribe) safety enforcement.
-6. Interactive voice phone call lifecycle (connect, speech turn, completion, summary).
-7. SaaS analytics metric aggregation.
-
----
-
-## 📁 Monorepo Structure
-
-```
-D:\ai-sdr-platform
-├── packages
-│   └── shared               # Shared types, Zod schemas, constants, tool definitions
-├── apps
-│   ├── backend              # Express, Prisma ORM, AI Brain, Services, Telephony WebSockets
-│   │   ├── prisma           # schema.prisma, seed.ts, SQLite dev database
-│   │   ├── src
-│   │   │   ├── lib          # prisma, jwt, logger
-│   │   │   ├── middleware   # auth, validator, errorHandler
-│   │   │   ├── routes       # 11 REST API route modules
-│   │   │   ├── services     # lead, conversation, phone, followUp, handoff, analytics, billing
-│   │   │   │   └── ai       # ollamaProvider, mockProvider, promptBuilder, toolRegistry
-│   │   │   └── tests        # run_tests.ts (end-to-end test suite)
-│   │   └── server.ts        # Express + WebSocket server
-│   └── frontend             # Vite + React 18 + Tailwind CSS Dashboard
-│       └── src
-│           ├── api          # client.ts API integration
-│           ├── context      # AuthContext.tsx
-│           ├── components   # Layout, Sidebar, Navbar
-│           └── pages        # 14 responsive SaaS dashboard pages
-```
+[Regression tests](apps/backend/src/tests) · [Implementation notes and remaining work](PHASE2_PROGRESS.md)
