@@ -82,7 +82,7 @@ export class GroqProvider implements AiProvider {
             { role: "user", content: userPrompt }
           ],
           temperature: 0.1,
-          max_tokens: 1024
+          max_tokens: jsonMode ? 2048 : 1024
         };
 
         if (jsonMode) {
@@ -268,7 +268,7 @@ export class GroqProvider implements AiProvider {
 Requirements:
 1. Set intent: "outreach".
 2. Set action: "send_email".
-3. Provide the full professional email text in "reply".
+3. Provide the full professional email text in "reply", under 140 words with one relevant question.
 4. Set tool_arguments: { "lead_id": "${lead.leadId}", "subject": "<compelling subject>", "body": "<email body>" }.`;
 
     const { text, latencyMs, modelUsed } = await this.callGroq(systemPrompt, userPrompt, true);

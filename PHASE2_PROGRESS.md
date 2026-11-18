@@ -8,6 +8,7 @@
 - Changed files: services/ai/{customerMessage,groqProvider,onlineGeminiProvider,ollamaProvider,promptBuilder}, emailService, resendService, channels/emailProvider, messageDeliveryService, conversationService, leadService, toolExecutor, followUpEngine and their regression tests.
 - Validation: final 139 tests across 21 files passed, full frontend/backend/shared build and Prisma validation passed. The existing Three.js bundle-size warning remains. Render deployment confirmation pending; the inspected Chrome window closed during verification.
 - No production records or database migrations changed. No live email was sent during verification. Full product transformation and live end-to-end acceptance remain pending; automated tests do not prove inbox delivery or every provider's live behavior.
+- Commits 85999ac and e14ac2a pushed to origin/main. Production `/api/health` returned HTTP 200 after push; this endpoint does not expose the deployed commit. Groq structured output budget increased to 2048 tokens and outreach requested under 140 words to reduce truncation. Render commit and live inbox verification remain pending.
 
 Updated 17 November 2026. The audit, initial fixes and workspace configuration are in the working tree. The full product transformation remains in progress.
 
