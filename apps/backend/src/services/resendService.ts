@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { assertCustomerMessage } from "./ai/customerMessage.js";
 import { logger } from "../lib/logger.js";
 
 export interface ResendSendOptions {
@@ -112,6 +113,11 @@ export class ResendService {
    * Send live outbound email via Resend API with CAN-SPAM opt-out footer and threading headers
    */
   static async sendEmail(options: ResendSendOptions, apiKeyOverride?: string): Promise<ResendSendResult> {
+    try {
+      assertCustomerMessage([options.subject, options.text, options.html].filter(Boolean).join("\n"));
+    } catch (error) {
+      return { success: false, provider: "RESEND", isSimulated: false, statusCode: 422, error: (error as Error).message };
+    }
     const key = apiKeyOverride || process.env.RESEND_API_KEY;
     if (!key || key.trim().length === 0) {
       logger.warn("[ResendService] Attempted to send email but RESEND_API_KEY is not configured.");

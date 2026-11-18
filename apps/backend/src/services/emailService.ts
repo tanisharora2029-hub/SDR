@@ -1,6 +1,7 @@
 import nodemailer, { Transporter } from "nodemailer";
 import { logger } from "../lib/logger.js";
 import { ResendService } from "./resendService.js";
+import { assertCustomerMessage } from "./ai/customerMessage.js";
 
 export type EmailProviderChoice = "ETHEREAL" | "RESEND" | "SIMULATOR";
 
@@ -109,6 +110,11 @@ export class EmailService {
   }
 
   static async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
+    try {
+      assertCustomerMessage([options.subject, options.text, options.html].filter(Boolean).join("\n"));
+    } catch (error) {
+      return { success: false, isSimulated: false, error: (error as Error).message };
+    }
     // 1. Simulator Mode: Immediate sandbox delivery with ZERO external network latency
     if (options.isSimulator) {
       logger.info(`[EmailService] Simulator dispatch in sandbox mode (zero external network latency).`);

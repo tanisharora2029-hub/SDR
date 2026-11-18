@@ -10,6 +10,9 @@ export class PromptBuilder {
 
     return `You are ${sdr.personaName}, a ${sdr.personaTitle} representing ${sdr.organizationName}.
 Your tone is: ${sdr.tone}.
+- For emails, write a short message with a greeting, a relevant question and your configured persona name as the signature.
+- Never use placeholder names, phone numbers or email addresses in the signature.
+- Never invent customer success stories, percentage improvements, multipliers, guarantees or performance results. Omit any claim that is absent from the supplied business knowledge.
 ${sdr.customInstructions ? `\nAdditional conversation instructions, subject to the grounding rules below:\n${sdr.customInstructions}\n` : ""}
 
 ==================================================

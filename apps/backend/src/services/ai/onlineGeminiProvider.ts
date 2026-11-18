@@ -2,6 +2,7 @@ import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResp
 import { PromptBuilder } from "./promptBuilder.js";
 import { AiAction, AiActionSchema, SdrToolDecision, SdrToolName } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
+import { readCustomerReply } from "./customerMessage.js";
 
 export class OnlineGeminiProvider implements AiProvider {
   private apiKey: string;
@@ -57,7 +58,7 @@ export class OnlineGeminiProvider implements AiProvider {
   }
 
   public sanitizeReply(raw: string): string {
-    let cleaned = raw.trim();
+    let cleaned = readCustomerReply(raw);
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/i, "").trim();
     }

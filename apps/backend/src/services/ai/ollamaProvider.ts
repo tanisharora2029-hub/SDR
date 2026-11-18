@@ -2,6 +2,7 @@ import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResp
 import { PromptBuilder } from "./promptBuilder.js";
 import { SdrToolDecision, SdrToolName, AiAction, AiActionSchema } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
+import { readCustomerReply } from "./customerMessage.js";
 
 export class OllamaProvider implements AiProvider {
   private baseUrl: string;
@@ -57,7 +58,7 @@ export class OllamaProvider implements AiProvider {
       return "Thank you for reaching out. How can I best assist your team today?";
     }
 
-    let cleaned = rawReply.trim();
+    let cleaned = readCustomerReply(rawReply);
 
     // 1. Strip markdown fences (e.g. ```json ... ```)
     cleaned = cleaned.replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/i, "").trim();

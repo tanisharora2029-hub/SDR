@@ -2,6 +2,7 @@ import { AiProvider, SdrContext, LeadContext, ConversationTurn, AiCompletionResp
 import { PromptBuilder } from "./promptBuilder.js";
 import { AiAction, AiActionSchema, SdrToolDecision, SdrToolName } from "@ai-sdr/shared";
 import { logger } from "../../lib/logger.js";
+import { readCustomerReply } from "./customerMessage.js";
 
 export class GroqProvider implements AiProvider {
   private apiKey: string;
@@ -116,6 +117,9 @@ export class GroqProvider implements AiProvider {
         }
 
         const data: any = await res.json();
+        if (data.choices?.[0]?.finish_reason === "length") {
+          throw new Error("AI response exceeded its output limit. Please regenerate the draft.");
+        }
         const text = data.choices?.[0]?.message?.content || "";
         logger.info(`[DIAGNOSTIC 8/14 - Groq] LLM request SUCCEEDED (status: 200, model: ${modelToTry}, latencyMs: ${latencyMs})`);
         return { text, latencyMs, modelUsed: modelToTry };
@@ -133,7 +137,7 @@ export class GroqProvider implements AiProvider {
   }
 
   public sanitizeReply(raw: string): string {
-    let cleaned = raw.trim();
+    let cleaned = readCustomerReply(raw);
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/i, "").trim();
     }
@@ -267,7 +271,7 @@ Requirements:
 3. Provide the full professional email text in "reply".
 4. Set tool_arguments: { "lead_id": "${lead.leadId}", "subject": "<compelling subject>", "body": "<email body>" }.`;
 
-    const { text, latencyMs, modelUsed } = await this.callGroq(systemPrompt, userPrompt);
+    const { text, latencyMs, modelUsed } = await this.callGroq(systemPrompt, userPrompt, true);
     let { action, toolDecision } = this.parseAiAction(text, lead.leadId);
 
     if (action.intent !== "outreach") action.intent = "outreach";
