@@ -111,6 +111,7 @@ export const OpportunityEnginePage: React.FC = () => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [discoveryNotice, setDiscoveryNotice] = useState<string | null>(null);
 
   // Telemetry & Transparency states
   const [latestRun, setLatestRun] = useState<ResearchRunMetrics | null>(null);
@@ -243,6 +244,7 @@ export const OpportunityEnginePage: React.FC = () => {
   const handleRunAutopilot = async () => {
     try {
       setIsAutopilotRunning(true);
+      setDiscoveryNotice(null);
       setError(null);
       setAutopilotStep("Initializing autonomous discovery pipeline...");
 
@@ -262,7 +264,8 @@ export const OpportunityEnginePage: React.FC = () => {
       if (res?.opportunities && res.opportunities.length > 0) {
         await fetchOpportunities();
       } else {
-        setError(res?.message || "No real businesses with confirmed operational bottlenecks were validated.");
+        if (res?.discoveryStatus === "NO_RESULTS") setDiscoveryNotice(res.message || "No new opportunities qualified.");
+        else setError(res?.message || "Discovery is unavailable.");
       }
     } catch (err: any) {
       setError(err.message || "Autopilot discovery run failed.");
@@ -697,6 +700,7 @@ export const OpportunityEnginePage: React.FC = () => {
         </div>
       )}
 
+      {discoveryNotice && <p role="status" className="p-4 text-sm text-slate-300">{discoveryNotice}</p>}
       {error && (
         <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">

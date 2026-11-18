@@ -66,7 +66,7 @@ export interface ResearchProvider {
   researchCompany(
     companyName: string,
     domain: string,
-    context?: { discoveryQuery?: string; discoverySource?: string; onProgress?: (stage: string, details?: any) => void }
+    context?: { sourceUrl?: string; discoveryQuery?: string; discoverySource?: string; onProgress?: (stage: string, details?: any) => void }
   ): Promise<ExtractedSignals>;
 }
 
@@ -95,7 +95,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
   /**
    * Safely fetches a public webpage, strips markup, and extracts clean text metadata.
    */
-  public async fetchPage(rawUrl: string): Promise<ResearchSourceItem | null> {
+  public async fetchPage(rawUrl: string, redirectsRemaining = 3): Promise<ResearchSourceItem | null> {
     try {
       const parsedUrl = SsrfGuard.validateAndNormalizeUrl(rawUrl);
       await SsrfGuard.verifyResolvedIp(parsedUrl.hostname);
@@ -109,6 +109,14 @@ export class PublicWebResearchProvider implements ResearchProvider {
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         }
       });
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        await response.body?.cancel();
+        const location = response.headers.get("location");
+        if (!location || redirectsRemaining <= 0) return null;
+        const next = new URL(location, parsedUrl);
+        if (next.hostname.replace(/^www\./, "") !== parsedUrl.hostname.replace(/^www\./, "")) return null;
+        return this.fetchPage(next.href, redirectsRemaining - 1);
+      }
       if (!response.ok) {
         await response.body?.cancel();
         logger.warn(`[ResearchProvider] HTTP ${response.status} fetching ${parsedUrl.hostname}`);
@@ -172,7 +180,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
   public async researchCompany(
     companyName: string,
     domain: string,
-    context?: { discoveryQuery?: string; discoverySource?: string }
+    context?: { sourceUrl?: string; discoveryQuery?: string; discoverySource?: string }
   ): Promise<ExtractedSignals> {
     const cleanDomain = domain.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
     const homepageUrl = `https://${cleanDomain}`;
@@ -182,7 +190,12 @@ export class PublicWebResearchProvider implements ResearchProvider {
     const sources: ResearchSourceItem[] = [];
 
     // 1. Fetch Homepage
-    let homeItem = await this.fetchPage(homepageUrl);
+    const source = context?.sourceUrl ? new URL(context.sourceUrl) : null;
+    const seed = source?.host.replace(/^www\./, "") === cleanDomain.replace(/^www\./, "") ? source.href : homepageUrl;
+    let homeItem = await this.fetchPage(seed);
+    if ((!homeItem || homeItem.rawText.length < 50) && seed !== homepageUrl) {
+      homeItem = await this.fetchPage(homepageUrl);
+    }
     if (!homeItem || !homeItem.rawText || homeItem.rawText.length < 50) {
       // Try http fallback if https failed
       homeItem = await this.fetchPage(`http://${cleanDomain}`);
@@ -216,7 +229,7 @@ export class PublicWebResearchProvider implements ResearchProvider {
     sources.push(homeItem);
 
     // 2. Discover internal links dynamically from homepage HTML
-    const discoveredLinks = this.discoverInternalLinks(homeItem.rawHtml || "", homepageUrl, cleanDomain);
+    const discoveredLinks = this.discoverInternalLinks(homeItem.rawHtml || "", homeItem.url, cleanDomain);
 
     // 3. Fetch prioritized internal pages up to limit
     const visitedUrls = new Set<string>([homepageUrl, homeItem.url]);

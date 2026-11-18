@@ -221,13 +221,14 @@ export class OpportunityService {
 
         // Research candidate dynamically (crawls homepage + priority subpages)
         const signals = await this.researchProvider.researchCompany(candidate.companyName, candidate.domain, {
+          sourceUrl: candidate.sourceUrl,
           discoveryQuery: candidate.discoveryQuery,
           discoverySource: candidate.discoverySource
         });
 
-        telemetry.pagesRead += signals.pagesRead?.length || 1;
+        telemetry.pagesRead += signals.pagesRead?.length || 0;
         telemetry.evidenceExtracted += signals.evidenceList?.length || 0;
-        telemetry.aiAnalysesCompleted++;
+        if (signals.pagesRead?.length && !signals.insufficiencyReason?.startsWith("AI extraction error:")) telemetry.aiAnalysesCompleted++;
 
         // Under test fixture execution only, provide grounded mock signals if test domain
         if (process.env.NODE_ENV === "test" && candidate.domain.endsWith(".test") && signals.evidenceList.length === 0) {
@@ -271,7 +272,7 @@ export class OpportunityService {
               reason: signals.insufficiencyReason || "Insufficient evidence or no MachineMind fit"
             }
           });
-          logs.push(`Candidate ${candidate.companyName} rejected: Insufficient evidence or no MachineMind fit.`);
+          logs.push(`Candidate ${candidate.companyName} rejected: ${signals.insufficiencyReason || "Insufficient evidence or poor fit"}`);
           continue;
         }
 
@@ -415,7 +416,7 @@ export class OpportunityService {
     resultList.message =
       createdOpportunities.length > 0
         ? `Autopilot discovery completed. Validated ${createdOpportunities.length} opportunities.`
-        : "No real businesses with confirmed operational bottlenecks were validated.";
+        : `No new opportunities qualified. Read ${telemetry.pagesRead} public pages across ${telemetry.websitesCrawled} attempted sites.`;
 
     return resultList;
   }

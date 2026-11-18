@@ -447,7 +447,7 @@ describe("Real Opportunity Engine Discovery & Anti-Hallucination Pipeline", () =
   });
 
   // TEST 15: 10-Point Pipeline Telemetry & Transparency Tracking
-  it("15. Telemetry: verifies ResearchRun tracks all 10 pipeline metrics and records discovery trail", async () => {
+  it("15. Telemetry: a blocked loopback candidate contributes no pages or AI analyses", async () => {
     const mockCandidates = [
       {
         companyName: "Apex Freight Solutions",
@@ -466,8 +466,9 @@ describe("Real Opportunity Engine Discovery & Anti-Hallucination Pipeline", () =
     expect(latestRun).toBeDefined();
     expect(latestRun?.candidatesDiscovered).toBeGreaterThanOrEqual(1);
     expect(latestRun?.websitesCrawled).toBeGreaterThanOrEqual(1);
-    expect(latestRun?.pagesRead).toBeGreaterThanOrEqual(1);
-    expect(latestRun?.aiAnalysesCompleted).toBeGreaterThanOrEqual(1);
+    expect(latestRun?.pagesRead).toBe(0);
+    expect(latestRun?.aiAnalysesCompleted).toBe(0);
+    expect(result).toHaveLength(0);
   });
 
   // TEST 16: Decision Maker Guard — Filters out role placeholders like "CEO or COO"

@@ -1,5 +1,10 @@
 # NexSDR Phase 2 progress
 
+## Autopilot discovery — 18 November 2026
+
+- Updated researchProvider to crawl the discovered source page and follow up to three validated redirects on the same site. Updated opportunityService to persist specific rejection reasons and count unread sites as zero pages and zero AI analyses. OpportunityEnginePage displays completed searches with zero matches as an informational result.
+- Updated real_opportunity_discovery.test.ts to check the actual outcome for a blocked loopback candidate. All 139 tests and the full build passed. A live fetch using the crawler read 171 characters from example.com. The original workspace search was not replayed because qualification can create production records. Deployment verification pending.
+
 ## Email and SDR reliability fix — 18 November 2026
 
 - Diagnosed the reported raw JSON email: malformed/truncated AI action envelopes fell through parsing and were sent as customer text. Groq outreach now requests structured output and rejects token-limit truncation. A shared reply parser protects Groq, Gemini and Ollama; EmailService and direct Resend delivery reject internal action metadata and unfinished signature placeholders.
