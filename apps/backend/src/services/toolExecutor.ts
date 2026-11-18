@@ -53,6 +53,7 @@ export class ToolExecutor {
           }
           const subject = args.subject || "Message from your SDR";
           const body = args.body || args.content || args.text || args.message || "";
+          if (!targetLead.email) return { tool, success: false, error: "Lead has no email address" };
 
           // Ensure conversation exists
           let conv = await prisma.conversation.findFirst({
@@ -111,6 +112,7 @@ export class ToolExecutor {
               senderEmail: sdrEmail,
               replyTo: sdrReplyTo
             });
+            if (!sendRes.success) return { tool, success: false, error: sendRes.error || "Email delivery failed" };
             if (sendRes.success) {
               emailSendResult = {
                 success: true,

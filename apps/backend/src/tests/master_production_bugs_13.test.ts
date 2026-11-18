@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { ChannelManager } from "../services/channels/channelManager.js";
+import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "../lib/prisma.js";
 import { ConversationService } from "../services/conversationService.js";
 import { WebhookService } from "../services/webhookService.js";
@@ -433,7 +434,10 @@ describe.sequential("NEXSDR — MASTER PRODUCTION BUG FIX TEST SUITE (BUGS 1 - 1
       }
     });
 
+    const transport = vi.spyOn(ChannelManager, "dispatch").mockResolvedValueOnce({ success: true, channel: "EMAIL", providerStatus: "REAL", externalMessageId: "test-provider-message" });
     const result = await LeadService.triggerAiOutreach(orgId, outreachLead.id);
+    transport.mockRestore();
+    expect(result.deliverySuccess).toBe(true);
     expect(result).toBeDefined();
 
     // Verify lead status updated to CONTACTED

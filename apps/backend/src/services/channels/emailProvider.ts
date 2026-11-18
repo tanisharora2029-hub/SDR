@@ -44,7 +44,7 @@ export class EmailChannelProvider implements IChannelProvider {
         providerStatus: usedStatus,
         externalMessageId: res.messageId,
         previewUrl: res.previewUrl || undefined,
-        notes: res.provider === "RESEND"
+        notes: !res.success ? "Email delivery failed" : res.provider === "RESEND"
           ? `Delivered via Resend LIVE API (ID: ${res.messageId})`
           : (res.isSimulated || res.provider === "SIMULATOR"
               ? `Delivered internally via simulator (ID: ${res.messageId})`

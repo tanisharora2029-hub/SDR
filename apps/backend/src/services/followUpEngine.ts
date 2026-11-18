@@ -60,6 +60,7 @@ export class FollowUpEngine {
       try {
         // Trigger outreach
         const outreach = await LeadService.triggerAiOutreach(organizationId, task.leadId);
+        if (!outreach.deliverySuccess) throw new Error(outreach.deliveryError || "Follow-up delivery failed");
         await prisma.followUpTask.updateMany({
           where: { id: task.id, organizationId, leadId: task.leadId },
           data: { status: "EXECUTED", executedAt: new Date() }

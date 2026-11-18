@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { ChannelManager } from "../services/channels/channelManager.js";
+import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "../lib/prisma.js";
 import { LeadService } from "../services/leadService.js";
 import { ConversationService } from "../services/conversationService.js";
@@ -53,7 +54,10 @@ describe.sequential("AI SDR Platform End-to-End Suite", () => {
       }
     });
 
+    const transport = vi.spyOn(ChannelManager, "dispatch").mockResolvedValueOnce({ success: true, channel: "EMAIL", providerStatus: "REAL", externalMessageId: "test-provider-message" });
     const result = await LeadService.triggerAiOutreach(testOrgId, lead.id);
+    transport.mockRestore();
+    expect(result.deliverySuccess).toBe(true);
     expect(result).toBeDefined();
 
     const updatedLead = await prisma.lead.findUnique({ where: { id: lead.id } });

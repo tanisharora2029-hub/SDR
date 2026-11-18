@@ -1,4 +1,4 @@
-import { ChannelManager } from "./channels/channelManager.js";
+import { deliverStoredMessage } from "./messageDeliveryService.js";
 import { prisma } from "../lib/prisma.js";
 import { aiService } from "./ai/aiService.js";
 import { ToolExecutor } from "./toolExecutor.js";
@@ -362,7 +362,7 @@ export class ConversationService {
             recipientId: targetLead.id,
             content: askDateMsg,
             senderName: sdr.personaName,
-            status: "SENT",
+            status: "PENDING",
             aiReasoning: "Meeting booking: missing date - requested day from prospect"
           }
         });
@@ -372,7 +372,7 @@ export class ConversationService {
           payload: { conversationId: conv.id, message: outboundMsg }
         });
 
-        await ChannelManager.dispatch(channel, {
+        await deliverStoredMessage(outboundMsg, channel, {
           to: targetLead.email || targetLead.phone || "",
           content: askDateMsg,
           subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -414,7 +414,7 @@ export class ConversationService {
             recipientId: targetLead.id,
             content: askTimeMsg,
             senderName: sdr.personaName,
-            status: "SENT",
+            status: "PENDING",
             aiReasoning: "Meeting booking: missing time - requested time from prospect"
           }
         });
@@ -424,7 +424,7 @@ export class ConversationService {
           payload: { conversationId: conv.id, message: outboundMsg }
         });
 
-        await ChannelManager.dispatch(channel, {
+        await deliverStoredMessage(outboundMsg, channel, {
           to: targetLead.email || targetLead.phone || "",
           content: askTimeMsg,
           subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -513,7 +513,7 @@ export class ConversationService {
                 recipientId: targetLead.id,
                 content: confirmMsg,
                 senderName: sdr.personaName,
-                status: "SENT",
+                status: "PENDING",
                 aiReasoning: "Meeting booked autonomously into calendar",
                 toolCallName: "create_calendar_event",
                 toolCallArgs: JSON.stringify({
@@ -529,7 +529,7 @@ export class ConversationService {
               payload: { conversationId: conv.id, message: outboundMsg }
             });
 
-            await ChannelManager.dispatch(channel, {
+            await deliverStoredMessage(outboundMsg, channel, {
               to: targetLead.email || targetLead.phone || "",
               content: confirmMsg,
               subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -591,7 +591,7 @@ export class ConversationService {
               recipientId: targetLead.id,
               content: conflictMsg,
               senderName: sdr.personaName,
-              status: "SENT",
+              status: "PENDING",
               aiReasoning: "Calendar slot conflict - suggested alternative times"
             }
           });
@@ -601,7 +601,7 @@ export class ConversationService {
             payload: { conversationId: conv.id, message: outboundMsg }
           });
 
-          await ChannelManager.dispatch(channel, {
+          await deliverStoredMessage(outboundMsg, channel, {
             to: targetLead.email || targetLead.phone || "",
             content: conflictMsg,
             subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -706,7 +706,7 @@ export class ConversationService {
           recipientId: targetLead.id,
           content: confirmFollowUpMsg,
           senderName: sdr.personaName,
-          status: "SENT",
+          status: "PENDING",
           aiReasoning: "Follow-up task scheduled in database",
           toolCallName: "create_followup",
           toolCallArgs: JSON.stringify({ lead_id: leadId, delay_days: delayDays, channel: "EMAIL" })
@@ -718,7 +718,7 @@ export class ConversationService {
         payload: { conversationId: conv.id, message: outboundMsg }
       });
 
-      await ChannelManager.dispatch(channel, {
+      await deliverStoredMessage(outboundMsg, channel, {
         to: targetLead.email || targetLead.phone || "",
         content: confirmFollowUpMsg,
         subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -964,7 +964,7 @@ export class ConversationService {
         recipientId: targetLead.id,
         content: aiCompletion.content, // Pure conversational response - NEVER raw JSON
         senderName: sdr.personaName,
-        status: "SENT",
+        status: "PENDING",
         aiReasoning: `Intent: ${aiCompletion.action.intent} | Action: ${aiCompletion.action.action} (${aiCompletion.latencyMs}ms)`,
         toolCallName: actionName !== "reply" ? actionName : null,
         toolCallArgs: aiCompletion.toolDecision ? JSON.stringify(aiCompletion.toolDecision.arguments) : null
@@ -985,7 +985,7 @@ export class ConversationService {
 
     // Dispatch via channel abstraction to external lead
     logger.info(`[DIAGNOSTIC 10/14] outbound email dispatch starts (channel: ${channel}, leadId: ${leadId.substring(0, 8)}..., forceProvider: ${dispatchForceProvider})`);
-    const dispatchRes: any = await ChannelManager.dispatch(channel, {
+    const dispatchRes: any = await deliverStoredMessage(outboundMsg, channel, {
       to: targetLead.email || targetLead.phone || "",
       content: aiCompletion.content,
       subject: options?.subject ? (options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`) : undefined,
@@ -1003,22 +1003,12 @@ export class ConversationService {
       return null;
     });
 
-    if (dispatchRes?.messageId) {
-      const existingArgs = outboundMsg.toolCallArgs ? JSON.parse(outboundMsg.toolCallArgs) : {};
-      await prisma.message.update({
-        where: { id: outboundMsg.id },
-        data: {
-          toolCallArgs: JSON.stringify({ ...existingArgs, externalMessageId: dispatchRes.messageId })
-        }
-      }).catch(() => {});
-    }
-
     // Record ActivityLog for AI SDR reply
     await prisma.activityLog.create({
       data: {
         organizationId,
         category: "AI",
-        action: "AI_REPLY_SENT",
+        action: dispatchRes?.success ? "AI_REPLY_SENT" : "AI_REPLY_FAILED",
         detailsJson: JSON.stringify({
           leadId: targetLead.id,
           leadName: `${targetLead.firstName} ${targetLead.lastName}`.trim(),
@@ -1108,7 +1098,7 @@ export class ConversationService {
         recipientId: conv.leadId,
         content,
         senderName,
-        status: "SENT"
+        status: "PENDING"
       }
     });
 
@@ -1128,8 +1118,8 @@ export class ConversationService {
     });
 
     // Dispatch via channel abstraction to external lead
-    if (conv.lead?.email || conv.lead?.phone) {
-      await ChannelManager.dispatch(conv.channel, {
+    if (conv.lead) {
+      await deliverStoredMessage(message, conv.channel, {
         to: conv.lead.email || conv.lead.phone || "",
         content,
         senderName,

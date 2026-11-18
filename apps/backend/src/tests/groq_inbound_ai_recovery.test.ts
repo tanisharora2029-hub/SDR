@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { ChannelManager } from "../services/channels/channelManager.js";
 import { prisma } from "../lib/prisma.js";
 import { ConversationService } from "../services/conversationService.js";
 import { GroqProvider } from "../services/ai/groqProvider.js";
@@ -64,6 +65,7 @@ describe("Groq Inbound & AI Recovery Test Suite", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     globalThis.fetch = originalFetch;
     process.env.GROQ_API_KEY = originalGroqKey;
     process.env.GROQ_MODEL = originalGroqModel;
@@ -83,6 +85,7 @@ describe("Groq Inbound & AI Recovery Test Suite", () => {
   });
 
   it("Test A: Real inbound lead reply with AI active -> AI response generated", async () => {
+    vi.spyOn(ChannelManager, "dispatch").mockResolvedValueOnce({ success: true, channel: "EMAIL", providerStatus: "REAL", externalMessageId: "test-reply-id" });
     process.env.GROQ_API_KEY = "gsk_valid_mock_test_key";
     process.env.AI_PROVIDER = "groq";
 

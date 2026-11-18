@@ -1,5 +1,14 @@
 # NexSDR Phase 2 progress
 
+## Email and SDR reliability fix — 18 November 2026
+
+- Diagnosed the reported raw JSON email: malformed/truncated AI action envelopes fell through parsing and were sent as customer text. Groq outreach now requests structured output and rejects token-limit truncation. A shared reply parser protects Groq, Gemini and Ollama; EmailService and direct Resend delivery reject internal action metadata and unfinished signature placeholders.
+- Strengthened prompts to use the configured sender and avoid unsupported metrics, testimonials and invented results. This is a generation instruction, not a complete factual verification system.
+- Fixed delivery accounting in LeadService, ToolExecutor, conversation replies, human messages and FollowUpEngine. Failed transport results no longer count as sent or advance follow-up cadence. Conversation delivery persists provider IDs for threading. Outreach respects paused SDRs and human takeover.
+- Changed files: services/ai/{customerMessage,groqProvider,onlineGeminiProvider,ollamaProvider,promptBuilder}, emailService, resendService, channels/emailProvider, messageDeliveryService, conversationService, leadService, toolExecutor, followUpEngine and their regression tests.
+- Validation: final 139 tests across 21 files passed, full frontend/backend/shared build and Prisma validation passed. The existing Three.js bundle-size warning remains. Render deployment confirmation pending; the inspected Chrome window closed during verification.
+- No production records or database migrations changed. No live email was sent during verification. Full product transformation and live end-to-end acceptance remain pending; automated tests do not prove inbox delivery or every provider's live behavior.
+
 Updated 17 November 2026. The audit, initial fixes and workspace configuration are in the working tree. The full product transformation remains in progress.
 
 ## Current architecture and audit findings

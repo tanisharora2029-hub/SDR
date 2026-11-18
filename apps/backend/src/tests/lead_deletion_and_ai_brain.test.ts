@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { ChannelManager } from "../services/channels/channelManager.js";
 import { prisma } from "../lib/prisma.js";
 import { LeadService } from "../services/leadService.js";
 import { ConversationService } from "../services/conversationService.js";
@@ -213,9 +214,13 @@ describe.sequential("LEAD DELETION & SHARED AI BRAIN REGRESSION SUITE", () => {
   // ==========================================
   describe("Cold Outreach Disaggregation (Generation vs Delivery)", () => {
     it("should generate AI outreach content and persist message even if email delivery fails", async () => {
+      const transport = vi.spyOn(ChannelManager, "dispatch").mockResolvedValueOnce({ success: false, channel: "EMAIL", providerStatus: "REAL", error: "Provider rejected message" });
       // Trigger AI outreach for leadAId
       // In test environment, without Resend or SMTP keys, delivery should fail gracefully
       const result = await LeadService.triggerAiOutreach(orgAId, leadAId);
+      transport.mockRestore();
+      expect(result.deliverySuccess).toBe(false);
+      expect((await prisma.lead.findUnique({ where: { id: leadAId } }))?.status).toBe("NEW");
 
       expect(result.outreachGenerated).toBe(true);
       expect(result.subject).toBeDefined();
