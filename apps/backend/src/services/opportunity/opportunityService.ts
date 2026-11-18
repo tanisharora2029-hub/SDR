@@ -443,6 +443,7 @@ export class OpportunityService {
 
     // 2. Fetch and research public sources dynamically
     const signals: ExtractedSignals = await this.researchProvider.researchCompany(companyName, domain, {
+      sourceUrl: parsedUrl.href,
       discoverySource: "DIRECT_URL_ANALYSIS"
     });
 

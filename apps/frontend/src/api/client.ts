@@ -4,7 +4,7 @@ const AUTH_TIMEOUT_MS = 65_000;
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {},
-  timeoutMs = 25_000
+  timeoutMs = ["/opportunities/autopilot", "/opportunities/analyze-url"].includes(endpoint) ? 10 * 60_000 : 25_000
 ): Promise<T> {
   const token = localStorage.getItem("token");
   const headers: Record<string, string> = {

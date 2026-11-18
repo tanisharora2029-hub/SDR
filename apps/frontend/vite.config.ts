@@ -2,7 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {
+    name: 'opportunity-page-entry',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      const index = bundle['index.html'];
+      if (index?.type === 'asset') {
+        this.emitFile({ type: 'asset', fileName: 'opportunities/index.html', source: index.source });
+      }
+    }
+  }],
   server: {
     port: 3000,
     proxy: {

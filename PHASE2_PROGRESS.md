@@ -1,5 +1,7 @@
 # NexSDR Phase 2 progress
 
+- Opportunity Engine follow-up: reproduced unrelated Bing results, switched public search to relevance-filtered DuckDuckGo with Bing fallback, and excluded additional job boards. Targeted research now includes the submitted page. The frontend build emits an Opportunity Engine entry page and gives research requests a longer deadline. Live read-only Autopilot discovery returned six candidates and read 3,506 characters from corvel.com. Qualification and production CRM writes were not exercised. Changed the public discovery provider, opportunity service, frontend API client and Vite config. All 139 tests passed.
+
 ## Autopilot discovery — 18 November 2026
 
 - Updated researchProvider to crawl the discovered source page and follow up to three validated redirects on the same site. Updated opportunityService to persist specific rejection reasons and count unread sites as zero pages and zero AI analyses. OpportunityEnginePage displays completed searches with zero matches as an informational result.

@@ -76,6 +76,9 @@ export class PublicSearchDiscoveryProvider {
     "shine.com",
     "monsterindia.com",
     "indeed.com",
+    "indeed.co.in",
+    "simplyhired.co.in",
+    "simplyhired.com",
     "glassdoor.com",
     "glassdoor.co.in",
     "ziprecruiter.com",
@@ -261,32 +264,24 @@ export class PublicSearchDiscoveryProvider {
     };
   }
 
-  /**
-   * Cascading multi-engine web search:
-   * 1. Bing Public HTML search (Primary, fast, high-coverage)
-   * 2. DuckDuckGo HTML search (Secondary fallback)
-   */
   public async searchWeb(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
-    // 1. Primary: Bing
-    try {
-      const bingResults = await this.searchBing(query);
-      if (bingResults.length > 0) {
-        return bingResults;
+    const generic = new Set(["india", "companies", "company", "small", "business", "local", "regional", "careers", "hiring", "services"]);
+    const terms = [...new Set(query.toLowerCase().match(/[a-z]{4,}/g) || [])].filter(term => !generic.has(term));
+    for (const search of [this.searchDuckDuckGo, this.searchBing]) {
+      try {
+        const hits = await search.call(this, query);
+        const relevant = hits.filter(hit => {
+          const description = (hit.title + " " + hit.snippet).toLowerCase();
+          try {
+            if (this.isBlockedDomain(new URL(hit.url).hostname)) return false;
+          } catch { return false; }
+          return terms.filter(term => description.includes(term)).length >= Math.min(2, terms.length);
+        });
+        if (relevant.length) return relevant;
+      } catch (error) {
+        logger.warn("[DiscoveryProvider] Search provider failed", error);
       }
-    } catch (err: any) {
-      logger.warn(`[DiscoveryProvider] Bing search attempt failed: ${err.message}`);
     }
-
-    // 2. Secondary fallback: DuckDuckGo
-    try {
-      const ddgResults = await this.searchDuckDuckGo(query);
-      if (ddgResults.length > 0) {
-        return ddgResults;
-      }
-    } catch (err: any) {
-      logger.warn(`[DiscoveryProvider] DuckDuckGo search attempt failed: ${err.message}`);
-    }
-
     return [];
   }
 
