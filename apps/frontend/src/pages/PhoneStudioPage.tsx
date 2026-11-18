@@ -418,19 +418,19 @@ export const PhoneStudioPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="hibiscus-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <Radio className="w-6 h-6 text-emerald-400 animate-pulse" />
             <h1 className="text-2xl font-bold text-slate-100">
-              Browser Voice Simulation
+              Phone Studio
             </h1>
             <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
               [Test Call — You are acting as the lead]
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Browser audio engine using your local microphone, hardware VU meter, voice activity detection (VAD), instant barge-in, and neural TTS synthesis (Zero carrier cost).
+            Practice a customer conversation using your microphone.
           </p>
           <Link to="/settings#business-profile" className="mt-2 inline-block text-sm text-indigo-300">
             Set up your business profile

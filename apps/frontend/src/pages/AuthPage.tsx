@@ -52,7 +52,7 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06060c] flex flex-col justify-center items-center p-4 sm:p-6 text-slate-100 relative overflow-hidden selection:bg-violet-600 selection:text-white">
+    <div className="atlas-theme auth-atlas min-h-screen bg-[#06060c] flex flex-col justify-center items-center p-4 sm:p-6 text-slate-100 relative overflow-hidden selection:bg-violet-600 selection:text-white">
       {/* Background ambient lighting */}
       <div className="fixed top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full bg-violet-600/[0.1] blur-[150px] pointer-events-none -z-0" />
       <div className="fixed bottom-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full bg-indigo-600/[0.08] blur-[150px] pointer-events-none -z-0" />

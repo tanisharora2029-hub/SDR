@@ -1,0 +1,93 @@
+/* Paper surfaces and ink for the existing workspace and its public pages.
+   Phone Studio owns its dark surfaces within the shared navigation shell. */
+.atlas-theme {
+  --paper: #faf8f2;
+  --surface: #fffefa;
+  --ink: #172238;
+  --muted: #515e70;
+  --rule: #d8d8d1;
+  --cobalt: #153db8;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: var(--ink);
+  background-color: var(--paper);
+}
+@scope (.atlas-theme) to (.voice-room) {
+  h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.035em; }
+  main h1 { font-size: clamp(1.8rem, 3vw, 2.7rem); line-height: 1.15; }
+  aside h1 { font-size: 1.5rem; }
+  [class*="bg-[#0"], [class*="bg-[#1"], [class*="bg-slate-9"], [class*="bg-slate-8"],
+  .glass-card, .glass-panel, .glass-panel-subtle, .glass-input {
+    background-color: var(--surface); backdrop-filter: none;
+  }
+  [class*="bg-white/"], [class*="bg-black/"]:not(.fixed):not(.absolute) { background-color: #f0efe9; }
+  [class*="border-white"], [class*="border-slate"], .glass-card, .glass-panel, .glass-input { border-color: var(--rule); }
+  .text-white, .text-slate-50, .text-slate-100, .text-slate-200, .text-slate-300 { color: var(--ink); }
+  .text-slate-400, .text-slate-500, .text-slate-600 { color: var(--muted); }
+  [class*="text-violet-"], [class*="text-indigo-"], [class*="text-blue-"], .text-purple-400 { color: var(--cobalt); }
+  [class*="text-emerald-"], [class*="text-green-"] { color: #186344; }
+  [class*="text-cyan-"], [class*="text-teal-"] { color: #106078; }
+  [class*="text-amber-"], [class*="text-yellow-"] { color: #805114; }
+  [class*="text-rose-"], [class*="text-red-"] { color: #ac294c; }
+  [class*="bg-gradient-to-"]:not(.absolute):not(.fixed):not(.bg-clip-text), .glow-pill-active,
+  .bg-violet-600, .bg-indigo-600 { background: var(--cobalt); color: white; }
+  .bg-clip-text.text-transparent { background: none; color: var(--cobalt); }
+  aside [aria-current="page"] { background: #e5ebff; color: #12359d; border-color: #b7c6f4; }
+  [class*="shadow-"], .glass-panel, .glass-card { box-shadow: none; }
+  .rounded-2xl { border-radius: .75rem; }
+  .rounded-xl { border-radius: .5rem; }
+  .blur-3xl, .ambient-glow-purple, .ambient-glow-blue, .fixed.pointer-events-none[class*="blur-"] { opacity: 0; }
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select, option { color: var(--ink); background-color: var(--surface); }
+  ::placeholder { color: #657080; }
+  :focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+  a:hover, button:not(:disabled):hover { text-decoration: underline; text-underline-offset: .18em; }
+  [class*="hover:text-white"]:hover { color: var(--cobalt); }
+  [class*="bg-gradient-to-"]:hover:not(.bg-clip-text) { color: white; }
+}
+.atlas-cover, .ghats-hero, .ghats-header, .hibiscus-header { border-radius: 12px; overflow: hidden; }
+.atlas-cover {
+  display: flex; align-items: center; min-height: clamp(190px, 22vw, 290px);
+  padding: clamp(20px,4vw,52px); border: 1px solid var(--rule);
+  background: linear-gradient(90deg,#faf8f2 24%,transparent 64%), url('/atlas/street.jpg') right center / auto 100% no-repeat, #faf8f2;
+}
+.atlas-cover > div { max-width: 42%; }
+.atlas-cover h1 { font-size: clamp(2.8rem,5vw,5.4rem); color: var(--cobalt); line-height: .97; }
+.atlas-cover p { margin-top: 1rem; line-height: 1.5; color: #37465b; }
+.ghats-hero, .ghats-header { background: linear-gradient(90deg,rgba(13,33,32,.89),rgba(13,33,32,.13)),url('/atlas/ghats.jpg') center 57% / cover; }
+.ghats-hero { padding:clamp(28px,6vw,82px); color:#fffdf5; }
+.ghats-hero h1 { font-size:clamp(3rem,6vw,6.2rem); line-height:1; }
+.ghats-hero p { max-width:42ch; margin:1.5rem 0; line-height:1.6; }
+.atlas-primary,.atlas-secondary { display:inline-flex; gap:.5rem; align-items:center; padding:.75rem 1rem; border-radius:.4rem; font-weight:600; }
+.atlas-primary { background:#fffdf5; color:#183a30; }
+.atlas-secondary { color:white; border:1px solid #d8dfd7; background:#163429; }
+.ghats-header { padding:clamp(20px,3vw,38px); }
+.ghats-header h1.text-white,.ghats-header p.text-slate-400 {color:#fffdf5;}
+.auth-atlas { background: linear-gradient(90deg,#faf8f2 8%,rgba(250,248,242,.72)),url('/atlas/street.jpg') center / cover; }
+.voice-room {color:#f7ecdc; background:#0d0b0a; color-scheme: dark;}
+.hibiscus-header { padding:clamp(18px,3vw,40px); min-height:180px; border:1px solid #4c372f; background:linear-gradient(90deg,#110d0b 27%,rgba(14,10,8,.65) 60%,rgba(14,10,8,.18)),url('/atlas/hibiscus.jpg') right center / auto 125% no-repeat,#0d0b0a;}
+.hibiscus-header h1 {font:500 clamp(2rem,4vw,3.8rem)/1.1 Georgia,serif;color:#fff8ef;}
+.hibiscus-header p,.hibiscus-header a {color:#f0d0a1;}
+@media(max-width:640px){
+  .atlas-cover { padding:18px; align-items:flex-end; min-height:230px; background:linear-gradient(0deg,#faf8f2 27%,transparent 70%),url('/atlas/street.jpg') center top / auto 76% no-repeat,#faf8f2; }
+  .atlas-cover > div { max-width:100%; }
+  .atlas-cover h1 {font-size:2.35rem;}
+  .atlas-cover p {margin-top:.35rem;font-size:.86rem;}
+}
+.atlas-metrics { display:grid; grid-template-columns:repeat(4,1fr); border-block:1px solid var(--rule); }
+.atlas-metrics a { padding:1.1rem; display:grid; gap:.3rem; color:var(--muted); }
+.atlas-metrics strong { font: 500 2.3rem Georgia,serif; color:var(--ink); }
+.atlas-sheet { background:var(--surface); border:1px solid var(--rule); border-radius:.65rem; padding:clamp(16px,2.5vw,28px); }
+.atlas-sheet h2 { font-size:1.65rem; margin-bottom:.7rem; }
+.atlas-sheet > a,.atlas-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.8rem 0; border-top:1px solid var(--rule); font-size:.9rem; }
+.atlas-sheet > a {color:var(--cobalt);}
+.atlas-row time,.atlas-sheet p {color:var(--muted);font-size:.85rem;}
+@scope (.atlas-theme) to (.voice-room) {
+  .fixed.inset-0[class*="bg-slate-950/"], .fixed.inset-0[class*="bg-black/"] { background:rgb(15 23 42 / .53); }
+  [class*="bg-rose-950"],[class*="bg-red-950"] {background-color:#fff0ef;}
+  [class*="bg-emerald-950"] {background-color:#eef7ef;}
+  [class*="bg-amber-950"] {background-color:#fff6df;}
+}
+@media(max-width:640px){.atlas-metrics{grid-template-columns:repeat(2,1fr)}}
+.ghats-header a[href="/lead-simulator"] {background:#f5fbf4;color:#19432b;}
+.atlas-theme aside a:not([aria-current="page"]) {background-color:transparent;}
+.atlas-theme aside a:not([aria-current="page"]):hover {background-color:#edf0f5;}
+.atlas-theme aside a[aria-current="page"] > span:last-child:not(:first-child) {color:inherit;}

@@ -402,56 +402,18 @@ export const OpportunityEnginePage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 font-sans">
-      {/* Top Banner / Identity Header */}
-      <div className="relative rounded-2xl border border-white/[0.08] bg-[#0c0d1b]/70 backdrop-blur-xl p-6 sm:p-8 overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs font-semibold uppercase tracking-wider mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-              Evidence-First AI Prospect Intelligence
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Opportunity Engine
-            </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-              Discover verified operational bottlenecks across high-workload businesses, prove them with public evidence, and map them to MachineMind automation solutions before sending problem-first outreach.
-            </p>
-          </div>
-
-          {/* Connected SDR Status Card */}
-          <div className="p-4 rounded-xl bg-black/40 border border-white/[0.06] backdrop-blur-md flex items-center gap-4 shrink-0 w-full md:w-auto">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-violet-600/30">
-              AR
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white">Alex Rivers</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              </div>
-              <p className="text-[11px] text-slate-400">AI SDR Connected • Resend Ready</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <header className="atlas-cover">
+        <div><h1>Opportunity Atlas</h1><p>Find businesses and review the public evidence behind each opportunity.</p></div>
+      </header>
 
       {/* Mode 1 & Mode 2 Input Ribbon */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Mode 1: Autopilot */}
         <div className="lg:col-span-5 p-6 rounded-2xl border border-violet-500/20 bg-[#0e0f24]/60 backdrop-blur-xl shadow-xl flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-violet-400 flex items-center gap-1.5">
-                <Cpu className="w-4 h-4" /> Mode 1: Autopilot
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                Zero Input Required
-              </span>
-            </div>
             <h2 className="text-lg font-bold text-white mt-3">Find Opportunities</h2>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Autonomously searches verified sectors (Logistics, Healthcare, FinTech, Claims) matching MachineMind ICP to identify high-probability operational bottlenecks.
+              Search public business pages for evidence of operational needs.
             </p>
           </div>
 
@@ -469,7 +431,7 @@ export const OpportunityEnginePage: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Find Opportunities (Autopilot)</span>
+                  <span>Find opportunities</span>
                 </>
               )}
             </button>
@@ -479,17 +441,9 @@ export const OpportunityEnginePage: React.FC = () => {
         {/* Mode 2: Analyze Business URL */}
         <div className="lg:col-span-7 p-6 rounded-2xl border border-white/[0.08] bg-[#0c0d1b]/60 backdrop-blur-xl shadow-xl flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Search className="w-4 h-4 text-cyan-400" /> Mode 2: Analyze Business
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-                SSRF-Protected Deep Scan
-              </span>
-            </div>
             <h2 className="text-lg font-bold text-white mt-3">Targeted Company Research</h2>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Input any legitimate public business URL to crawl its public webpages, hiring announcements, and operational workflows for automation signals.
+              Enter a company website or a specific public page to review its evidence.
             </p>
           </div>
 
@@ -534,7 +488,8 @@ export const OpportunityEnginePage: React.FC = () => {
 
       {/* Research Run Transparency Card */}
       {latestRun && (
-        <div className="rounded-2xl border border-violet-500/20 bg-[#0e0f26]/80 backdrop-blur-xl p-5 shadow-xl space-y-4">
+        <details className="atlas-research rounded-2xl border border-violet-500/20 bg-[#0e0f26]/80 p-5 space-y-4">
+          <summary className="cursor-pointer font-semibold">Research details</summary>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-2.5">
               <span className="p-2 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-300">
@@ -650,7 +605,7 @@ export const OpportunityEnginePage: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+        </details>
       )}
 
       {/* Metrics Ribbon */}

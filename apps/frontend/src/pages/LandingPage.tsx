@@ -8,15 +8,10 @@ import {
   ShieldCheck,
   CheckCircle2,
   ArrowRight,
-  Play,
   Bot,
   MessageSquare,
-  ChevronRight,
-  TrendingUp,
-  Cpu
 } from "lucide-react";
 import { SUBSCRIPTION_PLANS } from "@ai-sdr/shared";
-import { HolographicEnergyMesh } from "../components/ui/HolographicEnergyMesh.js";
 
 export const LandingPage: React.FC = () => {
   const [demoInput, setDemoInput] = useState("Your pricing seems high compared to basic automation tools.");
@@ -41,7 +36,7 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06060c] text-slate-100 flex flex-col selection:bg-violet-600 selection:text-white relative overflow-hidden">
+    <div className="atlas-theme min-h-screen bg-[#06060c] text-slate-100 flex flex-col selection:bg-violet-600 selection:text-white relative overflow-hidden">
       {/* Background ambient lighting fields */}
       <div className="fixed top-[-20%] left-[-15%] w-[800px] h-[800px] rounded-full bg-violet-600/[0.08] blur-[170px] pointer-events-none -z-0" />
       <div className="fixed top-[30%] right-[-15%] w-[700px] h-[700px] rounded-full bg-indigo-600/[0.07] blur-[160px] pointer-events-none -z-0" />
@@ -87,134 +82,12 @@ export const LandingPage: React.FC = () => {
 
       {/* Hero Section matching reference */}
       <section className="pt-8 sm:pt-14 pb-20 px-4 sm:px-6 max-w-7xl mx-auto w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          {/* Left Hero Column */}
-          <div className="lg:col-span-6 text-left">
-            {/* Pill Label */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-bold tracking-wider uppercase mb-6 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-              <span>AUTONOMOUS AI SALES AGENT</span>
-            </div>
-
-            {/* Headline matching reference */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
-              Outreach <br />
-              Conversations <br />
-              Appointments <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-300 to-indigo-300">
-                — On Autopilot.
-              </span>
-            </h1>
-
-            <p className="mt-6 text-sm sm:text-base text-slate-400 max-w-xl leading-relaxed">
-              NexSDR uses advanced AI to find leads, start meaningful conversations, handle objections, and book meetings — across Email, Phone and SMS.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                to="/login?mode=signup"
-                className="px-6 sm:px-7 py-3.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm transition shadow-xl shadow-violet-600/35 border border-violet-400/30 flex items-center gap-2"
-              >
-                <span>Start Free Trial</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a
-                href="#demo"
-                className="px-6 py-3.5 rounded-xl bg-[#0f0f1e]/80 hover:bg-[#16162d] border border-white/[0.08] text-slate-200 font-semibold text-xs sm:text-sm transition flex items-center gap-2 shadow-md"
-              >
-                <Play className="w-3.5 h-3.5 fill-current text-violet-400" />
-                <span>Watch Demo</span>
-              </a>
-            </div>
-
-            {/* Conversion Metrics matching reference */}
-            <div className="mt-12 pt-8 border-t border-white/[0.06] grid grid-cols-3 gap-6 max-w-lg">
-              <div>
-                <p className="text-2xl sm:text-3xl font-black text-white">3x</p>
-                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">More Conversations</p>
-              </div>
-              <div>
-                <p className="text-2xl sm:text-3xl font-black text-white">70%</p>
-                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">Lower Cost</p>
-              </div>
-              <div>
-                <p className="text-2xl sm:text-3xl font-black text-white">2x</p>
-                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 font-medium">More Meetings</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Hero Column: 3D Holographic Energy Sculpture matching reference */}
-          <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[540px]">
-            {/* 3D WebGL Mesh Canvas */}
-            <div className="w-full h-full max-w-[540px] max-h-[540px] relative">
-              <HolographicEnergyMesh intensity={1.1} />
-
-              {/* Orbiting Glass Node 1: FIND Leads */}
-              <div className="absolute top-6 left-4 sm:left-6 px-3 py-1.5 rounded-xl bg-[#0e0e1a]/80 backdrop-blur-md border border-white/[0.1] text-xs font-bold text-white shadow-lg shadow-black/40 flex items-center gap-2 animate-float-slow">
-                <span className="w-2 h-2 rounded-full bg-violet-400 shadow-[0_0_8px_#a855f7]" />
-                <span>FIND <span className="text-slate-400 font-normal">Leads</span></span>
-              </div>
-
-              {/* Orbiting Glass Node 2: ENGAGE Across Channels */}
-              <div className="absolute top-12 right-2 sm:right-6 px-3 py-1.5 rounded-xl bg-[#0e0e1a]/80 backdrop-blur-md border border-white/[0.1] text-xs font-bold text-white shadow-lg shadow-black/40 flex items-center gap-2 animate-float-delayed">
-                <span className="text-cyan-400">—</span>
-                <span>ENGAGE <span className="text-slate-400 font-normal">Across Channels</span></span>
-              </div>
-
-              {/* Orbiting Glass Node 3: CONVERT To Meetings */}
-              <div className="absolute bottom-10 left-6 px-3 py-1.5 rounded-xl bg-[#0e0e1a]/80 backdrop-blur-md border border-white/[0.1] text-xs font-bold text-white shadow-lg shadow-black/40 flex items-center gap-2 animate-float-slow">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                <span>CONVERT <span className="text-slate-400 font-normal">To Meetings</span></span>
-              </div>
-
-              {/* Floating Glass Status Card (Top Right) matching reference */}
-              <div className="absolute top-28 right-0 sm:-right-4 w-48 p-3.5 rounded-2xl bg-[#0c0c18]/85 backdrop-blur-xl border border-white/[0.1] shadow-2xl shadow-violet-950/60 text-xs hidden sm:block">
-                <div className="flex items-center justify-between pb-2 border-b border-white/[0.06] mb-2.5">
-                  <span className="font-bold text-white text-[11px]">AI SDR Always On</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse" />
-                </div>
-                <div className="space-y-2 text-[10px]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <Mail className="w-3 h-3 text-violet-400" />
-                      Email
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
-                      Active
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <PhoneCall className="w-3 h-3 text-cyan-400" />
-                      Phone
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-white/[0.05] text-slate-300 font-semibold">
-                      Ready
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <MessageSquare className="w-3 h-3 text-indigo-400" />
-                      SMS
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-white/[0.05] text-slate-300 font-semibold">
-                      Ready
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Right Typography matching reference */}
-              <div className="absolute bottom-4 right-2 text-right hidden sm:block">
-                <p className="text-xs font-semibold text-transparent bg-clip-text bg-gradient-to-r from-violet-300 to-indigo-300 leading-tight">
-                  More Pipeline. <br />
-                  Less Manual Work. <br />
-                  <span className="text-white">A Smarter Tomorrow.</span>
-                </p>
-              </div>
-            </div>
+        <div className="ghats-hero">
+          <h1>Find your next<br />customer.</h1>
+          <p>Discover local opportunities, qualify enquiries, and keep every conversation in one workspace.</p>
+          <div className="flex flex-wrap gap-3">
+            <Link className="atlas-primary" to="/login?mode=signup">Create workspace <ArrowRight size={16} /></Link>
+            <a className="atlas-secondary" href="#demo">Try the simulator</a>
           </div>
         </div>
 

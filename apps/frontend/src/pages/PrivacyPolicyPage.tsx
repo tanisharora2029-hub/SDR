@@ -4,7 +4,7 @@ import { ArrowLeft, Shield, Lock, Cpu, EyeOff, Ban, Mail } from "lucide-react";
 
 export const PrivacyPolicyPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#05050d] text-slate-100 relative overflow-hidden font-sans selection:bg-violet-500/30">
+    <div className="atlas-theme min-h-screen bg-[#05050d] text-slate-100 relative overflow-hidden font-sans selection:bg-violet-500/30">
       {/* Background glow effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-violet-600/15 via-indigo-600/10 to-transparent blur-[140px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />

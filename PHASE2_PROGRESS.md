@@ -1,5 +1,7 @@
 # NexSDR Phase 2 progress
 
+- Atlas UI release: updated the shared layout and stylesheet, public pages, dashboard, Opportunity Engine, and Phone Studio. Added three optimized artwork assets. The final release build and all 139 tests passed. Local Chrome smoke checks covered all 19 routes, a mobile layout, and the Add Lead dialog. Live calls and inbox delivery were not exercised in this UI release.
+
 - Opportunity Engine follow-up: reproduced unrelated Bing results, switched public search to relevance-filtered DuckDuckGo with Bing fallback, and excluded additional job boards. Targeted research now includes the submitted page. The frontend build emits an Opportunity Engine entry page and gives research requests a longer deadline. Live read-only Autopilot discovery returned six candidates and read 3,506 characters from corvel.com. Qualification and production CRM writes were not exercised. Changed the public discovery provider, opportunity service, frontend API client and Vite config. All 139 tests passed.
 
 ## Autopilot discovery — 18 November 2026
