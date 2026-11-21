@@ -88,22 +88,21 @@ export const api = {
 
   // Phone Studio
   getVoices: () => apiRequest("/calls/voices"),
-  fetchTtsAudio: async (text: string, voice?: string): Promise<Blob> => {
-    if (voice === "browser-native") {
-      throw new Error("USE_BROWSER_SPEECH");
-    }
+  fetchTtsAudio: async (text: string): Promise<Blob> => {
     const token = localStorage.getItem("token");
     const response = await fetch(`${API_BASE}/calls/tts`, {
       method: "POST",
-      signal: AbortSignal.timeout(4_000),
+      signal: AbortSignal.timeout(22_000),
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
-      body: JSON.stringify({ text, voice })
+      body: JSON.stringify({ text })
     });
-    if (!response.ok) throw new Error("TTS failed");
-    return await response.blob();
+    if (!response.ok) throw new Error("Neerja is temporarily unavailable.");
+    const audio = await response.blob();
+    if (!audio.size || !audio.type.startsWith("audio/")) throw new Error("No playable voice audio received.");
+    return audio;
   },
   initiateCall: (leadId: string, direction: "OUTBOUND" | "INBOUND" = "OUTBOUND") =>
     apiRequest("/calls/initiate", { method: "POST", body: JSON.stringify({ leadId, direction }) }),

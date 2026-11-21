@@ -1,138 +1,49 @@
-import { spawn } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
-import { Readable, PassThrough } from "stream";
-import { logger } from "../lib/logger.js";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const Sanscript: { t(text: string, from: string, to: string): string } =
+  createRequire(import.meta.url)("@indic-transliteration/sanscript");
 
-export interface VoiceOption {
-  id: string;
-  name: string;
-  lang: string;
-  gender: string;
-  provider: "edge" | "goonj" | "chatterbox" | "browser";
-}
+export const STUDIO_VOICE = "en-IN-NeerjaExpressiveNeural";
+export const SUPPORTED_VOICES = [{ id: STUDIO_VOICE, name: "Neerja Expressive", lang: "en-IN", gender: "Female", provider: "edge" }];
 
-export const SUPPORTED_VOICES: VoiceOption[] = [
-  // Restored Demo Voice Winner: Natural Indian-English Female Cadence
-  { id: "en-IN-NeerjaNeural", name: "Neerja (Indian English - Female, Demo Default)", lang: "en-IN", gender: "Female", provider: "edge" },
-  { id: "en-IN-NeerjaExpressiveNeural", name: "Neerja Expressive (Indian English - Female, Conversational)", lang: "en-IN", gender: "Female", provider: "edge" },
-  { id: "en-IN-PrabhatNeural", name: "Prabhat (Indian English - Male, Neural)", lang: "en-IN", gender: "Male", provider: "edge" },
-  // Goonj Kokoro 82M Online Cloud (Indian English Conversational Accent)
-  { id: "goonj-arjun", name: "Arjun (Goonj Indian English - Male)", lang: "en-IN", gender: "Male", provider: "goonj" },
-  { id: "goonj-priya", name: "Priya (Goonj Indian English - Female)", lang: "en-IN", gender: "Female", provider: "goonj" },
-  // Browser Native SAPI / SpeechSynthesis Fallback
-  { id: "browser-native", name: "Browser Speech Synthesis (Local OS Native Voice)", lang: "en-IN", gender: "Dynamic", provider: "browser" },
-  // International Voices
-  { id: "en-US-JennyNeural", name: "Jenny (US English - Female)", lang: "en-US", gender: "Female", provider: "edge" },
-  { id: "en-US-GuyNeural", name: "Guy (US English - Male)", lang: "en-US", gender: "Male", provider: "edge" },
-  { id: "hi-IN-SwaraNeural", name: "Swara (Hindi - Female)", lang: "hi-IN", gender: "Female", provider: "edge" },
-];
+const runtime = process.platform === "win32" ? "Scripts/python.exe" : "bin/python";
+const python = fileURLToPath(new URL("../../.voice-runtime/" + runtime, import.meta.url));
+const script = fileURLToPath(new URL("../../.voice-runtime/stream_tts.py", import.meta.url));
+let activeRequests = 0;
 
-export interface TtsAdapter {
-  name: string;
-  synthesizeStream(text: string, voice?: string, rate?: string): Readable;
-}
-
-export class EdgeTtsAdapter implements TtsAdapter {
-  name = "edge-neural-online";
-  private scriptPath = path.resolve(__dirname, "../scripts/stream_tts.py");
-
-  synthesizeStream(text: string, voice = "en-IN-NeerjaNeural", rate = "+0%"): Readable {
-    const pythonProcess = spawn("python", [this.scriptPath, voice, rate], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    pythonProcess.stdin.write(text, "utf-8");
-    pythonProcess.stdin.end();
-
-    pythonProcess.stderr.on("data", (errData) => {
-      const errStr = errData.toString();
-      if (errStr.trim()) logger.warn(`[EdgeTTS stderr] ${errStr}`);
-    });
-
-    pythonProcess.on("error", (err) => {
-      logger.error("Failed to spawn EdgeTTS python process", err);
-    });
-
-    return pythonProcess.stdout;
-  }
-}
-
-export class GoonjTtsAdapter implements TtsAdapter {
-  name = "goonj-kokoro-online";
-  private scriptPath = path.resolve(__dirname, "../scripts/stream_goonj.py");
-
-  synthesizeStream(text: string, voice = "goonj-arjun", _rate = "+0%"): Readable {
-    const pythonProcess = spawn("python", [this.scriptPath, voice], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    pythonProcess.stdin.write(text, "utf-8");
-    pythonProcess.stdin.end();
-
-    pythonProcess.stderr.on("data", (errData) => {
-      const errStr = errData.toString();
-      if (errStr.trim()) logger.warn(`[GoonjTTS stderr] ${errStr}`);
-    });
-
-    pythonProcess.on("error", (err) => {
-      logger.error("Failed to spawn GoonjTTS python process", err);
-    });
-
-    return pythonProcess.stdout;
-  }
+// This Indian English voice accepts Latin text. Only convert the synthesis
+// input, preserving the customer's original script in the CRM and transcript.
+export function spokenText(text: string): string {
+  return text.replace(/[\u0900-\u097f]+/gu, word => {
+    const roman = Sanscript.t(word, "devanagari", "iast");
+    const ending = word.length > 1 && /[क-ह]$/u.test(word) ? roman.replace(/a$/, "") : roman;
+    return ending.replace(/ā/g, "aa").replace(/ī/g, "ee").replace(/ū/g, "oo")
+      .replace(/[ṃṁ]/g, "n").replace(/[śṣ]/g, "sh").normalize("NFD").replace(/\p{M}/gu, "");
+  }).replace(/[*_#`~]/g, "").trim();
 }
 
 export class TtsService {
-  private static edgeAdapter = new EdgeTtsAdapter();
-  private static goonjAdapter = new GoonjTtsAdapter();
-
-  /**
-   * Resolves the appropriate adapter based on selected voice and provider configuration
-   */
-  private static getAdapterForVoice(voice: string): TtsAdapter {
-    if (voice.startsWith("goonj-")) {
-      return this.goonjAdapter;
+  static async synthesizeBuffer(text: string, _legacyVoice?: string, _legacyRate?: string, signal?: AbortSignal): Promise<Buffer> {
+    if (text.length > 2000) throw Error("Expected a short spoken response.");
+    const speech = spokenText(text);
+    if (!speech) throw Error("Expected a short spoken response.");
+    if (activeRequests >= 4) throw Error("Voice service busy.");
+    activeRequests++;
+    try {
+      return await new Promise<Buffer>((resolve, reject) => {
+        const child = execFile(python, [script, STUDIO_VOICE, "+0%"], {
+          encoding: "buffer", windowsHide: true, timeout: 18000, maxBuffer: 2_000_000, signal
+        }, (error, audio) => {
+          if (error || !audio.length) reject(Error("Neerja audio is temporarily unavailable."));
+          else resolve(audio);
+        });
+        child.stdin?.on("error", () => child.kill());
+        child.stdin?.end(speech, "utf8");
+      });
+    } finally {
+      activeRequests--;
     }
-    return this.edgeAdapter;
-  }
-
-  /**
-   * Synthesizes text to an audio stream (MP3 or WAV) using the configured online provider
-   */
-  static synthesizeStream(text: string, voice = "en-IN-NeerjaNeural", rate = "+0%"): Readable {
-    const cleanText = text.replace(/[*_#`~]/g, "").trim();
-    if (!cleanText) {
-      throw new Error("Text is empty");
-    }
-
-    const adapter = this.getAdapterForVoice(voice);
-    logger.info(`[TTS] Synthesizing via adapter "${adapter.name}" with voice "${voice}"`);
-    return adapter.synthesizeStream(cleanText, voice, rate);
-  }
-
-  /**
-   * Synthesizes text to a complete audio buffer
-   */
-  static async synthesizeBuffer(text: string, voice = "en-IN-NeerjaNeural", rate = "+0%"): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const stream = this.synthesizeStream(text, voice, rate);
-      const chunks: Buffer[] = [];
-
-      stream.on("data", (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-
-      stream.on("end", () => {
-        resolve(Buffer.concat(chunks));
-      });
-
-      stream.on("error", (err) => {
-        reject(err);
-      });
-    });
   }
 }

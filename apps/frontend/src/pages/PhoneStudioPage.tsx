@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
 import { VoiceSessionController, VoiceState } from "../lib/voiceSessionController.js";
-import { VoiceOrb, VoiceOrbState } from "../components/ui/VoiceOrb.js";
+import { StudioVoicePreview } from "../components/StudioVoicePreview.js";
 import {
   PhoneCall,
   PhoneOff,
@@ -18,19 +18,11 @@ import {
   User,
   Zap,
   Radio,
-  Sliders,
   AlertCircle,
   Headphones,
   UserCheck,
   Target
 } from "lucide-react";
-
-interface VoiceOption {
-  id: string;
-  name: string;
-  lang: string;
-  gender: string;
-}
 
 export const PhoneStudioPage: React.FC = () => {
   const { organization } = useAuth();
@@ -53,8 +45,6 @@ export const PhoneStudioPage: React.FC = () => {
 
   // Real-Time Voice State Machine (IDLE -> LISTENING -> SPEAKING_DETECTED -> PROCESSING -> AI_SPEAKING -> INTERRUPTED)
   const [voiceState, setVoiceState] = useState<VoiceState>("IDLE");
-  const voiceStateRef = useRef<VoiceState>("IDLE");
-  voiceStateRef.current = voiceState;
 
   // Audio & Microphone States
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
@@ -69,9 +59,7 @@ export const PhoneStudioPage: React.FC = () => {
   const [whisperDossier, setWhisperDossier] = useState<any | null>(null);
   const [isHumanTakeover, setIsHumanTakeover] = useState<boolean>(false);
 
-  // Neural Voice Selection
-  const [voices, setVoices] = useState<VoiceOption[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("en-IN-NeerjaNeural");
+  const callGeneration = useRef(0);
 
   // Refs for audio hardware, streams, and timers
   const timerRef = useRef<any>(null);
@@ -79,26 +67,18 @@ export const PhoneStudioPage: React.FC = () => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const silenceTimerRef = useRef<any>(null);
-  const accumulatedTranscriptRef = useRef<string>("");
-  const isAiSpeakingRef = useRef<boolean>(false);
-
-  isAiSpeakingRef.current = isAiSpeaking;
 
   // Load leads and available neural voices
   useEffect(() => {
     async function initData() {
       try {
-        const [leadsRes, voicesRes, sdrRes] = await Promise.all([
+        const [leadsRes, sdrRes] = await Promise.all([
           api.getLeads(),
-          api.getVoices().catch(() => ({ voices: [] })),
           api.getSdr().catch(() => null)
         ]);
 
-        if (sdrRes?.sdr) {
-          setSdrProfile(sdrRes.sdr);
+        if (sdrRes?.sdrProfile) {
+          setSdrProfile(sdrRes.sdrProfile);
         }
 
         setLeads(leadsRes.leads || []);
@@ -106,10 +86,7 @@ export const PhoneStudioPage: React.FC = () => {
           setSelectedLeadId(leadsRes.leads[0].id);
         }
 
-        if (voicesRes.voices?.length > 0) {
-          setVoices(voicesRes.voices);
-          setSelectedVoice(voicesRes.voices[0].id);
-        }
+
       } catch (err) {
         console.error("Failed to load leads or voices:", err);
       }
@@ -129,7 +106,8 @@ export const PhoneStudioPage: React.FC = () => {
 
     return () => {
       stopAudioCapture();
-      stopAiSpeech();
+      callGeneration.current++;
+      controllerRef.current?.endSession();
     };
   }, []);
 
@@ -147,19 +125,6 @@ export const PhoneStudioPage: React.FC = () => {
     };
   }, [callStatus]);
 
-  // Stop active AI speech playback
-  const stopAiSpeech = useCallback(() => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
-      currentAudioRef.current = null;
-    }
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsAiSpeaking(false);
-  }, []);
-
   // Stop microphone capture & analyser
   const stopAudioCapture = useCallback(() => {
     if (animFrameRef.current) {
@@ -173,11 +138,6 @@ export const PhoneStudioPage: React.FC = () => {
     if (audioContextRef.current && audioContextRef.current.state !== "closed") {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
-    }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
     }
     setMicVolumeLevel(0);
     setIsUserSpeaking(false);
@@ -226,22 +186,11 @@ export const PhoneStudioPage: React.FC = () => {
 
         // VAD: Speech detection thresholds
         const speechThreshold = 16;
-        const bargeInThreshold = 30; // Higher threshold during AI speech to prevent speaker acoustic feedback
 
         if (normalized > speechThreshold) {
           setIsUserSpeaking(true);
         } else {
           setIsUserSpeaking(false);
-        }
-
-        // Real-time Barge-In: If AI is speaking and user begins talking, interrupt AI audio
-        if (normalized > bargeInThreshold) {
-          if (controllerRef.current && controllerRef.current.state === "AI_SPEAKING") {
-            console.log("⚡ Barge-in detected: Spoken audio exceeded threshold during AI playback.");
-            controllerRef.current.stopAudioPlayback();
-            setBargeInOccurred(true);
-            setTimeout(() => setBargeInOccurred(false), 2500);
-          }
         }
 
         animFrameRef.current = requestAnimationFrame(updateMeter);
@@ -261,6 +210,7 @@ export const PhoneStudioPage: React.FC = () => {
       const audioTracks = mediaStreamRef.current.getAudioTracks();
       const newMuted = !isMicMuted;
       audioTracks.forEach((t) => (t.enabled = !newMuted));
+      controllerRef.current?.setMuted(newMuted);
       setIsMicMuted(newMuted);
     }
   };
@@ -268,6 +218,8 @@ export const PhoneStudioPage: React.FC = () => {
   // Start Call with autonomous VoiceSessionController
   const handleStartCall = async () => {
     if (!selectedLeadId) return;
+    const generation = ++callGeneration.current;
+    setIsMicMuted(false);
     setLoading(true);
     setVoiceError(null);
     setTranscript([]);
@@ -279,23 +231,20 @@ export const PhoneStudioPage: React.FC = () => {
 
     try {
       const res = await api.initiateCall(selectedLeadId, "OUTBOUND");
+      if (generation !== callGeneration.current) return;
       setCallSid(res.session.callSid);
       setCallStatus("IN_PROGRESS");
 
       // Start hardware audio capture & meter
       await startAudioCapture(selectedDeviceId);
 
-      // Fetch neural greeting audio blob
-      let greetingBlob: Blob | undefined;
-      try {
-        greetingBlob = await api.fetchTtsAudio(res.greeting, selectedVoice);
-      } catch (e) {
-        console.warn("Greeting TTS fetch failed, using fallback:", e);
-      }
+      if (generation !== callGeneration.current) { stopAudioCapture(); return; }
 
       // Initialize robust VoiceSessionController (fixes Turn 2 failure)
       const controller = new VoiceSessionController({
+        getAudio: api.fetchTtsAudio,
         onStateChange: (state, log) => {
+          setBargeInOccurred(state === "INTERRUPTED" || log.reason === "user_speaking_after_interruption");
           setVoiceState(state);
           setIsAiSpeaking(state === "AI_SPEAKING");
           if (log.llmDurationMs || log.sttDurationMs) {
@@ -330,16 +279,8 @@ export const PhoneStudioPage: React.FC = () => {
             };
           }
 
-          let audioBlob: Blob | undefined;
-          try {
-            audioBlob = await api.fetchTtsAudio(turnRes.sdrSpeech, selectedVoice);
-          } catch (e) {
-            console.warn("Turn TTS fetch failed, will use fallback:", e);
-          }
-
           return {
             sdrSpeech: turnRes.sdrSpeech,
-            audioBlob,
             sttLatencyMs: turnRes.sttLatencyMs || 0,
             latencyMs: llmLatency
           };
@@ -347,7 +288,7 @@ export const PhoneStudioPage: React.FC = () => {
       });
 
       controllerRef.current = controller;
-      await controller.startSession(res.session.callSid, res.greeting, greetingBlob);
+      await controller.startSession(res.session.callSid, res.greeting);
     } catch (err: any) {
       alert(err.message || "Failed to initiate call");
     } finally {
@@ -362,9 +303,7 @@ export const PhoneStudioPage: React.FC = () => {
       const nextTakeover = !isHumanTakeover;
       await api.setCallTakeover(callSid, nextTakeover);
       setIsHumanTakeover(nextTakeover);
-      if (nextTakeover && controllerRef.current) {
-        controllerRef.current.stopAudioPlayback();
-      }
+      controllerRef.current?.setTakeover(nextTakeover);
     } catch (err: any) {
       console.error("Takeover toggle error:", err);
     }
@@ -385,6 +324,7 @@ export const PhoneStudioPage: React.FC = () => {
   // End Call
   const handleEndCall = async () => {
     if (!callSid) return;
+    callGeneration.current++;
     if (controllerRef.current) {
       controllerRef.current.endSession();
       controllerRef.current = null;
@@ -553,33 +493,10 @@ export const PhoneStudioPage: React.FC = () => {
               </div>
             )}
 
-            {/* SDR Neural Voice Selection */}
-            <div>
-              <label className="text-xs text-slate-300 block mb-1.5 font-medium flex items-center justify-between">
-                <span>SDR Neural Voice</span>
-                <Sliders className="w-3.5 h-3.5 text-slate-400" />
-              </label>
-              <select
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              >
-                {voices.length > 0 ? (
-                  voices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="en-IN-NeerjaNeural">Neerja (Indian English - Female)</option>
-                    <option value="en-IN-PrabhatNeural">Prabhat (Indian English - Male)</option>
-                    <option value="en-US-JennyNeural">Jenny (US English - Female)</option>
-                    <option value="en-US-GuyNeural">Guy (US English - Male)</option>
-                    <option value="hi-IN-SwaraNeural">Swara (Hindi - Female)</option>
-                  </>
-                )}
-              </select>
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <p className="text-sm font-semibold text-slate-100">Neerja Expressive</p>
+              <p className="text-xs text-slate-400">Indian English · Online voice</p>
+              {!loading && callStatus !== "IN_PROGRESS" && <StudioVoicePreview />}
             </div>
 
             {/* Hardware Microphone Selector */}
@@ -638,24 +555,9 @@ export const PhoneStudioPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Central 3D Reactive VoiceOrb */}
-              <div className="py-1">
-                <VoiceOrb
-                  state={
-                    voiceState === "AI_SPEAKING"
-                      ? "speaking"
-                      : voiceState === "PROCESSING"
-                      ? "thinking"
-                      : voiceState === "LISTENING" || voiceState === "SPEAKING_DETECTED"
-                      ? "listening"
-                      : "idle"
-                  }
-                  audioLevel={micVolumeLevel / 100}
-                  size={150}
-                  className="mx-auto"
-                />
+              <div aria-hidden="true" className="my-4 flex items-center justify-center text-emerald-300">
+                {isAiSpeaking ? <Volume2 size={44} /> : isMicMuted ? <MicOff size={44} /> : <Mic size={44} />}
               </div>
-
               <p className="text-3xl font-mono font-bold text-white tracking-tight">
                 {formatTimer(callDuration)}
               </p>

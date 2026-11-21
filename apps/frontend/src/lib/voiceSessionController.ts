@@ -27,6 +27,7 @@ export interface VoiceEventLog {
 }
 
 export interface VoiceSessionConfig {
+  getAudio?: (text: string) => Promise<Blob>;
   silenceTimeoutMs?: number;
   watchdogTimeoutMs?: number;
   lang?: string;
@@ -56,22 +57,18 @@ export class VoiceSessionController {
   private accumulatedText: string = "";
   private turnStartTime: number = 0;
 
-  // Feature 4: Adaptive Latency Masking
-  private latencyMaskerTimer: any = null;
-  private lastFillerIndex: number = -1;
-  private turnsSinceLastFiller: number = 2; // starts allowed
-  private fillerPhrases = [
-    "Right, one moment.",
-    "Okay, I see what you mean.",
-    "Let me check that for you.",
-    "Got it, looking into that."
-  ];
+  private muted = false;
+  private humanTakeover = false;
+  private playbackVersion = 0;
+  private resultStart = 0;
+  private nextResult = 0;
+  private audioUrl: string | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = {
       silenceTimeoutMs: 1100,
       watchdogTimeoutMs: 10000,
-      lang: "en-US",
+      lang: "en-IN",
       ...config
     };
   }
@@ -143,7 +140,7 @@ export class VoiceSessionController {
   private initSpeechRecognition() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      console.warn("SpeechRecognition API not available in browser. Typed fallback available.");
+      this.config.onError("Speech recognition is unavailable in this browser. Type a reply or try Chrome.");
       return;
     }
 
@@ -151,14 +148,16 @@ export class VoiceSessionController {
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = this.config.lang || "en-US";
+      this.recognition.lang = this.config.lang || "en-IN";
 
       this.recognition.onresult = (event: any) => {
-        if (!this.isActive) return;
+        if (!this.isActive || this.muted) return;
+        this.nextResult = event.results.length;
+        if (this.state === "PROCESSING") { this.resultStart = this.nextResult; return; }
 
         let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          interim += event.results[i][0].transcript;
+        for (let i = this.resultStart; i < event.results.length; i++) {
+          interim += " " + event.results[i][0].transcript;
         }
 
         const trimmed = interim.trim();
@@ -188,9 +187,11 @@ export class VoiceSessionController {
 
       // KEEPALIVE FIX FOR BUG 2: Automatically restart recognition on 'end' unless session ended!
       this.recognition.onend = () => {
-        if (this.isActive && this.state !== "IDLE") {
+        this.resultStart = 0;
+        this.nextResult = 0;
+        if (this.isActive && !this.muted && this.state !== "IDLE") {
           setTimeout(() => {
-            if (this.isActive && this.state !== "IDLE") {
+            if (this.isActive && !this.muted && this.state !== "IDLE") {
               try {
                 this.recognition.start();
               } catch (e) {}
@@ -201,7 +202,11 @@ export class VoiceSessionController {
 
       this.recognition.onerror = (e: any) => {
         // 'no-speech' is normal during silence; do not treat as fatal
-        if (e.error === "no-speech") return;
+        if (e.error === "no-speech" || e.error === "aborted") return;
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+          this.recognition.onend = null;
+          this.config.onError("Speech recognition permission was denied. You can type replies.");
+        }
         console.warn(`[STT notice] Speech recognition event: ${e.error}`);
       };
 
@@ -212,7 +217,7 @@ export class VoiceSessionController {
   }
 
   private ensureRecognitionRunning() {
-    if (!this.recognition || !this.isActive) return;
+    if (!this.recognition || this.muted || !this.isActive) return;
     try {
       this.recognition.start();
     } catch (e) {
@@ -232,26 +237,17 @@ export class VoiceSessionController {
 
     if (this.silenceTimer) clearTimeout(this.silenceTimer);
     this.accumulatedText = "";
+    this.resultStart = this.nextResult;
     this.turnId += 1;
 
     const sttDuration = Date.now() - this.turnStartTime;
     this.transition("PROCESSING", "vad_silence_threshold_reached", { sttDurationMs: sttDuration });
     this.config.onTranscriptUpdate("lead", utterance, this.turnId);
 
-    this.turnsSinceLastFiller += 1;
-    if (this.latencyMaskerTimer) clearTimeout(this.latencyMaskerTimer);
-    this.latencyMaskerTimer = setTimeout(() => {
-      this.triggerAdaptiveFiller();
-    }, 1200);
-
     try {
       const llmStart = Date.now();
       const backendRes = await this.config.sendTurnBackend(this.turnId, utterance);
       if (!this.isActive) return;
-      if (this.latencyMaskerTimer) {
-        clearTimeout(this.latencyMaskerTimer);
-        this.latencyMaskerTimer = null;
-      }
       const llmDuration = Date.now() - llmStart;
 
       if (backendRes.sdrSpeech.trim()) {
@@ -267,10 +263,6 @@ export class VoiceSessionController {
       }
     } catch (err: any) {
       if (!this.isActive) return;
-      if (this.latencyMaskerTimer) {
-        clearTimeout(this.latencyMaskerTimer);
-        this.latencyMaskerTimer = null;
-      }
       console.error("[VoiceController] Turn execution failed:", err);
       this.config.onError(err.message || "Failed to process turn");
       // Deterministic recovery back to LISTENING
@@ -279,108 +271,81 @@ export class VoiceSessionController {
     }
   }
 
-  private triggerAdaptiveFiller() {
-    if (!this.isActive || this.state !== "PROCESSING") return;
-    if (this.turnsSinceLastFiller < 2) return;
-
-    let nextIndex = (this.lastFillerIndex + 1) % this.fillerPhrases.length;
-    const filler = this.fillerPhrases[nextIndex];
-    this.lastFillerIndex = nextIndex;
-    this.turnsSinceLastFiller = 0;
-
-    console.log(`[Latency Masker] Speaking natural acknowledgement filler: "${filler}"`);
-    if ("speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(filler);
-      u.rate = 1.05;
-      window.speechSynthesis.speak(u);
-    }
-  }
-
-  /**
-   * Plays SDR speech and guarantees return to LISTENING on end or error
-   */
   public async playAudioResponse(audioBlob: Blob | undefined, text: string, metrics: Partial<VoiceEventLog> = {}) {
     this.stopAudioPlayback();
-    this.transition("AI_SPEAKING", "playback_started", metrics);
-
-    const playbackStart = Date.now();
-    if (!audioBlob?.size) {
-      this.fallbackBrowserTts(text, (reason) => {
-        if (this.isActive && this.state === "AI_SPEAKING") {
-          this.transition("LISTENING", reason);
-          this.ensureRecognitionRunning();
-        }
-      });
+    if (this.humanTakeover) {
+      this.transition("LISTENING", "human_takeover");
       return;
     }
-
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    this.currentAudio = audio;
-
-    const handlePlaybackFinish = (reason: string) => {
-      const playbackDuration = Date.now() - playbackStart;
-      this.stopAudioPlayback();
-      URL.revokeObjectURL(audioUrl);
-
-      // GUARANTEED DETERMINISTIC RETURN TO LISTENING FOR UNLIMITED TURNS
-      if (this.isActive && this.state !== "IDLE") {
-        this.transition("LISTENING", reason, { playbackDurationMs: playbackDuration });
-        this.ensureRecognitionRunning();
-      }
-    };
-
-    audio.onended = () => handlePlaybackFinish("audio_ended_normally");
-    let fallbackStarted = false;
-    const playFallback = () => {
-      if (fallbackStarted || this.currentAudio !== audio) return;
-      fallbackStarted = true;
-      this.fallbackBrowserTts(text, handlePlaybackFinish);
-    };
-    audio.onerror = playFallback;
-
-    try {
-      await audio.play();
-    } catch (err) {
-      console.warn("Audio play rejected, falling back to speech synthesis:", err);
-      playFallback();
+    if (!audioBlob && this.config.getAudio) {
+      const version = this.playbackVersion;
+      this.transition("PROCESSING", "preparing_voice", metrics);
+      try { audioBlob = await this.config.getAudio(text); } catch { /* Keep the transcript available. */ }
+      if (!this.isActive) return;
+      if (version !== this.playbackVersion) { this.transition("LISTENING", "voice_cancelled"); return; }
     }
+    if (!audioBlob?.size) {
+      this.config.onError("Neerja audio is unavailable for this reply. Read the transcript and continue.");
+      this.transition("LISTENING", "audio_unavailable");
+      this.ensureRecognitionRunning();
+      return;
+    }
+    this.audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(this.audioUrl);
+    this.currentAudio = audio;
+    const start = Date.now();
+    const finish = (failed: boolean) => {
+      if (audio !== this.currentAudio || !this.isActive) return;
+      this.stopAudioPlayback();
+      if (failed) this.config.onError("Playback failed. The reply is in the transcript.");
+      this.transition("LISTENING", failed ? "playback_error" : "audio_ended", {playbackDurationMs: Date.now() - start});
+      this.ensureRecognitionRunning();
+    };
+    audio.onended = () => finish(false);
+    audio.onerror = () => finish(true);
+    audio.ontimeupdate = () => {
+      if (audio === this.currentAudio && !audio.paused) this.resetWatchdog("AI_SPEAKING");
+    };
+    this.transition("AI_SPEAKING", "playback_started", metrics);
+    try { await audio.play(); }
+    catch { finish(true); }
   }
 
-  private fallbackBrowserTts(text: string, onDone: (reason: string) => void) {
-    if ("speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.05;
-      utterance.onend = () => onDone("browser_tts_ended");
-      utterance.onerror = (event) => {
-        if (event.error !== "interrupted" && event.error !== "canceled") {
-          this.config.onError("Audio playback failed. The reply is available in the transcript.");
-          onDone("browser_tts_error_recovery");
-        }
-      };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      this.config.onError("Audio playback is unavailable. The reply is available in the transcript.");
-      onDone("no_tts_available_recovery");
-    }
+  public setTakeover(enabled: boolean) {
+    this.humanTakeover = enabled;
+    if (!enabled) return;
+    this.stopAudioPlayback();
+    if (this.state === "AI_SPEAKING") this.transition("LISTENING", "human_takeover");
+  }
+
+  public setMuted(muted: boolean) {
+    this.muted = muted;
+    this.accumulatedText = "";
+    clearTimeout(this.silenceTimer);
+    if (muted) {
+      try { this.recognition?.abort(); } catch {}
+      if (this.state === "SPEAKING_DETECTED") this.transition("LISTENING", "mic_muted");
+    } else this.ensureRecognitionRunning();
   }
 
   public stopAudioPlayback() {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.currentTime = 0;
-      this.currentAudio = null;
+    this.playbackVersion++;
+    const audio = this.currentAudio;
+    this.currentAudio = null;
+    if (audio) {
+      audio.onended = audio.onerror = audio.ontimeupdate = null;
+      audio.pause();
     }
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
+    this.audioUrl = null;
   }
 
   /**
    * Manual send trigger (fallback if user chooses to submit manually)
    */
   public manualSubmitUtterance(text: string) {
-    if (!text.trim() || !this.isActive) return;
+    if (!text.trim() || !this.isActive || this.state === "PROCESSING") return;
+    this.stopAudioPlayback();
     this.accumulatedText = text;
     this.handleVadSilence();
   }
@@ -394,7 +359,7 @@ export class VoiceSessionController {
 
     if (this.silenceTimer) clearTimeout(this.silenceTimer);
     if (this.watchdogTimer) clearTimeout(this.watchdogTimer);
-    if (this.latencyMaskerTimer) clearTimeout(this.latencyMaskerTimer);
+
 
     if (this.recognition) {
       try {

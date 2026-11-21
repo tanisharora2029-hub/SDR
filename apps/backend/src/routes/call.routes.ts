@@ -16,7 +16,7 @@ callRouter.get("/voices", (_req, res) => {
   res.json({
     success: true,
     voices: SUPPORTED_VOICES,
-    ttsProvider: process.env.TTS_PROVIDER || "online",
+    ttsProvider: "edge-neural-online",
     sttProvider: process.env.STT_PROVIDER || "gemini-audio-online",
     llmProvider: process.env.VOICE_AI_PROVIDER || "gemini-online"
   });
@@ -39,32 +39,21 @@ callRouter.post("/transcribe", voiceLimiter, async (req, res, next) => {
 });
 
 // Stream neural TTS audio directly
-callRouter.post("/tts", voiceLimiter, async (req, res, next) => {
+callRouter.post("/tts", voiceLimiter, async (req, res) => {
+  const { text } = req.body;
+  if (typeof text !== "string" || !text.trim() || text.length > 2000) {
+    return res.status(400).json({error:"Provide 1–2000 characters of speech."});
+  }
+  const request = new AbortController();
+  res.once("close", () => request.abort());
   try {
-    const { text, voice, rate } = req.body;
-    if (!text || typeof text !== "string" || !text.trim()) {
-      return res.status(400).json({ success: false, error: "Valid text is required for TTS" });
-    }
-
-    const selectedVoice = voice || "en-IN-NeerjaNeural";
-    const selectedRate = rate || "+0%";
-
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Transfer-Encoding", "chunked");
-
-    const audioStream = TtsService.synthesizeStream(text, selectedVoice, selectedRate);
-
-    audioStream.pipe(res);
-
-    audioStream.on("error", (err) => {
-      logger.error("TTS streaming error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, error: "Speech synthesis failed" });
-      }
-    });
+    const audio = await TtsService.synthesizeBuffer(text, undefined, undefined, request.signal);
+    res.set("Cache-Control", "no-store").type("audio/mpeg").send(audio);
   } catch (err) {
-    next(err);
+    if (!request.signal.aborted) {
+      logger.warn("[TTS] Expressive voice synthesis unavailable");
+      res.status(503).json({error:"Neerja is temporarily unavailable. Please try again."});
+    }
   }
 });
 

@@ -28,6 +28,8 @@ Browser calls are simulations. SMS and WhatsApp dispatch are mock channels in th
 
 Use **Node.js 22 or 24**, npm, and a fresh local SQLite database. From the repository root:
 
+Phone Studio uses the online Neerja Expressive voice. Install Python 3 with venv support or uv on the backend machine. The backend build provisions its speech runtime automatically. For local development, run `npm run voice:prepare -w apps/backend` once after installing dependencies. Use **Listen to Neerja** in Phone Studio to check synthesis and playback before starting a simulation.
+
 ```sh
 git clone https://github.com/tanisharora2029-hub/SDR.git
 cd SDR
