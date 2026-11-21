@@ -1,3 +1,4 @@
+import { TerritorySearch } from "../components/TerritorySearch.js";
 import React, { useState, useEffect } from "react";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
@@ -406,7 +407,7 @@ export const OpportunityEnginePage: React.FC = () => {
         <div><h1>Opportunity Atlas</h1><p>Find businesses and review the public evidence behind each opportunity.</p></div>
       </header>
 
-      {/* Mode 1 & Mode 2 Input Ribbon */}
+      <TerritorySearch />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Mode 1: Autopilot */}
         <div className="lg:col-span-5 p-6 rounded-2xl border border-violet-500/20 bg-[#0e0f24]/60 backdrop-blur-xl shadow-xl flex flex-col justify-between">

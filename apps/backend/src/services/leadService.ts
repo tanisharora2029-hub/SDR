@@ -68,31 +68,25 @@ export class LeadService {
   }
 
   static async importLeadsCsv(organizationId: string, leads: any[]) {
-    let imported = 0;
-    for (const item of leads) {
-      if (!item.email || !item.firstName || !item.companyName) continue;
-      const normalizedEmail = item.email.toLowerCase().trim();
-      await prisma.lead.upsert({
-        where: { organizationId_email: { organizationId, email: normalizedEmail } },
-        create: {
-          organizationId,
-          firstName: item.firstName,
-          lastName: item.lastName || "",
-          email: normalizedEmail,
-          phone: item.phone || null,
-          companyName: item.companyName,
-          jobTitle: item.jobTitle || null,
-          industry: item.industry || null,
-          location: item.location || null
-        },
-        update: {
-          companyName: item.companyName,
-          jobTitle: item.jobTitle || undefined
-        }
-      });
-      imported++;
-    }
-    return { imported };
+    const data = leads.map(item => {
+      const phone = String(item.phone || "").replace(/[() .-]/g, "");
+      return { organizationId, firstName: item.firstName.trim(), lastName: item.lastName || "",
+        email: item.email.trim().toLowerCase(), companyName: item.companyName || "",
+        phone: /^[6-9]\d{9}$/.test(phone) ? "+91" + phone : phone || null,
+        location: item.location || null, jobTitle: item.jobTitle || null, industry: item.industry || null, source: "CONTACT_IMPORT" };
+    });
+    return prisma.$transaction(async tx => {
+      const existing = await tx.lead.findMany({ where: { organizationId, email: { in: data.map(row => row.email) } }, select: { email: true } });
+      const seen = new Set(existing.map(row => row.email));
+      let imported = 0;
+      for (const row of data) {
+        if (seen.has(row.email)) continue;
+        await tx.lead.create({ data: row });
+        seen.add(row.email);
+        imported++;
+      }
+      return { imported, skipped: data.length - imported };
+    }, { timeout: 20000 });
   }
 
   static async triggerAiOutreach(organizationId: string, leadId: string) {

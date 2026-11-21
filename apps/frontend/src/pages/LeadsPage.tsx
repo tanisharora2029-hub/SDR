@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { ContactImport } from "../components/ContactImport.js";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.js";
@@ -192,7 +193,7 @@ export const LeadsPage: React.FC = () => {
             className="flex items-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.1] text-white transition shadow-sm"
           >
             <Upload className="w-3.5 h-3.5 text-slate-400" />
-            <span>Import CSV</span>
+            <span>Import contacts</span>
           </button>
 
           <button
@@ -453,27 +454,9 @@ export const LeadsPage: React.FC = () => {
       {showCsvModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100 mb-2">Import Leads CSV</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Paste JSON or CSV formatted leads to bulk import target prospects into your SDR pipeline.
-            </p>
-
+            <h3 className="text-base font-bold text-slate-100 mb-2">Import contacts</h3>
             <div className="space-y-4 text-xs">
-              <button
-                type="button"
-                onClick={async () => {
-                  const sampleLeads = [
-                    { firstName: "Samantha", lastName: "Reed", email: `sam_${Date.now()}@sample.io`, companyName: "Reed Cloud Corp", jobTitle: "VP Tech" },
-                    { firstName: "Thomas", lastName: "Wright", email: `tom_${Date.now()}@finscale.test`, companyName: "FinScale Payments", jobTitle: "Director of Ops" }
-                  ];
-                  await api.importLeadsCsv(sampleLeads);
-                  setShowCsvModal(false);
-                  loadLeads();
-                }}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
-              >
-                Import 2 Sample Enterprise Accounts
-              </button>
+              <ContactImport done={message => { setShowCsvModal(false); setStatusNotice({type:"success", message}); void loadLeads(); }}/>
 
               <button
                 type="button"

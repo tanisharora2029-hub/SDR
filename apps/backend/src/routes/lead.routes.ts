@@ -40,8 +40,8 @@ leadRouter.post("/", validateBody(CreateLeadSchema), async (req, res, next) => {
 leadRouter.post("/import-csv", async (req, res, next) => {
   try {
     const { leads } = req.body;
-    if (!Array.isArray(leads)) {
-      return res.status(400).json({ success: false, error: "Expected an array of leads" });
+    if (!Array.isArray(leads) || !leads.length || leads.length > 500 || leads.some(item => !item || typeof item.firstName !== "string" || !item.firstName.trim() || typeof item.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email.trim()) || Object.values(item).some(v => v != null && (typeof v !== "string" || v.length > 500)))) {
+      return res.status(400).json({ success: false, error: "Provide 1–500 valid contacts with first name and email" });
     }
     const result = await LeadService.importLeadsCsv(req.organizationId!, leads);
     res.json({ success: true, ...result });

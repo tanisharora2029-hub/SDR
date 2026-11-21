@@ -219,7 +219,7 @@ export const ConversationsPage: React.FC = () => {
             <span>Omnichannel Inbox</span>
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Monitor and manage all your conversations in one place.
+            Manage conversations across channels. WhatsApp · Coming soon.
           </p>
         </div>
 

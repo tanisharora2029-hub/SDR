@@ -48,14 +48,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       ]).then(([orgRes, sdrRes]) => {
         if (orgRes?.organization) {
           const o = orgRes.organization;
-          setCompanyName(o.name || "MachineMind");
-          setWebsite(o.website || "https://machinemind.in");
-          setIndustry(o.industry || "AI Financial Automation");
-          setValueProp(o.valueProposition || "Cut manual KYC verification delays from 48 hours to 90 seconds.");
-          setTargetIcp(o.targetCustomerIcp || "Compliance heads and operations directors at mid-to-large fintechs.");
-          setProducts(o.products || "DocuMind Agent (KYC verification) and FlowMind (human-in-the-loop review).");
-          setPricingInfo(o.pricingInfo || "Starter ($199/mo), Growth ($499/mo).");
-          setComplianceInfo(o.complianceInfo || "SOC2 Type II, ISO 27001, GDPR & RBI compliant.");
+          setCompanyName(o.name || "");
+          setWebsite(o.website || "");
+          setIndustry(o.industry || "");
+          setValueProp(o.valueProposition || "");
+          setTargetIcp(o.targetCustomerIcp || "");
+          setProducts(o.products || "");
+          setPricingInfo(o.pricingInfo || "");
+          setComplianceInfo(o.complianceInfo || "");
         }
         if (sdrRes?.sdrProfile) {
           setSdrName(sdrRes.sdrProfile.personaName || "Alex Rivers");
@@ -140,12 +140,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                   type="text"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="e.g. AI Financial Automation"
+                  list="business-industries" placeholder="Choose or enter industry"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div>
-                <label className="text-slate-400 block mb-1">Target Persona (ICP)</label>
+                <label className="text-slate-400 block mb-1">Target customers</label>
+                <datalist id="business-industries"><option value="Salon"/><option value="Real Estate"/></datalist>
                 <input
                   type="text"
                   value={targetIcp}
@@ -286,10 +287,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="font-semibold text-emerald-400 block">SMS & WhatsApp</span>
-                <span className="text-[11px] text-slate-400">Carrier engine simulating carrier delivery & opt-out keywords</span>
+                <span className="font-semibold text-emerald-400 block">WhatsApp</span>
+                <span className="text-[11px] text-slate-400">Official business messaging integration</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">READY</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Coming soon</span>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>

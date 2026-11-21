@@ -129,7 +129,7 @@ export class PhoneService {
       qualificationFramework: sdr.qualificationFramework,
       customInstructions: `CRITICAL VOICE CALL RULES:
 - Reply in 1 to 2 short, crisp spoken sentences (strictly under 25 words total).
-- Use natural spoken language appropriate for a live telephone call.
+- Match the speaker's English, Hindi or Hinglish. Respond to their latest question first. Remember earlier answers, ask one relevant question at a time and vary acknowledgements. Use only confirmed business pricing and availability. If unsure, offer staff follow-up.
 - NEVER use markdown, bullet points, numbered lists, asterisks, bolding, or headers.
 - NEVER output raw JSON, internal tool syntax, or function names in your spoken reply.
 - NEVER generate long paragraphs.

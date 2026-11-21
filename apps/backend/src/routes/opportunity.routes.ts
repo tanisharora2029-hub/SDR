@@ -3,7 +3,19 @@ import { authenticate } from "../middleware/auth.js";
 import { OpportunityService } from "../services/opportunity/opportunityService.js";
 import { logger } from "../lib/logger.js";
 
+import { territoryProvider } from "../services/opportunity/territory.js";
+import { z } from "zod";
+
 export const opportunityRouter = Router();
+
+const areaSchema = z.object({ lat: z.number().min(6).max(38), lng: z.number().min(68).max(98),
+  radius: z.union([z.literal(2000), z.literal(5000), z.literal(10000)]), industry: z.enum(["salon","property"]) });
+opportunityRouter.post("/territory", authenticate, async (req, res) => {
+  const area = areaSchema.safeParse(req.body);
+  if (!area.success) return res.status(400).json({error:"Select a supported Indian territory and radius."});
+  try { res.json({listings: await territoryProvider.search(area.data)}); }
+  catch { res.status(503).json({error:"Map directory temporarily unavailable. Retry shortly."}); }
+});
 
 // 1. List opportunities
 opportunityRouter.get("/", authenticate, async (req: Request, res: Response) => {

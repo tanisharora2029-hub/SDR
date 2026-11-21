@@ -29,7 +29,7 @@ export class GeminiAudioSttProvider implements SttProvider {
         {
           parts: [
             {
-              text: "Transcribe the following audio accurately into English. Retain Indian names, company names, technical terminology, and numbers exactly as spoken. Output ONLY the raw transcribed words, with no conversational filler, quotes, or explanations."
+              text: "Transcribe the following audio in the original language, preserving Hindi, English and mixed Hinglish without translation. Retain Indian names, company names, technical terminology, and numbers exactly as spoken. Output ONLY the raw transcribed words, with no conversational filler, quotes, or explanations."
             },
             {
               inlineData: {
