@@ -8,7 +8,12 @@ export default defineConfig({
     generateBundle(_, bundle) {
       const index = bundle['index.html'];
       if (index?.type === 'asset') {
-        for (const route of ['opportunities', 'phone-studio', 'login']) {
+        const routes = [
+          'login', 'privacy', 'terms', 'dashboard', 'opportunities', 'leads',
+          'conversations', 'phone-studio', 'follow-ups', 'tasks', 'handoff',
+          'sdr-setup', 'analytics', 'billing', 'settings', 'admin', 'lead-simulator',
+        ];
+        for (const route of routes) {
           this.emitFile({ type: 'asset', fileName: route + '/index.html', source: index.source });
         }
       }
