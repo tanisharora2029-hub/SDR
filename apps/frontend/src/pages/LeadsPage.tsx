@@ -225,8 +225,8 @@ export const LeadsPage: React.FC = () => {
       )}
 
       {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0e0e1a]/70 backdrop-blur-xl p-3.5 rounded-2xl border border-white/[0.08] shadow-xl">
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-[#0e0e1a]/70 backdrop-blur-xl p-3.5 rounded-2xl border border-white/[0.08] shadow-xl">
+        <div className="flex flex-wrap items-center gap-1.5">
           {statuses.map((s) => (
             <button
               key={s}
@@ -242,7 +242,7 @@ export const LeadsPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="relative w-full md:w-64">
+        <div className="relative w-full xl:w-64 xl:shrink-0">
           <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-2.5" />
           <input
             type="text"

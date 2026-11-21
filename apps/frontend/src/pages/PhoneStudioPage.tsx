@@ -455,7 +455,7 @@ export const PhoneStudioPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(18rem,1fr)_minmax(0,2fr)] gap-6">
         {/* Left Column: Call Controls, Mic Monitor, & Device Settings */}
         <div className="space-y-6">
           <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 space-y-5">
@@ -693,9 +693,9 @@ export const PhoneStudioPage: React.FC = () => {
         </div>
 
         {/* Middle & Right Column: Rolling Transcript, Live Utterances, & AI Summary */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 flex flex-col h-[580px]">
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-4">
+        <div className="min-w-0 space-y-6">
+          <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 flex flex-col min-h-[580px]">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/[0.06] mb-4">
               <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <Volume2 className="w-4 h-4 text-violet-400" />
                 <span>Live Audio Transcript & Intent Extraction</span>
@@ -708,7 +708,7 @@ export const PhoneStudioPage: React.FC = () => {
 
             {voiceError && <p role="alert" className="mb-3 rounded-lg bg-red-950/50 p-3 text-sm text-red-200">{voiceError}</p>}
             {/* Transcript Area */}
-            <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
+            <div className="flex-1 basis-64 min-h-48 max-h-[30rem] overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
               {transcript.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
                   <Bot className="w-8 h-8 mb-2 opacity-30 text-violet-400" />
@@ -734,7 +734,7 @@ export const PhoneStudioPage: React.FC = () => {
                       )}
                     </span>
                     <div
-                      className={`max-w-lg p-3.5 rounded-2xl text-xs leading-relaxed ${
+                      className={`max-w-[min(100%,32rem)] [overflow-wrap:anywhere] p-3.5 rounded-2xl text-xs leading-relaxed ${
                         turn.speaker === "sdr"
                           ? "bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 text-white rounded-tl-sm shadow-xl shadow-violet-950/40 border border-violet-400/30"
                           : "bg-[#101020]/90 text-slate-200 border border-white/[0.08] rounded-tr-sm shadow-md"
@@ -797,7 +797,7 @@ export const PhoneStudioPage: React.FC = () => {
                           ? "Speaking detected... (auto-submitting on silence)"
                           : "Speak into your mic or type prospect response..."
                       }
-                      className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                      className="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
                     />
                     <button
                       type="submit"

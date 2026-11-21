@@ -521,7 +521,7 @@ export const OpportunityEnginePage: React.FC = () => {
           </div>
 
           {/* 10-Stage Telemetry Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2.5 text-center">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,5.75rem),1fr))] gap-2.5 text-center">
             <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.04]">
               <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold block">Queries</span>
               <span className="text-base font-black text-white mt-0.5 block">{latestRun.queriesGenerated}</span>
@@ -741,7 +741,7 @@ export const OpportunityEnginePage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
           {filteredOpps.map((opp) => {
             const isHigh = opp.scoreTier === "HIGH";
             const isMed = opp.scoreTier === "MEDIUM";

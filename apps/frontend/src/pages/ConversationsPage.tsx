@@ -239,8 +239,8 @@ export const ConversationsPage: React.FC = () => {
         {/* Left: Conversation List Panel */}
         <div
           className={`${
-            selectedId ? "hidden md:flex" : "flex"
-          } w-full md:w-84 lg:w-96 md:border-r border-white/[0.06] flex-col h-full bg-[#0a0a14]/60 shrink-0`}
+            selectedId ? "hidden xl:flex" : "flex"
+          } w-full xl:w-80 2xl:w-96 xl:border-r border-white/[0.06] flex-col h-full bg-[#0a0a14]/60 shrink-0`}
         >
           {/* Header & Filter Controls matching reference */}
           <div className="p-3.5 sm:p-4 border-b border-white/[0.06] space-y-3">
@@ -395,17 +395,17 @@ export const ConversationsPage: React.FC = () => {
         {/* Right: Active Message Thread */}
         <div
           className={`${
-            selectedId ? "flex" : "hidden md:flex"
+            selectedId ? "flex" : "hidden xl:flex"
           } flex-1 flex-col h-full bg-[#080812]/50 min-w-0`}
         >
           {activeConv ? (
             <>
               {/* Thread Header matching reference right view */}
-              <div className="p-3.5 sm:p-4 border-b border-white/[0.06] flex items-center justify-between bg-[#0a0a16]/60 backdrop-blur-md gap-3 min-w-0">
+              <div className="p-3.5 sm:p-4 border-b border-white/[0.06] flex flex-wrap items-center justify-between bg-[#0a0a16]/60 backdrop-blur-md gap-3 min-w-0">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
                     onClick={() => setSelectedId(null)}
-                    className="p-1.5 -ml-1 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-xl md:hidden shrink-0 transition"
+                    className="p-1.5 -ml-1 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-xl xl:hidden shrink-0 transition"
                     aria-label="Back to conversations list"
                   >
                     <ArrowLeft className="w-4 h-4" />
