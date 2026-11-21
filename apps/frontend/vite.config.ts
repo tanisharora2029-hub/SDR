@@ -3,12 +3,14 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react(), {
-    name: 'opportunity-page-entry',
+    name: 'workspace-page-entries',
     enforce: 'post',
     generateBundle(_, bundle) {
       const index = bundle['index.html'];
       if (index?.type === 'asset') {
-        this.emitFile({ type: 'asset', fileName: 'opportunities/index.html', source: index.source });
+        for (const route of ['opportunities', 'phone-studio', 'login']) {
+          this.emitFile({ type: 'asset', fileName: route + '/index.html', source: index.source });
+        }
       }
     }
   }],
