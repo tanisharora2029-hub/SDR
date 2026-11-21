@@ -69,11 +69,11 @@ export const AuthPage: React.FC = () => {
       <div className="w-full max-w-md bg-[#0e0e1a]/80 backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/60 relative z-10">
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-white tracking-tight">
-            {isSignUp ? "Create your AI SDR Account" : "Sign in to your Command Center"}
+            {isSignUp ? "Create your workspace" : "Sign in to NexSDR"}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             {isSignUp
-              ? "Start deploying autonomous AI sales agents in 60 seconds"
+              ? "Set up your business and choose an industry."
               : "Access your pipeline, calls, and real-time SDR activity"}
           </p>
         </div>

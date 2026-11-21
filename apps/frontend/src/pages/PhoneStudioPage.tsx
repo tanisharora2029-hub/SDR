@@ -413,6 +413,12 @@ export const PhoneStudioPage: React.FC = () => {
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId);
 
+  const industry = organization?.industry || "";
+  const testPhrases = /salon|beauty/i.test(industry)
+    ? ["Bridal makeup ke packages kya hain?", "Can I request a trial?", "Can a stylist follow up?"]
+    : /real.?estate|property/i.test(industry)
+      ? ["I am looking for a 2 BHK on rent.", "Site visit kaise arrange kar sakte hain?", "Can an agent follow up?"]
+      : ["What services do you offer?", "What would it cost?", "Can someone follow up?"];
   const sdrName = sdrProfile?.personaName || "Alex";
   const orgName = organization?.name || sdrProfile?.organizationName || "NexSDR";
 
@@ -514,9 +520,9 @@ export const PhoneStudioPage: React.FC = () => {
         <div className="space-y-6">
           <div className="p-6 rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40 space-y-5">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center justify-between">
-              <span>Telephony Dispatch</span>
+              <span>Simulation setup</span>
               <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-semibold border border-violet-500/30">
-                Neural Engine
+                Browser audio
               </span>
             </h2>
 
@@ -543,7 +549,7 @@ export const PhoneStudioPage: React.FC = () => {
                   {selectedLead.firstName} {selectedLead.lastName}
                 </p>
                 <p className="text-slate-400">{selectedLead.jobTitle || "Executive"} • {selectedLead.companyName}</p>
-                <p className="text-indigo-400 font-mono text-[11px]">{selectedLead.phone || "+1 (555) 019-2834"}</p>
+                <p className="text-indigo-400 font-mono text-[11px]">{selectedLead.phone || "No phone number on file"}</p>
               </div>
             )}
 
@@ -710,7 +716,7 @@ export const PhoneStudioPage: React.FC = () => {
                 className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
               >
                 <PhoneCall className="w-4 h-4" />
-                <span>Place Outbound Call</span>
+                <span>Start browser simulation</span>
               </button>
             ) : (
               <div className="space-y-2">
@@ -804,7 +810,7 @@ export const PhoneStudioPage: React.FC = () => {
               {transcript.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
                   <Bot className="w-8 h-8 mb-2 opacity-30 text-violet-400" />
-                  <p>Select a lead and click "Place Outbound Call" to connect real voice stream.</p>
+                  <p>Select a lead and click "Start browser simulation" to practise with your microphone.</p>
                 </div>
               ) : (
                 transcript.map((turn, idx) => (
@@ -844,13 +850,7 @@ export const PhoneStudioPage: React.FC = () => {
               <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
                 {/* Quick objection & qualification prompts */}
                 <div className="flex flex-wrap gap-1.5">
-                  {[
-                    "Can we schedule a demo this Thursday at 2 PM?",
-                    "We already use Salesforce and Outreach.",
-                    "What is your pricing model?",
-                    "Is your platform SOC2 Type II compliant?",
-                    "Can I speak with a sales director?"
-                  ].map((phrase, idx) => (
+                  {testPhrases.map((phrase, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSendUtterance(phrase)}

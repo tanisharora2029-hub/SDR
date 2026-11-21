@@ -306,6 +306,9 @@ describe("Opportunity Engine — Complete Test Suite", () => {
     // Populate opportunities first
     await OpportunityService.runAutopilot(orgAId);
 
+    const eligible = await prisma.opportunity.findFirstOrThrow({ where: {organizationId: orgAId, scoreTier: {in:["HIGH","MEDIUM"]}, status: "READY_FOR_REVIEW"} });
+    await prisma.opportunity.update({where: {id: eligible.id}, data: {decisionMakerEmail:"contact@reviewed.test"}});
+
     // Generate top leads
     const result = await OpportunityService.generateTop10Leads(orgAId);
     expect(result.count).toBeGreaterThan(0);
@@ -331,6 +334,10 @@ describe("Opportunity Engine — Complete Test Suite", () => {
       where: { organizationId: orgAId, status: "READY_FOR_REVIEW" }
     });
     expect(opp).toBeDefined();
+
+    await prisma.opportunity.update({where:{id:opp!.id},data:{decisionMakerEmail:null}});
+    await expect(OpportunityService.approveOpportunity(orgAId, opp!.id)).rejects.toThrow("published contact email");
+    await prisma.opportunity.update({where:{id:opp!.id},data:{decisionMakerEmail:"team@approved.test"}});
 
     // User edits and approves
     const customSubject = "Custom Problem-First Subject for Review";

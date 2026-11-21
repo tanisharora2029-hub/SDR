@@ -101,7 +101,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
   const steps = [
     {
       step: 1,
-      title: "Your Company Setup",
+      title: "Your business",
       subtitle: "Define who your SDR represents",
       icon: Building2,
       content: (
@@ -112,12 +112,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
           <div className="space-y-3 p-4 rounded-xl bg-slate-950 border border-slate-800">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-slate-400 block mb-1">Company Legal Name</label>
+                <label className="text-slate-400 block mb-1">Business name</label>
                 <input
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="e.g. MachineMind"
+                  placeholder="Your business name"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-100 font-semibold focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -151,26 +151,26 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                   type="text"
                   value={targetIcp}
                   onChange={(e) => setTargetIcp(e.target.value)}
-                  placeholder="e.g. Heads of Compliance and CTOs"
+                  placeholder="Who usually enquires about your services?"
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-slate-400 block mb-1">Core Value Proposition</label>
+              <label className="text-slate-400 block mb-1">What do you help customers do?</label>
               <textarea
                 rows={2}
                 value={valueProp}
                 onChange={(e) => setValueProp(e.target.value)}
-                placeholder="e.g. Cut manual KYC verification delays from 48 hours to 90 seconds."
+                placeholder="Describe what customers can book, buy, or enquire about."
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
           <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Values entered here are saved to the database and injected into AI SDR reasoning.</span>
+            <span>Your agent uses these details when answering customers.</span>
           </div>
         </div>
       )
@@ -183,7 +183,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            Your SDR is an autonomous AI agent that conducts multi-turn sales outreach across all channels:
+            Choose how your assistant introduces itself and speaks with customers.
           </p>
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -208,7 +208,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
             <div className="flex justify-between border-t border-slate-800/80 pt-2">
               <span className="text-slate-400">Primary Conversion Goal:</span>
-              <span className="text-emerald-400 font-semibold">Book qualified 15-min discovery demos</span>
+              <span className="text-emerald-400 font-semibold">Agree on a next step with the customer</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Safety Guardrails:</span>
@@ -220,34 +220,34 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
     },
     {
       step: 3,
-      title: "Knowledge Base & Battlecards",
+      title: "Services, prices and policies",
       subtitle: "Verified facts the SDR uses to answer questions",
       icon: BookOpen,
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            The AI SDR only quotes verified facts from your knowledge base and never hallucinates pricing:
+            Enter the details your team has confirmed the agent can share.
           </p>
           <div className="space-y-3">
             <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-              <label className="font-semibold text-slate-200 block mb-1">Products & Core Capabilities</label>
+              <label className="font-semibold text-slate-200 block mb-1">Products and services</label>
               <textarea
                 rows={2}
                 value={products}
                 onChange={(e) => setProducts(e.target.value)}
-                placeholder="e.g. DocuMind Agent (KYC verification) and FlowMind (human-in-the-loop review)."
+                placeholder="List your services and what is included."
                 className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                <label className="font-semibold text-slate-200 block mb-1">Verified Pricing Tiers</label>
+                <label className="font-semibold text-slate-200 block mb-1">Confirmed pricing</label>
                 <input
                   type="text"
                   value={pricingInfo}
                   onChange={(e) => setPricingInfo(e.target.value)}
-                  placeholder="Starter ($199/mo), Growth ($499/mo)"
+                  placeholder="Enter your prices in ₹"
                   className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -258,7 +258,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                   type="text"
                   value={complianceInfo}
                   onChange={(e) => setComplianceInfo(e.target.value)}
-                  placeholder="SOC2 Type II, ISO 27001, GDPR compliant"
+                  placeholder="Policies your team has confirmed"
                   className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-300 focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -269,13 +269,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
     },
     {
       step: 4,
-      title: "Connect Channels (Zero-Cost Sandbox)",
-      subtitle: "Outbound and inbound email pipeline",
+      title: "Communication channels",
+      subtitle: "Where you can talk to leads",
       icon: Radio,
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            NexSDR supports both Ethereal Sandbox (zero-cost preview) and Resend LIVE outbound and inbound reply loops:
+            Manage your email provider in Settings. Practise voice conversations in Phone Studio.
           </p>
           <div className="space-y-2">
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
@@ -283,7 +283,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                 <span className="font-semibold text-blue-400 block">Email Channel</span>
                 <span className="text-[11px] text-slate-400">Resend LIVE & Ethereal Sandbox with full inbound webhook support</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">ACTIVE</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">See Settings</span>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
@@ -297,7 +297,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
                 <span className="font-semibold text-amber-400 block">Phone Voice Studio</span>
                 <span className="text-[11px] text-slate-400">In-browser real-time audio with AI tone mirroring and low latency</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">READY</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Simulation</span>
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            Leads are external prospects who receive communications from Alex. You can create leads manually or import CSVs:
+            In Leads, add a contact or import an Excel or CSV file. Review the preview before saving.
           </p>
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <p className="text-slate-300">
@@ -319,7 +319,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </p>
             <ul className="list-disc list-inside text-slate-400 space-y-1 text-[11px]">
               <li><strong>You:</strong> Workspace owner / operator managing the campaigns.</li>
-              <li><strong>Alex Rivers:</strong> Autonomous AI SDR representing {companyName || "your company"}.</li>
+              <li><strong>{sdrName || "AI assistant"}:</strong> Autonomous AI SDR representing {companyName || "your company"}.</li>
               <li><strong>Lead:</strong> External customer prospect who replies via email or phone.</li>
             </ul>
           </div>
@@ -329,17 +329,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
     {
       step: 6,
       title: "Save & Launch",
-      subtitle: "Persist your configuration to database",
+      subtitle: "Review your details before saving",
       icon: Rocket,
       content: (
         <div className="space-y-4 text-xs">
           <p className="text-slate-300">
-            Ready to deploy your customized AI SDR configuration:
+            Check these details before saving your workspace setup.
           </p>
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <div className="flex justify-between">
               <span className="text-slate-400">Company:</span>
-              <span className="text-slate-100 font-semibold">{companyName || "MachineMind"}</span>
+              <span className="text-slate-100 font-semibold">{companyName || "Missing business name"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">SDR Persona:</span>
@@ -347,17 +347,17 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Pricing:</span>
-              <span className="text-slate-200">{pricingInfo || "Configured"}</span>
+              <span className="text-slate-200">{pricingInfo || "Not provided"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Compliance:</span>
-              <span className="text-slate-200">{complianceInfo || "Configured"}</span>
+              <span className="text-slate-200">{complianceInfo || "Not provided"}</span>
             </div>
           </div>
           {savedSuccess && (
             <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Company configuration successfully saved to database!</span>
+              <span>Business settings saved.</span>
             </div>
           )}
         </div>
@@ -441,7 +441,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClos
           ) : (
             <button
               onClick={handleSaveAll}
-              disabled={saving}
+              disabled={saving || !companyName.trim()}
               className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
             >
               {saving ? (

@@ -24,7 +24,7 @@ export const SUBSCRIPTION_PLANS = [
     priceMonthlyInr: 0,
     leadLimit: 50,
     monthlyAiCredits: 500,
-    features: ["1 Active SDR", "Email Outreach", "Mock Phone Studio", "Basic Analytics"]
+    features: ["1 Active SDR", "Email Outreach", "Browser voice simulation", "Basic Analytics"]
   },
   {
     tier: "GROWTH" as const,
@@ -33,7 +33,7 @@ export const SUBSCRIPTION_PLANS = [
     priceMonthlyInr: 3999,
     leadLimit: 1000,
     monthlyAiCredits: 10000,
-    features: ["3 Active SDRs", "Email + WhatsApp + Phone", "Automated Follow-up Cadences", "CRM Sync & Export"]
+    features: ["3 Active SDRs", "Email outreach and browser voice simulation", "Automated Follow-up Cadences", "CRM Sync & Export"]
   },
   {
     tier: "SCALE" as const,

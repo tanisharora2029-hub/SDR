@@ -14,26 +14,11 @@ import {
 import { SUBSCRIPTION_PLANS } from "@ai-sdr/shared";
 
 export const LandingPage: React.FC = () => {
-  const [demoInput, setDemoInput] = useState("Your pricing seems high compared to basic automation tools.");
-  const [demoOutput, setDemoOutput] = useState<string | null>(
-    "I appreciate you sharing that! While basic tools automate simple webhooks, NexSDR includes enterprise SOC2 governance, automated compliance audit trails, and multi-channel voice synthesis. Clients typically save over $40,000 annually in manual SDR overhead. What does your current compliance workflow look like?"
-  );
-
-  const handleSimulateDemo = () => {
-    if (demoInput.toLowerCase().includes("demo") || demoInput.toLowerCase().includes("call")) {
-      setDemoOutput(
-        '{\n  "tool": "create_calendar_event",\n  "arguments": {\n    "title": "15-Min Product Demo",\n    "start_time": "2026-09-15T14:00:00Z",\n    "duration": 15\n  }\n}'
-      );
-    } else if (demoInput.toLowerCase().includes("enterprise")) {
-      setDemoOutput(
-        '{\n  "tool": "human_handoff",\n  "arguments": {\n    "priority": "URGENT",\n    "reason": "Custom Enterprise SLA & SOC2 review requested"\n  }\n}'
-      );
-    } else {
-      setDemoOutput(
-        "Thanks for bringing that up. In high-growth organizations, automating lead qualification and immediate voice follow-up doubles connection rates. Could you tell me more about your target customer volume today?"
-      );
-    }
+  const examples = {
+    Salon: ["Bridal makeup chahiye, Baner mein. Trial mil sakta hai?", "Baner, got it. Aapki wedding kis date ko hai? Phir team se trial options confirm karwa sakte hain."],
+    "Real estate": ["Wakad mein 2 BHK rent pe chahiye, office ke paas.", "Wakad mein kis landmark ke paas dekh rahe hain? Uske hisaab se team relevant listings check kar sakti hai."]
   };
+  const [industry, setIndustry] = useState<keyof typeof examples>("Salon");
 
   return (
     <div className="atlas-theme min-h-screen bg-[#06060c] text-slate-100 flex flex-col selection:bg-violet-600 selection:text-white relative overflow-hidden">
@@ -55,11 +40,9 @@ export const LandingPage: React.FC = () => {
 
           {/* Center Navigation Links matching reference */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-medium text-slate-400">
-            <a href="#product" className="hover:text-white transition">Product</a>
-            <a href="#solutions" className="hover:text-white transition">Solutions</a>
+            <a href="#features" className="hover:text-white transition">Product</a>
+            <a href="#demo" className="hover:text-white transition">Examples</a>
             <a href="#pricing" className="hover:text-white transition">Pricing</a>
-            <a href="#resources" className="hover:text-white transition">Resources</a>
-            <a href="#contact" className="hover:text-white transition">Contact</a>
           </nav>
 
           <div className="flex items-center gap-3 sm:gap-4">
@@ -87,56 +70,19 @@ export const LandingPage: React.FC = () => {
           <p>Discover local opportunities, qualify enquiries, and keep every conversation in one workspace.</p>
           <div className="flex flex-wrap gap-3">
             <Link className="atlas-primary" to="/login?mode=signup">Create workspace <ArrowRight size={16} /></Link>
-            <a className="atlas-secondary" href="#demo">Try the simulator</a>
+            <a className="atlas-secondary" href="#demo">See a conversation</a>
           </div>
         </div>
 
         {/* Interactive AI SDR Decision Simulator Sandbox directly below */}
         <div id="demo" className="mt-20 max-w-4xl mx-auto rounded-2xl bg-[#0e0e1a]/70 backdrop-blur-xl border border-white/[0.08] p-6 sm:p-8 shadow-2xl shadow-black/50 text-left">
-          <div className="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-5">
-            <div className="flex items-center gap-2.5">
-              <Bot className="w-5 h-5 text-violet-400" />
-              <span className="text-sm font-bold text-white tracking-tight">
-                Live AI SDR Decision Engine
-              </span>
-            </div>
-            <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-full font-semibold">
-              Engine: Qwen 2.5 3B / Groq OSS (~500 tok/s)
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs text-slate-400 font-medium block mb-2">
-                Simulate Inbound Lead Response or Objection:
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <input
-                  type="text"
-                  value={demoInput}
-                  onChange={(e) => setDemoInput(e.target.value)}
-                  className="flex-1 bg-[#090914] border border-white/[0.08] rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-violet-500/60 shadow-inner"
-                  placeholder="e.g. Can we meet Thursday at 2pm?"
-                />
-                <button
-                  onClick={handleSimulateDemo}
-                  className="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-violet-600/30 border border-violet-400/30 shrink-0"
-                >
-                  Evaluate
-                </button>
-              </div>
-            </div>
-
-            {demoOutput && (
-              <div className="p-4 rounded-xl bg-[#090914]/90 border border-white/[0.06]">
-                <p className="text-[10px] text-violet-400 uppercase font-bold tracking-wider mb-2">
-                  AI SDR Action / Structured Decision:
-                </p>
-                <pre className="text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {demoOutput}
-                </pre>
-              </div>
-            )}
+          <h2 className="text-2xl mb-4">Example conversations</h2>
+          <div className="flex gap-2 mb-5">{(Object.keys(examples) as Array<keyof typeof examples>).map(key =>
+            <button key={key} type="button" aria-pressed={industry === key} onClick={() => setIndustry(key)}
+              className={industry === key ? "atlas-primary !bg-blue-700 !text-white" : "atlas-primary border"}>{key}</button>)}</div>
+          <div aria-live="polite" className="space-y-3">
+            <p><strong>Customer</strong><br />{examples[industry][0]}</p>
+            <p><strong>AI assistant</strong><br />{examples[industry][1]}</p>
           </div>
         </div>
       </section>
@@ -146,10 +92,10 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
-              Autonomous Sales Command
+              Inside your workspace
             </h2>
             <p className="mt-3 text-slate-400 text-xs sm:text-sm">
-              From lead ingestion to meeting confirmation, everything runs with enterprise SOC2 precision.
+              Import your contacts, practise a call, and review the next step for each enquiry.
             </p>
           </div>
 
@@ -158,9 +104,9 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center mb-5 shadow-inner">
                 <Mail className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Personalized Cold Outreach</h3>
+              <h3 className="text-base font-bold text-white">Email outreach</h3>
               <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                Generates hyper-personalized opening emails grounded strictly in your ICP and product knowledge base with zero hallucinations.
+                Draft outreach using your business profile and review replies in the shared inbox.
               </p>
             </div>
 
@@ -168,9 +114,9 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center mb-5 shadow-inner">
                 <PhoneCall className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Interactive Phone Voice Studio</h3>
+              <h3 className="text-base font-bold text-white">Phone Studio</h3>
               <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                Sub-800ms speech-to-speech conversational voice AI handles outbound calls, objection handling, and real-time qualification.
+                Use your microphone to practise a customer conversation in the browser, then review the transcript.
               </p>
             </div>
 
@@ -178,9 +124,9 @@ export const LandingPage: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mb-5 shadow-inner">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Human Escalation Dossier</h3>
+              <h3 className="text-base font-bold text-white">Human handoff</h3>
               <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                When enterprise whales ask for custom terms, the AI generates a full 360-degree briefing for your Account Executives.
+                Review conversations that need a person and take over the follow-up.
               </p>
             </div>
           </div>
@@ -191,10 +137,10 @@ export const LandingPage: React.FC = () => {
       <section id="pricing" className="py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white">
-            Transparent, High-ROI Plans
+            Workspace plans
           </h2>
           <p className="mt-3 text-slate-400 text-xs sm:text-sm">
-            Zero setup fees. Scale as your inbound and outbound pipeline expands.
+            Compare monthly pricing and included features.
           </p>
         </div>
 
@@ -210,7 +156,7 @@ export const LandingPage: React.FC = () => {
             >
               {plan.tier === "GROWTH" && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-bold tracking-wider uppercase shadow-md shadow-violet-600/40 border border-violet-400/40">
-                  Most Popular
+                  Growth
                 </span>
               )}
 
@@ -218,11 +164,11 @@ export const LandingPage: React.FC = () => {
                 <h3 className="text-lg font-bold text-white">{plan.name}</h3>
                 <div className="mt-4 flex items-baseline gap-1.5">
                   <span className="text-3xl sm:text-4xl font-extrabold text-white">
-                    ${plan.priceMonthlyUsd}
+                    ₹{plan.priceMonthlyInr.toLocaleString("en-IN")}
                   </span>
                   <span className="text-slate-400 text-xs">/ month</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">₹{plan.priceMonthlyInr} / month</p>
+                <p className="text-[11px] text-slate-500 mt-1">US ${plan.priceMonthlyUsd} / month</p>
 
                 <ul className="mt-6 space-y-3">
                   {plan.features.map((feat, i) => (
@@ -243,7 +189,7 @@ export const LandingPage: React.FC = () => {
                       : "bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.08]"
                   }`}
                 >
-                  Choose {plan.name}
+                  Create workspace
                 </Link>
               </div>
             </div>
@@ -256,7 +202,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[10px] uppercase font-bold tracking-widest text-violet-400/70">
-              HUMAN-LIKE CONVERSATIONS. REAL BUSINESS IMPACT.
+              NexSDR
             </p>
             <div className="flex items-center gap-6 text-xs">
               <Link to="/privacy" className="text-slate-400 hover:text-white transition">
@@ -276,7 +222,7 @@ export const LandingPage: React.FC = () => {
               NexSDR — Autonomous AI Sales Command Center.
             </p>
             <p className="max-w-xl text-center sm:text-right text-slate-500">
-              AI SDR Notice: NexSDR deploys autonomous AI agents for B2B pipeline execution. All automated outreach complies with anti-spam standards and honors DNC / opt-out requests immediately.
+              Phone Studio runs in your browser. WhatsApp messaging is coming soon.
             </p>
           </div>
         </div>

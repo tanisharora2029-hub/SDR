@@ -45,6 +45,7 @@ const navItems = [
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
+  const [filter, setFilter] = React.useState("");
   const { user, organization } = useAuth();
   const initials = user?.name
     ? user.name
@@ -88,22 +89,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
       <div className="px-3 pt-3 pb-1">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#121224]/80 border border-white/[0.06] text-xs text-slate-400 hover:border-violet-500/40 transition cursor-pointer group">
           <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-violet-400 transition" />
-          <span className="flex-1 text-[11px]">Search...</span>
-          <kbd className="text-[10px] font-mono bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 rounded text-slate-400">
-            Ctrl K
-          </kbd>
+          <input type="search" aria-label="Find a workspace page" placeholder="Find a page…" value={filter}
+            onChange={e => setFilter(e.target.value)} className="min-w-0 w-full bg-transparent text-xs" />
         </div>
       </div>
 
-      {/* Navigation Links */}
+      {filter && !navItems.some(item => item.name.toLowerCase().includes(filter.trim().toLowerCase())) && <p role="status" className="px-4 text-xs">No matching pages.</p>}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto scrollbar-thin">
-        {navItems.map((item) => {
+        {navItems.filter(item => item.name.toLowerCase().includes(filter.trim().toLowerCase())).map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
               key={item.path}
               to={item.path}
               onClick={() => {
+                setFilter("");
                 if (isMobile && onClose) onClose();
               }}
               className={({ isActive }) =>

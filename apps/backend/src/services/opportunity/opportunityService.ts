@@ -635,16 +635,15 @@ export class OpportunityService {
         continue;
       }
 
-      // Generate verified or canonical contact email
-      const domain = opp.companyWebsite.replace(/^https?:\/\//i, "").replace(/\/+$/, "").replace(/^www\./i, "");
-      const leadEmail = opp.decisionMakerEmail || `operations@${domain}`;
+      const leadEmail = opp.decisionMakerEmail?.trim();
+      if (!leadEmail) continue;
 
       if (existingEmails.has(leadEmail.toLowerCase())) {
         continue;
       }
 
-      let firstName = "Operations";
-      let lastName = "Lead";
+      let firstName = opp.companyName;
+      let lastName = "";
       if (opp.decisionMakerName) {
         const parts = opp.decisionMakerName.split(" ");
         firstName = parts[0];
@@ -659,7 +658,7 @@ export class OpportunityService {
           lastName,
           email: leadEmail.toLowerCase(),
           companyName: opp.companyName,
-          jobTitle: opp.decisionMakerTitle || "Head of Operations",
+          jobTitle: opp.decisionMakerTitle || null,
           industry: opp.companyIndustry,
           status: "NEW",
           source: "OPPORTUNITY_ENGINE",
@@ -718,6 +717,10 @@ export class OpportunityService {
       throw new Error("Opportunity not found");
     }
 
+    if (!opp.leadId && !opp.decisionMakerEmail?.trim()) {
+      throw new Error("A published contact email is required to add this opportunity to the CRM.");
+    }
+
     // Update opportunity
     const updated = await prisma.opportunity.update({
       where: { id: opportunityId },
@@ -730,11 +733,10 @@ export class OpportunityService {
 
     // Ensure lead exists in CRM
     if (!updated.leadId) {
-      const domain = opp.companyWebsite.replace(/^https?:\/\//i, "").replace(/\/+$/, "").replace(/^www\./i, "");
-      const leadEmail = opp.decisionMakerEmail || `operations@${domain}`;
+      const leadEmail = opp.decisionMakerEmail!.trim();
 
-      let firstName = "Operations";
-      let lastName = "Lead";
+      let firstName = opp.companyName;
+      let lastName = "";
       if (opp.decisionMakerName) {
         const parts = opp.decisionMakerName.split(" ");
         firstName = parts[0];
@@ -749,7 +751,7 @@ export class OpportunityService {
           lastName,
           email: leadEmail.toLowerCase(),
           companyName: opp.companyName,
-          jobTitle: opp.decisionMakerTitle || "Head of Operations",
+          jobTitle: opp.decisionMakerTitle || null,
           industry: opp.companyIndustry,
           status: "QUALIFIED",
           source: "OPPORTUNITY_ENGINE",
@@ -829,8 +831,12 @@ export class OpportunityService {
     const sdrName = sdr?.personaName || "Alex Rivers";
     const sdrEmail = (sdr as any)?.email || "alex@nexsdr.in";
 
-    const subject = opp.generatedSubject || `Operational automation for ${opp.companyName}`;
-    const body = opp.generatedEmail || `Hi there,\n\nWe noticed potential operational bottlenecks in your workflows at ${opp.companyName}. MachineMind can help automate this.\n\nBest,\n${sdrName}`;
+    if (lead.source === "OPPORTUNITY_ENGINE" && !opp.decisionMakerEmail && /^operations@/i.test(lead.email)) {
+      throw new Error("Confirm the recipient email before sending outreach to this historical prospect.");
+    }
+    const subject = opp.generatedSubject?.trim();
+    const body = opp.generatedEmail?.trim();
+    if (!subject || !body) throw new Error("Review and save an email subject and message before sending.");
 
     // Find or create conversation in existing CRM
     let conv = await prisma.conversation.findFirst({

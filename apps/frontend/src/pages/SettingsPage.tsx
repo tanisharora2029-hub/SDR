@@ -1058,7 +1058,7 @@ export const SettingsPage: React.FC = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. MachineMind or TestCorp"
+              placeholder="Business name"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1084,7 +1084,7 @@ export const SettingsPage: React.FC = () => {
               type="text"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://machinemind.in"
+              placeholder="https://your-business.in"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1125,7 +1125,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={companyDescription}
               onChange={(e) => setCompanyDescription(e.target.value)}
-              placeholder="e.g. MachineMind builds autonomous AI agents for financial back-office operations and high-volume document verification."
+              placeholder="Describe your services and locations."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1136,7 +1136,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={valueProp}
               onChange={(e) => setValueProp(e.target.value)}
-              placeholder="e.g. Cut manual KYC verification delays from 48 hours to 90 seconds while maintaining 99.8% precision."
+              placeholder="How do you help your customers?"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1150,7 +1150,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={targetIcp}
               onChange={(e) => setTargetIcp(e.target.value)}
-              placeholder="e.g. Heads of Compliance, Operations Directors, and CTOs at mid-to-large fintechs, NBFCs, and retail banks."
+              placeholder="Who usually enquires about your business?"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1161,7 +1161,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={products}
               onChange={(e) => setProducts(e.target.value)}
-              placeholder="e.g. 1) DocuMind Agent: Multilingual KYC OCR. 2) FlowMind Orchestrator: Human-in-the-loop exception review."
+              placeholder="List your services or property categories."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1178,7 +1178,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={pricingInfo}
               onChange={(e) => setPricingInfo(e.target.value)}
-              placeholder="e.g. Starter ($199/mo up to 5,000 docs), Growth ($499/mo up to 25,000 docs). Enterprise custom contracts starting at $1,500/mo."
+              placeholder="Enter approved prices in ₹ and what is included."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
             <p className="text-[10px] text-slate-500 mt-1">
@@ -1195,7 +1195,7 @@ export const SettingsPage: React.FC = () => {
               rows={3}
               value={complianceInfo}
               onChange={(e) => setComplianceInfo(e.target.value)}
-              placeholder="e.g. SOC2 Type II Certified, ISO 27001, GDPR & RBI compliant. Data encrypted at rest (AES-256) and in transit (TLS 1.3). Zero customer data used for model training."
+              placeholder="Enter confirmed business policies."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
             <p className="text-[10px] text-slate-500 mt-1">
@@ -1212,7 +1212,7 @@ export const SettingsPage: React.FC = () => {
               rows={4}
               value={competitors}
               onChange={(e) => setCompetitors(e.target.value)}
-              placeholder="e.g. UiPath / Automation Anywhere: Heavy legacy RPA that breaks on layout changes; MachineMind uses vision-LLMs with 0 template maintenance.&#10;Zapier / Make: Consumer iPaaS without bank-grade compliance or SLA."
+              placeholder="What alternatives do your customers consider?"
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1223,7 +1223,7 @@ export const SettingsPage: React.FC = () => {
               rows={4}
               value={objectionRules}
               onChange={(e) => setObjectionRules(e.target.value)}
-              placeholder="e.g. Internal Team Objection: 'Our internal devs are building this' -> Validate internal talent, highlight 6-12 month maintenance cost & compliance overhead.&#10;Timing Objection: 'Reach back next quarter' -> Acknowledge politely, offer exact follow-up."
+              placeholder="List common questions and your preferred answers."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -1236,7 +1236,7 @@ export const SettingsPage: React.FC = () => {
             rows={4}
             value={knowledgeBase}
             onChange={(e) => setKnowledgeBase(e.target.value)}
-            placeholder="e.g. Implementation takes 2 business days via REST API or webhook. Native integration with Salesforce, HubSpot, and PostgreSQL. Supported languages: English, Hindi, Spanish, German."
+            placeholder="Add information your team has confirmed."
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
           />
         </div>

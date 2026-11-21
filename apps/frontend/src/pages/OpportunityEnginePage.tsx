@@ -313,7 +313,7 @@ export const OpportunityEnginePage: React.FC = () => {
 
       const res = await api.post<{ success: boolean; count: number }>("/opportunities/generate-top-10");
       if (res?.success) {
-        setTop10SuccessMessage(`Successfully prepared ${res.count} vetted opportunities as leads in CRM.`);
+        setTop10SuccessMessage(res.count ? `Added ${res.count} prospects to your CRM.` : "No new eligible prospects to add.");
         await fetchOpportunities();
       }
     } catch (err: any) {
@@ -719,7 +719,7 @@ export const OpportunityEnginePage: React.FC = () => {
             ) : (
               <Zap className="w-3.5 h-3.5" />
             )}
-            <span>Generate 10 Leads</span>
+            <span>Add top prospects to CRM</span>
           </button>
         </div>
       </div>
@@ -1059,7 +1059,7 @@ export const OpportunityEnginePage: React.FC = () => {
                 })()}
               </div>
 
-              {/* 3. Recommended MachineMind Solution & Automation Workflow */}
+              {/* 3. Suggested solution & Automation Workflow */}
               <div className="p-4 rounded-xl border border-violet-500/20 bg-violet-950/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-violet-300 font-bold uppercase tracking-wider text-[11px]">
@@ -1130,7 +1130,7 @@ export const OpportunityEnginePage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="px-2 py-0.5 rounded bg-white/[0.06] text-slate-400 text-[10px]">
-                    {selectedOpp.decisionMakerEmail ? selectedOpp.decisionMakerEmail : "Email not guessed (Anti-hallucination)"}
+                    {selectedOpp.decisionMakerEmail ? selectedOpp.decisionMakerEmail : "No published email found"}
                   </span>
                 </div>
               </div>
@@ -1182,10 +1182,11 @@ export const OpportunityEnginePage: React.FC = () => {
                 Reject Opportunity
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {!selectedOpp.leadId && !selectedOpp.decisionMakerEmail && <small>A published contact email is needed for CRM and outreach.</small>}
                 <button
                   onClick={() => handleApprove(selectedOpp.id)}
-                  disabled={isSavingEdits}
+                  disabled={isSavingEdits || (!selectedOpp.leadId && !selectedOpp.decisionMakerEmail)}
                   className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/[0.1] transition flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -1194,7 +1195,7 @@ export const OpportunityEnginePage: React.FC = () => {
 
                 <button
                   onClick={() => handleSendOutreach(selectedOpp.id)}
-                  disabled={isSendingOutreach}
+                  disabled={isSendingOutreach || (!selectedOpp.leadId && !selectedOpp.decisionMakerEmail)}
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-violet-600/30 border border-violet-400/30 transition flex items-center gap-2 disabled:opacity-50"
                 >
                   {isSendingOutreach ? (
