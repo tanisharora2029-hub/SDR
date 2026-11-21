@@ -33,6 +33,16 @@ export const PhoneStudioPage: React.FC = () => {
   const [callSid, setCallSid] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string; timestamp?: number }>>([]);
+  const transcriptPanel = useRef<HTMLDivElement>(null);
+  const followLatestTurn = useRef(true);
+  const lastTranscriptTop = useRef(0);
+  React.useLayoutEffect(() => {
+    const panel = transcriptPanel.current;
+    if (panel && followLatestTurn.current) {
+      panel.scrollTop = panel.scrollHeight;
+      lastTranscriptTop.current = panel.scrollTop;
+    }
+  }, [transcript, voiceError]);
   const [userInput, setUserInput] = useState("");
   const [callDuration, setCallDuration] = useState(0);
   const [callAnalysis, setCallAnalysis] = useState<any>(null);
@@ -222,6 +232,7 @@ export const PhoneStudioPage: React.FC = () => {
     setIsMicMuted(false);
     setLoading(true);
     setVoiceError(null);
+    followLatestTurn.current = true;
     setTranscript([]);
     setCallAnalysis(null);
     setCallDuration(0);
@@ -708,7 +719,13 @@ export const PhoneStudioPage: React.FC = () => {
 
             {voiceError && <p role="alert" className="mb-3 rounded-lg bg-red-950/50 p-3 text-sm text-red-200">{voiceError}</p>}
             {/* Transcript Area */}
-            <div className="flex-1 basis-64 min-h-48 max-h-[30rem] overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
+            <div ref={transcriptPanel} role="log" aria-label="Call transcript"
+              onScroll={({ currentTarget: panel }) => {
+                if (panel.scrollHeight - panel.clientHeight - panel.scrollTop < 24) followLatestTurn.current = true;
+                else if (panel.scrollTop < lastTranscriptTop.current - 1) followLatestTurn.current = false;
+                lastTranscriptTop.current = panel.scrollTop;
+              }}
+              className="flex-1 basis-64 min-h-48 max-h-[30rem] overflow-y-auto space-y-3.5 pr-2 scrollbar-thin">
               {transcript.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
                   <Bot className="w-8 h-8 mb-2 opacity-30 text-violet-400" />

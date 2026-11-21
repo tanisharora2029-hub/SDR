@@ -27,7 +27,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginAsDemo: () => Promise<void>;
   register: (name: string, email: string, password: string, organizationName: string, industry?: IndustryId) => Promise<void>;
   logout: () => void;
   refreshOrg: () => Promise<void>;
@@ -70,14 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setOrganization(res.organization);
   };
 
-  const loginAsDemo = async () => {
-    try {
-      await login("demo@nexsdr.in", "password123");
-    } catch {
-      await login("demo@nexus-sdr.com", "password123");
-    }
-  };
-
   const register = async (name: string, email: string, password: string, organizationName: string, industry?: IndustryId) => {
     const res = await api.register({ name, email, password, organizationName, industry });
     localStorage.setItem("token", res.token);
@@ -111,7 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
-        loginAsDemo,
         register,
         logout,
         refreshOrg

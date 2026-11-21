@@ -16,7 +16,7 @@ export const AuthPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { login, register, loginAsDemo } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,19 +33,6 @@ export const AuthPage: React.FC = () => {
       navigate(isSignUp ? "/settings#business-profile" : "/dashboard");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await loginAsDemo();
-      navigate("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Demo login failed");
     } finally {
       setLoading(false);
     }
@@ -76,25 +63,6 @@ export const AuthPage: React.FC = () => {
               ? "Set up your business and choose an industry."
               : "Access your pipeline, calls, and real-time SDR activity"}
           </p>
-        </div>
-
-        {/* 1-Click Demo Login */}
-        <div className="mb-5">
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold text-xs transition shadow-sm flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>1-Click Sign In with Demo Account</span>
-          </button>
-        </div>
-
-        <div className="relative flex py-2 items-center mb-4">
-          <div className="flex-grow border-t border-white/[0.06]"></div>
-          <span className="flex-shrink mx-3 text-[11px] text-slate-500 font-medium">or continue with email</span>
-          <div className="flex-grow border-t border-white/[0.06]"></div>
         </div>
 
         {error && (
