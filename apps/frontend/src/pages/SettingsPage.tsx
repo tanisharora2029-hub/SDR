@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../api/client.js";
+import { appendProfileLines, ProfilePairEntry, ProfileSuggestions } from "../components/ProfileFieldHelpers.js";
 import { INDUSTRIES, INDUSTRY_IDS } from "@ai-sdr/shared";
 import type { WorkspaceConfiguration } from "@ai-sdr/shared";
 import {
@@ -32,13 +33,13 @@ const emptyConfiguration: WorkspaceConfiguration = {
   communicationPreferences: ""
 };
 
-const configurationFields: Array<{ key: keyof WorkspaceConfiguration; label: string; maxLength: number }> = [
-  { key: "location", label: "Business location", maxLength: 250 },
-  { key: "serviceAreas", label: "Service areas", maxLength: 2000 },
-  { key: "businessHours", label: "Business hours", maxLength: 2000 },
-  { key: "qualificationQuestions", label: "Qualification questions", maxLength: 4000 },
-  { key: "aiInstructions", label: "AI instructions", maxLength: 6000 },
-  { key: "communicationPreferences", label: "Communication preferences", maxLength: 2000 }
+const configurationFields: Array<{ key: keyof WorkspaceConfiguration; label: string; maxLength: number; example: string; options?: string[] }> = [
+  { key: "location", label: "Where is your business based?", maxLength: 250, example: "e.g. Baner, Pune" },
+  { key: "serviceAreas", label: "Which areas do you serve?", maxLength: 2000, example: "e.g. Baner, Wakad, Balewadi" },
+  { key: "businessHours", label: "When are you open?", maxLength: 2000, example: "e.g. Tue–Sun, 10am–8pm IST" },
+  { key: "qualificationQuestions", label: "What should the agent ask customers?", maxLength: 4000, example: "Add questions below or choose your own." },
+  { key: "aiInstructions", label: "How should the agent help?", maxLength: 6000, example: "Add instructions that fit your business.", options: ["Ask one question at a time.", "Ask the team to confirm availability.", "Ask the team to confirm unknown prices."] },
+  { key: "communicationPreferences", label: "How should the agent communicate?", maxLength: 2000, example: "e.g. Use Hinglish when the customer does.", options: ["Keep replies short.", "Match the customer’s language.", "Use a friendly, professional tone."] }
 ];
 
 export const SettingsPage: React.FC = () => {
@@ -48,7 +49,7 @@ export const SettingsPage: React.FC = () => {
   const [industry, setIndustry] = useState("");
   const [configuration, setConfiguration] = useState(emptyConfiguration);
   const industryId = INDUSTRY_IDS.find((id) => id === industry);
-  const industryDefaults = industryId ? INDUSTRIES[industryId] : undefined;
+  const industryDefaults = industryId && industryId !== "OTHER" ? INDUSTRIES[industryId] : undefined;
   const [website, setWebsite] = useState("");
   const [targetIcp, setTargetIcp] = useState("");
   const [valueProp, setValueProp] = useState("");
@@ -1091,37 +1092,37 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          {configurationFields.map(({ key, label, maxLength }) => (
-            <label key={key} className="text-slate-300 font-medium">
-              {label}
+          {configurationFields.map(({ key, label, maxLength, example, options }) => {
+            const suggestions = industryDefaults
+              ? key === "qualificationQuestions" ? industryDefaults.qualificationQuestions : options
+              : undefined;
+            return (
+            <div key={key} className="text-slate-300 font-medium">
+              <label htmlFor={key}>{label}</label>
               <textarea
-                rows={key === "location" ? 1 : 3}
+                id={key}
+                rows={key === "qualificationQuestions" ? 3 : 2}
+                placeholder={example}
                 maxLength={maxLength}
                 value={configuration[key]}
                 onChange={(event) => setConfiguration({ ...configuration, [key]: event.target.value })}
                 className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200"
               />
-              {key === "qualificationQuestions" && industryDefaults && (
-                <button
-                  type="button"
-                  className="text-indigo-300 mt-1"
-                  onClick={() => setConfiguration({
-                    ...configuration,
-                    qualificationQuestions: industryDefaults.qualificationQuestions.join("\n")
-                  })}
-                >
-                  Use {industryDefaults.label} questions
-                </button>
+              {suggestions && (
+                <ProfileSuggestions label={label} options={suggestions} value={configuration[key]} maxLength={maxLength}
+                  onChange={next => setConfiguration(previous => ({ ...previous, [key]: next }))} />
               )}
-            </label>
-          ))}
+            </div>
+            );
+          })}
         </div>
 
         {/* Company Overview & Value Proposition */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Company Description & Mission</label>
+            <label htmlFor="profile-description" className="text-slate-300 font-medium block mb-1">What does your business do?</label>
             <textarea
+              id="profile-description"
               rows={3}
               value={companyDescription}
               onChange={(e) => setCompanyDescription(e.target.value)}
@@ -1131,8 +1132,9 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Core Value Proposition</label>
+            <label htmlFor="profile-benefit" className="text-slate-300 font-medium block mb-1">Why do customers choose you?</label>
             <textarea
+              id="profile-benefit"
               rows={3}
               value={valueProp}
               onChange={(e) => setValueProp(e.target.value)}
@@ -1145,8 +1147,9 @@ export const SettingsPage: React.FC = () => {
         {/* ICP & Products */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Target Customer Persona (ICP)</label>
+            <label htmlFor="profile-customers" className="text-slate-300 font-medium block mb-1">Who are your usual customers?</label>
             <textarea
+              id="profile-customers"
               rows={3}
               value={targetIcp}
               onChange={(e) => setTargetIcp(e.target.value)}
@@ -1156,14 +1159,17 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Products & Core Capabilities</label>
+            <label htmlFor="profile-services" className="text-slate-300 font-medium block mb-1">What do you offer?</label>
             <textarea
+              id="profile-services"
               rows={3}
               value={products}
               onChange={(e) => setProducts(e.target.value)}
               placeholder="List your services or property categories."
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
+            {industryDefaults && <ProfileSuggestions label="Suggested services" options={industryDefaults.services}
+              value={products} onChange={setProducts} />}
           </div>
         </div>
 
@@ -1171,10 +1177,12 @@ export const SettingsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-slate-300 font-medium">Verified Commercial Pricing Info</label>
-              <span className="text-[10px] text-amber-400 font-mono">Anti-Hallucination Enforced</span>
+              <label htmlFor="profile-pricing" className="text-slate-300 font-medium">Prices your agent can quote</label>
             </div>
+            <ProfilePairEntry labels={["Service or listing", "Approved price (₹)"]} action="Add price"
+              separator=" — ₹" onAdd={entry => setPricingInfo(value => appendProfileLines(value, [entry]))} />
             <textarea
+              id="profile-pricing"
               rows={3}
               value={pricingInfo}
               onChange={(e) => setPricingInfo(e.target.value)}
@@ -1182,33 +1190,32 @@ export const SettingsPage: React.FC = () => {
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
             <p className="text-[10px] text-slate-500 mt-1">
-              AI will strictly cite these prices and will never invent discounts or imaginary tiers.
+              Add confirmed prices and what they include. Leave this blank if your team gives quotes individually.
             </p>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-slate-300 font-medium">Security, Privacy & Compliance Info</label>
-              <span className="text-[10px] text-emerald-400 font-mono">Enterprise Verified</span>
-            </div>
+          <details>
+            <summary className="cursor-pointer font-medium">Business policies (optional)</summary>
+            <label htmlFor="profile-policies" className="sr-only">Business policies</label>
             <textarea
+              id="profile-policies"
               rows={3}
               value={complianceInfo}
               onChange={(e) => setComplianceInfo(e.target.value)}
-              placeholder="Enter confirmed business policies."
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
+              placeholder="e.g. Your cancellation, deposit or privacy policy."
+              className="mt-2 w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
-              Injected into prompts when prospects raise data sovereignty, privacy, or security questions.
-            </p>
-          </div>
+          </details>
         </div>
 
         {/* Competitor Differentiation & Objection Playbook */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium">Sales notes (optional)</summary>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Competitor Intelligence & Differentiators</label>
+            <label htmlFor="profile-alternatives" className="text-slate-300 font-medium block mb-1">What other options do customers consider?</label>
             <textarea
+              id="profile-alternatives"
               rows={4}
               value={competitors}
               onChange={(e) => setCompetitors(e.target.value)}
@@ -1218,8 +1225,9 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-slate-300 font-medium block mb-1">Custom Objection Handling Rules</label>
+            <label htmlFor="profile-objections" className="text-slate-300 font-medium block mb-1">How do you respond to customer concerns?</label>
             <textarea
+              id="profile-objections"
               rows={4}
               value={objectionRules}
               onChange={(e) => setObjectionRules(e.target.value)}
@@ -1227,12 +1235,16 @@ export const SettingsPage: React.FC = () => {
               className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 leading-relaxed focus:outline-none focus:border-indigo-500"
             />
           </div>
-        </div>
+          </div>
+        </details>
 
         {/* Knowledge Base */}
         <div className="text-xs">
-          <label className="text-slate-300 font-medium block mb-1">Core Knowledge Base & FAQs</label>
+          <label htmlFor="profile-faq" className="text-slate-300 font-medium block mb-1">Common customer questions</label>
+          <ProfilePairEntry labels={["Customer question", "Your answer"]} action="Add FAQ"
+            separator=" — " onAdd={entry => setKnowledgeBase(value => appendProfileLines(value, [entry]))} />
           <textarea
+            id="profile-faq"
             rows={4}
             value={knowledgeBase}
             onChange={(e) => setKnowledgeBase(e.target.value)}
@@ -1255,7 +1267,7 @@ export const SettingsPage: React.FC = () => {
             ) : (
               <>
                 <Check className="w-3.5 h-3.5" />
-                <span>Save Company Knowledge Base</span>
+                <span>Save business profile</span>
               </>
             )}
           </button>
