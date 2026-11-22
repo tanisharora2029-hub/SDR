@@ -119,3 +119,4 @@ Eight files had uncommitted AI and discovery edits at the start. Their changes a
 - Tests: 148 passed across 23 files; full build passed. Five new TinyFish tests cover missing key, payload/authentication, unsafe URLs, error sanitization, malformed responses and fallback.
 - Changed: Layout.tsx, Navbar.tsx, DashboardPage.tsx, atlas.css, OpportunityEnginePage.tsx, opportunityService.ts, publicSearchDiscoveryProvider.ts, new tinyfishSearchProvider.ts, new tinyfish_search.test.ts, .env.example.
 - Deployment: pending commit/push verification. Authenticated production voice/email workflows not retested in this UI change.
+- Commit 4be9b74 pushed to origin/main successfully. TinyFish production activation still requires TINYFISH_API_KEY in Render backend environment; do not assume local .env is deployed.
