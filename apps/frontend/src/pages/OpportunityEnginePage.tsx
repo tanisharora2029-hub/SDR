@@ -105,6 +105,7 @@ interface ResearchRunMetrics {
   status?: string;
   createdAt?: string;
   discoveryTrail?: DiscoveryTrailItem[];
+  searchQueries?: string[];
 }
 
 export const OpportunityEnginePage: React.FC = () => {
@@ -117,6 +118,8 @@ export const OpportunityEnginePage: React.FC = () => {
   // Telemetry & Transparency states
   const [latestRun, setLatestRun] = useState<ResearchRunMetrics | null>(null);
   const [showTrail, setShowTrail] = useState(false);
+  const websiteSuggestions = latestRun?.discoveryTrail?.filter(item => item.isAccepted && /^https?:\/\//i.test(item.url)) ?? [];
+  const searchQueries = latestRun?.searchQueries ?? [];
 
   // Filter states
   const [selectedTier, setSelectedTier] = useState<string>("ALL");
@@ -165,15 +168,18 @@ export const OpportunityEnginePage: React.FC = () => {
       const res = await api.get<{ success: boolean; run: any }>("/opportunities/research-runs/latest");
       if (res?.run) {
         let trail: DiscoveryTrailItem[] = [];
+        let queries: string[] = [];
         if (res.run.metricsJson) {
           try {
             const m = JSON.parse(res.run.metricsJson);
             if (Array.isArray(m.discoveryTrail)) trail = m.discoveryTrail;
+            if (Array.isArray(m.searchQueries)) queries = m.searchQueries;
           } catch {}
         }
         setLatestRun({
           ...res.run,
-          discoveryTrail: trail
+          discoveryTrail: trail,
+          searchQueries: queries
         });
       }
     } catch {}
@@ -265,7 +271,7 @@ export const OpportunityEnginePage: React.FC = () => {
       if (res?.opportunities && res.opportunities.length > 0) {
         await fetchOpportunities();
       } else {
-        if (res?.discoveryStatus === "NO_RESULTS") setDiscoveryNotice(res.message || "No new opportunities qualified.");
+        if (res?.discoveryStatus === "NO_RESULTS" || res?.discoveryStatus === "SUGGESTIONS") setDiscoveryNotice(res.message);
         else setError(res?.message || "Discovery is unavailable.");
       }
     } catch (err: any) {
@@ -412,9 +418,9 @@ export const OpportunityEnginePage: React.FC = () => {
         {/* Mode 1: Autopilot */}
         <div className="lg:col-span-5 p-6 rounded-2xl border border-violet-500/20 bg-[#0e0f24]/60 backdrop-blur-xl shadow-xl flex flex-col justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white mt-3">Find Opportunities</h2>
+            <h2 className="text-lg font-bold text-white mt-3">Find business websites</h2>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Search public business pages for evidence of operational needs.
+              Get website suggestions based on your business profile.
             </p>
           </div>
 
@@ -432,7 +438,7 @@ export const OpportunityEnginePage: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Find opportunities</span>
+                  <span>Find websites</span>
                 </>
               )}
             </button>
@@ -451,6 +457,8 @@ export const OpportunityEnginePage: React.FC = () => {
           <form onSubmit={handleAnalyzeUrl} className="mt-6 flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <input
+                id="atlas-company-url"
+                aria-label="Company website"
                 type="text"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
@@ -488,6 +496,37 @@ export const OpportunityEnginePage: React.FC = () => {
       </div>
 
       {/* Research Run Transparency Card */}
+      {(websiteSuggestions.length > 0 || searchQueries.length > 0) && (
+        <section className="space-y-3 rounded-xl border border-slate-700 p-4" aria-labelledby="website-suggestions">
+          <h2 id="website-suggestions" className="text-lg font-semibold">Websites to review</h2>
+          {websiteSuggestions.length ? (
+            <>
+              <p className="text-sm text-slate-400">These public search results are suggestions. Review a website before treating it as a lead.</p>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {websiteSuggestions.map(item => (
+                  <li key={item.domain} className="min-w-0 space-y-2 rounded-lg border border-slate-700 p-3 [overflow-wrap:anywhere]">
+                    <a className="font-semibold text-indigo-300 underline" href={item.url} target="_blank" rel="noreferrer">{item.title || item.domain}</a>
+                    <p className="text-xs text-slate-400">{item.snippet || item.domain}</p>
+                    <button type="button" className="text-sm text-indigo-300 underline" onClick={() => {
+                      setUrlInput(item.url);
+                      document.getElementById("atlas-company-url")?.focus();
+                    }}>Use in company research</button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-400">No matching websites came back. Open a search below and paste a relevant company website into Company Research.</p>
+              <ul className="space-y-1">
+                {searchQueries.map(query => <li key={query}><a className="text-sm text-indigo-300 underline" target="_blank" rel="noreferrer"
+                  href={`https://www.google.com/search?q=${encodeURIComponent(query)}`}>{query}</a></li>)}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
       {latestRun && (
         <details className="atlas-research rounded-2xl border border-violet-500/20 bg-[#0e0f26]/80 p-5 space-y-4">
           <summary className="cursor-pointer font-semibold">Research details</summary>

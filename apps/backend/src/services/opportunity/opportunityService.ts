@@ -9,6 +9,7 @@ import { OutreachGenerator } from "./outreachGenerator.js";
 import { ChannelManager } from "../channels/channelManager.js";
 import { broadcastToOrganization } from "../../lib/wsBroadcaster.js";
 import { logger } from "../../lib/logger.js";
+import { getWorkspaceConfiguration } from "../workspaceConfigurationService.js";
 
 export class OpportunityService {
   private static researchProvider = new PublicWebResearchProvider();
@@ -64,11 +65,13 @@ export class OpportunityService {
       aiAnalysesCompleted: 0,
       candidatesRejected: 0,
       opportunitiesQualified: 0,
-      discoveryTrail: [] as any[]
+      discoveryTrail: [] as any[],
+      searchQueries: [] as string[]
     };
 
     // 1. Discover candidates
     let candidatesToResearch: DiscoveredCompanyCandidate[] = [];
+    let suggestionsOnly = false;
 
     if (candidateOverrides && candidateOverrides.length > 0) {
       // In production, strictly reject .test or synthetic domains even if passed
@@ -87,8 +90,34 @@ export class OpportunityService {
       telemetry.candidatesDiscovered = candidatesToResearch.length;
       telemetry.candidatesVerified = candidatesToResearch.length;
     } else {
-      // Generate dynamic targeted queries from MachineMind's ICP
-      const queries = DiscoveryQueryGenerator.generateQueries({ limit: 3 });
+      const [organization, configuration] = await Promise.all([
+        prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: { industry: true, targetCustomerIcp: true, products: true }
+        }),
+        getWorkspaceConfiguration(organizationId)
+      ]);
+      const location = configuration?.location.split(/[\n]/)[0].slice(0, 100) || "India";
+      const target = organization?.targetCustomerIcp?.trim().split("\n")[0].slice(0, 120);
+      const service = organization?.products?.trim().split("\n")[0].slice(0, 100);
+      const searches = organization?.industry === "SALON"
+        ? ["bridal makeup studio", "wedding planner", "beauty salon"]
+        : organization?.industry === "REAL_ESTATE"
+          ? ["real estate agency", "property management company", "property developer"]
+          : [target, service].filter((term): term is string => Boolean(term));
+      if (organization?.industry === "OTHER" && !searches.length) {
+        const message = "Add your usual customers or services in Settings → Business Profile, then run the search again.";
+        await prisma.researchRun.update({
+          where: { id: run.id },
+          data: { status: "NO_RESULTS", metricsJson: JSON.stringify(telemetry), logs: JSON.stringify([message]) }
+        });
+        return Object.assign([], { discoveryStatus: "NO_RESULTS", message, metrics: telemetry });
+      }
+      const queries = searches.length
+        ? [...new Set(searches.map(search => `${search} ${location}`))]
+        : DiscoveryQueryGenerator.generateQueries({ limit: 3 }).map(query => `${query} ${location}`);
+      suggestionsOnly = true;
+      telemetry.searchQueries = queries;
       telemetry.queriesGenerated = queries.length;
       logs.push(`Generated discovery queries: ${queries.join(" | ")}`);
 
@@ -158,7 +187,7 @@ export class OpportunityService {
     });
 
     // 2. Research each candidate
-    for (const candidate of candidatesToResearch) {
+    for (const candidate of suggestionsOnly ? [] : candidatesToResearch) {
       try {
         logs.push(`Researching candidate: ${candidate.companyName} (${candidate.domain})`);
 
@@ -388,7 +417,7 @@ export class OpportunityService {
     await prisma.researchRun.update({
       where: { id: run.id },
       data: {
-        status: createdOpportunities.length > 0 ? "COMPLETED" : "NO_RESULTS",
+        status: suggestionsOnly || createdOpportunities.length > 0 ? "COMPLETED" : "NO_RESULTS",
         opportunitiesFound: createdOpportunities.length,
         queriesGenerated: telemetry.queriesGenerated,
         searchResultsCount: telemetry.searchResultsCount,
@@ -411,10 +440,12 @@ export class OpportunityService {
     });
 
     const resultList: any = createdOpportunities;
-    resultList.discoveryStatus = createdOpportunities.length > 0 ? "SUCCESS" : "NO_RESULTS";
+    resultList.discoveryStatus = suggestionsOnly ? "SUGGESTIONS" : createdOpportunities.length > 0 ? "SUCCESS" : "NO_RESULTS";
     resultList.metrics = telemetry;
     resultList.message =
-      createdOpportunities.length > 0
+      suggestionsOnly
+        ? `Found ${candidatesToResearch.length} public websites to review.`
+        : createdOpportunities.length > 0
         ? `Autopilot discovery completed. Validated ${createdOpportunities.length} opportunities.`
         : `No new opportunities qualified. Read ${telemetry.pagesRead} public pages across ${telemetry.websitesCrawled} attempted sites.`;
 

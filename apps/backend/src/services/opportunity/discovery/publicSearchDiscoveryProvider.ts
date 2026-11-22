@@ -472,6 +472,7 @@ export class PublicSearchDiscoveryProvider {
   private extractCleanDomain(rawUrl: string): string | null {
     try {
       const parsed = new URL(rawUrl);
+      if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return null;
       const host = parsed.hostname.toLowerCase().replace(/^www\./i, "");
       if (host.includes(".") && !host.startsWith(".")) {
         return host;
