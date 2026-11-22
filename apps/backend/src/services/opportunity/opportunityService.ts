@@ -101,9 +101,9 @@ export class OpportunityService {
       const target = organization?.targetCustomerIcp?.trim().split("\n")[0].slice(0, 120);
       const service = organization?.products?.trim().split("\n")[0].slice(0, 100);
       const searches = organization?.industry === "SALON"
-        ? ["bridal makeup studio", "wedding planner", "beauty salon"]
+        ? ["bridal makeup studio", "wedding planner", "beauty salon", "beauty academy", "spa wellness", "cosmetics supplier"]
         : organization?.industry === "REAL_ESTATE"
-          ? ["real estate agency", "property management company", "property developer"]
+          ? ["real estate agency", "property management company", "property developer", "interior designer", "property consultant", "construction company"]
           : [target, service].filter((term): term is string => Boolean(term));
       if (organization?.industry === "OTHER" && !searches.length) {
         const message = "Add your usual customers or services in Settings → Business Profile, then run the search again.";
@@ -140,7 +140,7 @@ export class OpportunityService {
         }
       });
 
-      const discoveryResult = await this.discoveryProvider.discoverCandidates(queries, 6);
+      const discoveryResult = await this.discoveryProvider.discoverCandidates(queries, 10);
       telemetry.searchResultsCount = discoveryResult.totalSearchResults || 0;
       telemetry.candidatesDiscovered = discoveryResult.candidates.length;
       telemetry.candidatesVerified = discoveryResult.candidates.length;

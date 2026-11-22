@@ -108,3 +108,14 @@ Eight files had uncommitted AI and discovery edits at the start. Their changes a
 - Phone Studio now shows turn errors beside the transcript, bounds neural audio requests, and speaks generated text through browser TTS when neural audio is unavailable. The processing state stays active until the turn request settles.
 - Supported workspaces now pass their industry, qualification questions and saved profile context to the voice prompt. Phone Studio and Settings link directly to the business profile.
 - A live call with the user's microphone and deployed AI credentials remains to be verified.
+
+## 2026-11-22 — Simplified workspace and TinyFish discovery
+- Removed persistent sidebar; added compact top navigation, four coloured feature cards, secondary tool shortcuts and dashboard-only Settings/Admin entry cards. Existing route destinations preserved.
+- Applied lavender/white workspace palette and readable sans-serif headings. Desktop (1280px) and mobile (390px) dashboard browser checks passed without horizontal overflow using an isolated UI fixture; fixture removed before commit. This was not an authenticated production end-to-end test.
+- Expanded related-industry website discovery to up to 10 suggestions, with six salon/property search categories. Public search live smoke tests returned 10 domains for each industry.
+- Added optional backend TinyFish Search adapter with 12-second timeout, structured result validation, safe URLs, source attribution, and existing public search fallback. Retains downstream DNS/SSRF checks and deduplication. No database migration or paid browser-agent service introduced.
+- Key stored only in ignored apps/backend/.env as TINYFISH_API_KEY; .env.example documents production configuration. Production Render variable has NOT been configured from this session.
+- Live TinyFish API validation: HTTP 200, 10 salon results. Full validation pipeline: 8 salon and 10 property suggestions from one query each. Results are public websites, not verified enquiries.
+- Tests: 148 passed across 23 files; full build passed. Five new TinyFish tests cover missing key, payload/authentication, unsafe URLs, error sanitization, malformed responses and fallback.
+- Changed: Layout.tsx, Navbar.tsx, DashboardPage.tsx, atlas.css, OpportunityEnginePage.tsx, opportunityService.ts, publicSearchDiscoveryProvider.ts, new tinyfishSearchProvider.ts, new tinyfish_search.test.ts, .env.example.
+- Deployment: pending commit/push verification. Authenticated production voice/email workflows not retested in this UI change.

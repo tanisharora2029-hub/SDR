@@ -438,7 +438,7 @@ export const OpportunityEnginePage: React.FC = () => {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Find websites</span>
+                  <span>Find up to 10 websites</span>
                 </>
               )}
             </button>
@@ -507,6 +507,7 @@ export const OpportunityEnginePage: React.FC = () => {
                   <li key={item.domain} className="min-w-0 space-y-2 rounded-lg border border-slate-700 p-3 [overflow-wrap:anywhere]">
                     <a className="font-semibold text-indigo-300 underline" href={item.url} target="_blank" rel="noreferrer">{item.title || item.domain}</a>
                     <p className="text-xs text-slate-400">{item.snippet || item.domain}</p>
+                    <p className="text-xs text-slate-400">Source: {item.source === "TINYFISH_SEARCH" ? "TinyFish Search" : "Public web search"} · Suggestion, not a verified enquiry</p>
                     <button type="button" className="text-sm text-indigo-300 underline" onClick={() => {
                       setUrlInput(item.url);
                       document.getElementById("atlas-company-url")?.focus();

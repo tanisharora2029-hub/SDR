@@ -1,4 +1,5 @@
 import dns from "dns";
+import { TinyfishSearchProvider, SearchHit } from "./tinyfishSearchProvider.js";
 import { SsrfGuard } from "../ssrfGuard.js";
 import { logger } from "../../../lib/logger.js";
 
@@ -151,7 +152,7 @@ export class PublicSearchDiscoveryProvider {
           if (!domain) {
             discoveryTrail.push({
               query,
-              source: "PUBLIC_WEB_SEARCH",
+              source: item.source || "PUBLIC_WEB_SEARCH",
               url: item.url,
               domain: "unknown",
               title: item.title,
@@ -166,7 +167,7 @@ export class PublicSearchDiscoveryProvider {
           if (this.isBlockedDomain(domain)) {
             discoveryTrail.push({
               query,
-              source: "PUBLIC_WEB_SEARCH",
+              source: item.source || "PUBLIC_WEB_SEARCH",
               url: item.url,
               domain,
               title: item.title,
@@ -181,7 +182,7 @@ export class PublicSearchDiscoveryProvider {
           if (seenDomains.has(domain)) {
             discoveryTrail.push({
               query,
-              source: "PUBLIC_WEB_SEARCH",
+              source: item.source || "PUBLIC_WEB_SEARCH",
               url: item.url,
               domain,
               title: item.title,
@@ -197,7 +198,7 @@ export class PublicSearchDiscoveryProvider {
           if (!isReachable) {
             discoveryTrail.push({
               query,
-              source: "PUBLIC_WEB_SEARCH",
+              source: item.source || "PUBLIC_WEB_SEARCH",
               url: item.url,
               domain,
               title: item.title,
@@ -216,7 +217,7 @@ export class PublicSearchDiscoveryProvider {
             domain,
             sourceUrl: item.url,
             discoveryQuery: query,
-            discoverySource: "PUBLIC_WEB_SEARCH",
+            discoverySource: item.source || "PUBLIC_WEB_SEARCH",
             title: item.title,
             snippet: item.snippet
           };
@@ -224,7 +225,7 @@ export class PublicSearchDiscoveryProvider {
           candidates.push(candidate);
           discoveryTrail.push({
             query,
-            source: "PUBLIC_WEB_SEARCH",
+            source: item.source || "PUBLIC_WEB_SEARCH",
             url: item.url,
             domain,
             title: item.title,
@@ -264,10 +265,13 @@ export class PublicSearchDiscoveryProvider {
     };
   }
 
-  public async searchWeb(query: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+  public async searchWeb(query: string): Promise<SearchHit[]> {
     const generic = new Set(["india", "companies", "company", "small", "business", "local", "regional", "careers", "hiring", "services"]);
     const terms = [...new Set(query.toLowerCase().match(/[a-z]{4,}/g) || [])].filter(term => !generic.has(term));
-    for (const search of [this.searchDuckDuckGo, this.searchBing]) {
+    const providers: Array<(query: string) => Promise<SearchHit[]>> = [];
+    if (process.env.TINYFISH_API_KEY?.trim()) providers.push(query => new TinyfishSearchProvider().search(query));
+    providers.push(this.searchDuckDuckGo.bind(this), this.searchBing.bind(this));
+    for (const search of providers) {
       try {
         const hits = await search.call(this, query);
         const relevant = hits.filter(hit => {
@@ -279,7 +283,7 @@ export class PublicSearchDiscoveryProvider {
         });
         if (relevant.length) return relevant;
       } catch (error) {
-        logger.warn("[DiscoveryProvider] Search provider failed", error);
+        logger.warn("[DiscoveryProvider] Search provider unavailable; trying fallback");
       }
     }
     return [];

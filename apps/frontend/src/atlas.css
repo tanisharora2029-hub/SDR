@@ -1,18 +1,18 @@
 /* Paper surfaces and ink for the existing workspace and its public pages.
    Phone Studio owns its dark surfaces within the shared navigation shell. */
 .atlas-theme {
-  --paper: #faf8f2;
-  --surface: #fffefa;
+  --paper: #f5f3ff;
+  --surface: #ffffff;
   --ink: #172238;
   --muted: #515e70;
-  --rule: #d8d8d1;
-  --cobalt: #153db8;
+  --rule: #e5e1f2;
+  --cobalt: #5946d8;
   font-family: "Segoe UI", Arial, sans-serif;
   color: var(--ink);
   background-color: var(--paper);
 }
 @scope (.atlas-theme) to (.voice-room) {
-  h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.035em; }
+  h1, h2 { font-family: "Segoe UI", Arial, sans-serif; font-weight: 700; letter-spacing: -.035em; }
   main h1 { font-size: clamp(1.8rem, 3vw, 2.7rem); line-height: 1.15; }
   aside h1 { font-size: 1.5rem; }
   [class*="bg-[#0"], [class*="bg-[#1"], [class*="bg-slate-9"], [class*="bg-slate-8"],
@@ -91,3 +91,30 @@
 .atlas-theme aside a:not([aria-current="page"]) {background-color:transparent;}
 .atlas-theme aside a:not([aria-current="page"]):hover {background-color:#edf0f5;}
 .atlas-theme aside a[aria-current="page"] > span:last-child:not(:first-child) {color:inherit;}
+/* Lavender workspace with dashboard-led navigation. */
+.workspace-shell { min-height:100dvh; }
+.workspace-nav { display:flex; align-items:center; gap:28px; padding:20px max(24px,calc((100vw - 1280px)/2)); background:#fff; border-bottom:1px solid #ece8fa; }
+.workspace-brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:21px; color:#5946d8; min-width:0; }
+.workspace-brand small { display:block; max-width:170px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#77738c; font-size:11px; font-weight:400; }
+.workspace-nav nav { display:flex; gap:5px; margin:auto; }
+.workspace-nav nav a { padding:10px 15px; border-radius:12px; color:#68637b; font-size:13px; white-space:nowrap; }
+.workspace-nav nav a.active { background:#efecff; color:#4935bf; font-weight:600; }
+.workspace-account { display:flex; align-items:center; gap:14px; }
+.workspace-account span { display:grid; place-items:center; background:#ece7ff; border-radius:50%; width:36px; height:36px; font-size:12px; }
+.workspace-main { max-width:1440px; margin:auto; padding:32px 28px; min-width:0; }
+.workspace-welcome { padding:10px 0 14px; }.workspace-welcome h1 { color:#241d43; }
+.workspace-tools { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; }
+.workspace-tool { border-radius:22px; overflow:hidden; background:#fff; box-shadow:0 7px 20px #3c26730a; transition:transform .18s; }
+.workspace-tool:hover { transform:translateY(-3px); }
+.tool-art { height:150px; padding:22px; position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; background:#dcd6ff; color:#5744bd; }
+.tool-art > span:first-child { font-size:10px; letter-spacing:.12em; font-weight:700; z-index:1; }
+.indigo .tool-art { background:#39336c; color:#eeeaff; }.pink .tool-art { background:#f0a7c7; color:#6b2448; }.purple .tool-art { background:#6b58ec; color:white; }
+.tool-decoration { position:absolute; width:140px; height:140px; border:24px solid currentColor; opacity:.12; border-radius:35px; right:-30px; bottom:-35px; transform:rotate(25deg); }
+.tool-caption { padding:20px; position:relative; }.tool-caption h2 { font-size:16px; letter-spacing:-.02em; margin-bottom:7px; }.tool-caption p { font-size:12px; color:#746d87; padding-right:10px; }.tool-caption > svg { position:absolute; right:14px; top:23px; }
+.workspace-shortcuts { display:flex; flex-wrap:wrap; gap:10px; }.workspace-shortcuts a { display:flex; align-items:center; gap:12px; background:white; border:1px solid #ebe7f7; padding:10px 14px; border-radius:12px; font-size:12px; }
+.workspace-management { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }.workspace-management a { display:flex; align-items:center; gap:12px; background:white; border:1px solid #ebe7f7; padding:20px; border-radius:16px; }.workspace-management a > svg { flex-shrink:0; color:#6955d5; }.workspace-management strong { display:block; font-size:13px; }.workspace-management small { display:block; color:#777087; font-size:11px; margin-top:5px; }
+.workspace-shell .atlas-sheet { border-radius:20px; background:white; border:1px solid #ebe7f7; box-shadow:0 6px 22px #48327605; }.workspace-shell .atlas-sheet h2 { font-size:20px; }.workspace-shell .atlas-metrics { border:0; gap:16px; }.workspace-shell .atlas-metrics > a { border:1px solid #ebe7f7; border-radius:18px; background:#fff; padding:20px; }.workspace-shell .atlas-metrics strong { font-family:inherit; font-size:30px; }
+.workspace-shell a:focus-visible,.workspace-shell button:focus-visible { outline:3px solid #9b87ef; outline-offset:3px; }
+@media(max-width:900px) { .workspace-nav { flex-wrap:wrap; gap:12px; padding:16px 20px; }.workspace-nav nav { order:3; width:100%; overflow-x:auto; }.workspace-account { margin-left:auto; }.workspace-tools { grid-template-columns:repeat(2,minmax(0,1fr)); }.workspace-management { grid-template-columns:1fr; } }
+@media(max-width:480px) { .workspace-main { padding:22px 14px; }.workspace-tools { gap:12px; }.tool-art { height:118px; padding:16px; }.tool-caption { padding:16px 12px; }.tool-caption h2 { font-size:14px; padding-right:12px; }.tool-caption p { font-size:11px; }.workspace-nav nav a { padding:9px 12px; }.workspace-brand { font-size:19px; } }
+@media(prefers-reduced-motion:reduce) { .workspace-tool { transition:none; } }

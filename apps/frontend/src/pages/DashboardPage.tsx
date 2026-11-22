@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { OnboardingModal } from "../components/OnboardingModal.js";
 import { useAuth } from "../context/AuthContext.js";
-import { AlertCircle, Compass, FlaskConical, Calendar, ChevronRight } from "lucide-react";
+import { AlertCircle, Compass, FlaskConical, Calendar, ChevronRight, Radar, Users, MessageSquare, PhoneCall, Settings, ShieldCheck, Brain } from "lucide-react";
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -42,12 +42,12 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center h-80 text-slate-400 text-xs space-y-3">
         <div className="w-8 h-8 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
-        <p>Connecting to AI Sales Command Center...</p>
+        <p>Loading your workspace...</p>
       </div>
     );
   }
 
-  const firstName = user?.name ? user.name.split(" ")[0] : "Tanish";
+  const firstName = user?.name ? user.name.split(" ")[0] : "there";
   const currentDateFormatted = new Date().toLocaleDateString("en-US", {
     weekday: "short",
     day: "numeric",
@@ -61,14 +61,14 @@ export const DashboardPage: React.FC = () => {
       <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
 
       {/* Header matching reference: "Good evening, Tanish 👋" + Live date badge */}
-      <div className="ghats-header flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="workspace-welcome flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             <span>Welcome, {firstName}</span>
             <span className="text-xl">👋</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Your workspace at a glance.
+            Find customers. Start conversations. Grow your business.
           </p>
         </div>
 
@@ -96,6 +96,15 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      <section aria-label="Your tools" className="workspace-tools">
+        {[
+          {to:"/opportunities", title:"Find new leads", text:"Discover related businesses and websites", icon:Radar, color:"lilac", step:"01 / DISCOVER"},
+          {to:"/leads", title:"Your contacts", text:"Import a spreadsheet or manage saved leads", icon:Users, color:"indigo", step:"02 / ORGANISE"},
+          {to:"/conversations", title:"Your inbox", text:"Read replies and continue conversations", icon:MessageSquare, color:"pink", step:"03 / CONNECT"},
+          {to:"/phone-studio", title:"Try your voice agent", text:"Practise a browser call with your AI", icon:PhoneCall, color:"purple", step:"04 / PRACTISE"}
+        ].map(tool => <Link className={'workspace-tool '+tool.color} to={tool.to} key={tool.to}><div className="tool-art"><span>{tool.step}</span><tool.icon size={42}/><span className="tool-decoration" aria-hidden="true"/></div><div className="tool-caption"><h2>{tool.title}</h2><p>{tool.text}</p><ChevronRight size={18}/></div></Link>)}
+      </section>
+      <nav aria-label="More tools" className="workspace-shortcuts">{[["/follow-ups","Follow-ups"],["/tasks","Appointments"],["/handoff","Human handoff"],["/analytics","Analytics"],["/lead-simulator","Lead simulator"],["/billing","Billing"]].map(([to,label]) => <Link key={to} to={to}>{label}<ChevronRight size={14}/></Link>)}</nav>
       {/* Escalation Alert Banner if enterprise handoff pending */}
       {escalations.length > 0 && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-amber-950/20">
@@ -159,6 +168,11 @@ export const DashboardPage: React.FC = () => {
         {leads.slice(0,5).map(lead => <Link key={lead.id} to={`/leads/${lead.id}`}><span>{lead.firstName} {lead.lastName}</span><span>{lead.companyName}</span><ChevronRight size={16} /></Link>)}
         {!loadError && !leads.length && <p>Your saved leads will appear here.</p>}
         <Link to="/leads">View leads <ChevronRight size={16} /></Link>
+      </section>
+      <section aria-label="Workspace management" className="workspace-management">
+        <Link to="/sdr-setup"><Brain/><span><strong>Set up your agent</strong><small>Business details and knowledge</small></span><ChevronRight size={18}/></Link>
+        <Link to="/settings"><Settings/><span><strong>Settings</strong><small>Manage your workspace</small></span><ChevronRight size={18}/></Link>
+        <Link to="/admin"><ShieldCheck/><span><strong>Admin</strong><small>View system information</small></span><ChevronRight size={18}/></Link>
       </section>
     </div>
   );
