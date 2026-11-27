@@ -3,7 +3,103 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { OnboardingModal } from "../components/OnboardingModal.js";
 import { useAuth } from "../context/AuthContext.js";
-import { AlertCircle, Compass, FlaskConical, Calendar, ChevronRight, Radar, Users, MessageSquare, PhoneCall, Settings, ShieldCheck, Brain } from "lucide-react";
+import { AlertCircle, Compass, FlaskConical, Calendar, ChevronRight, Settings, ShieldCheck, Brain } from "lucide-react";
+
+const TOOL_ART: Record<string, React.ReactNode> = {
+  terracotta: (
+    <svg className="art-3d" viewBox="0 0 120 110" fill="none" aria-hidden="true">
+      <g transform="translate(8,14)">
+        <path d="M52 20L100 44L52 68L4 44Z" fill="#FFFDF9" stroke="#E7D8CD" strokeWidth="2" />
+        <path d="M4 44L52 68V76L4 52Z" fill="#E6D5C8" />
+        <path d="M100 44L52 68V76L100 52Z" fill="#D5C0B0" />
+        <path d="M26 33L74 57M28 55L76 31" stroke="#E7D7CB" strokeWidth="3" strokeLinecap="round" />
+        <g transform="translate(42,4)">
+          <ellipse cx="10" cy="36" rx="8" ry="3.5" fill="rgba(154,52,18,0.22)" />
+          <path d="M10 34C10 34 20 22 20 14C20 8.5 15.5 4 10 4C4.5 4 0 8.5 0 14C0 22 10 34 10 34Z" fill="url(#nexPinGrad)" />
+          <circle cx="10" cy="14" r="3.8" fill="#FFF7ED" />
+        </g>
+        <g transform="translate(68,18) scale(0.78)">
+          <ellipse cx="10" cy="36" rx="8" ry="3.5" fill="rgba(154,52,18,0.22)" />
+          <path d="M10 34C10 34 20 22 20 14C20 8.5 15.5 4 10 4C4.5 4 0 8.5 0 14C0 22 10 34 10 34Z" fill="url(#nexPinGrad)" />
+          <circle cx="10" cy="14" r="3.8" fill="#FFF7ED" />
+        </g>
+        <g transform="translate(20,18) scale(0.72)">
+          <ellipse cx="10" cy="36" rx="8" ry="3.5" fill="rgba(154,52,18,0.22)" />
+          <path d="M10 34C10 34 20 22 20 14C20 8.5 15.5 4 10 4C4.5 4 0 8.5 0 14C0 22 10 34 10 34Z" fill="url(#nexPinGrad)" />
+          <circle cx="10" cy="14" r="3.8" fill="#FFF7ED" />
+        </g>
+      </g>
+      <defs>
+        <linearGradient id="nexPinGrad" x1="0" y1="0" x2="20" y2="34" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#F97316" />
+          <stop offset="1" stopColor="#C2410C" />
+        </linearGradient>
+      </defs>
+    </svg>
+  ),
+  obsidian: (
+    <svg className="art-3d" viewBox="0 0 120 110" fill="none" aria-hidden="true">
+      <g transform="translate(10,12)">
+        <rect x="14" y="28" width="76" height="48" rx="11" transform="rotate(9 52 52)" fill="rgba(255,255,255,0.22)" />
+        <rect x="10" y="20" width="76" height="48" rx="11" transform="rotate(4 48 44)" fill="rgba(255,255,255,0.45)" />
+        <rect x="6" y="12" width="78" height="50" rx="11" transform="rotate(-4 45 37)" fill="#FFFDF9" />
+        <circle cx="24" cy="34" r="10" fill="#E7D5B8" />
+        <circle cx="24" cy="31" r="4" fill="#52525B" />
+        <path d="M17 41c1.8-3.5 12.2-3.5 14 0" fill="#52525B" />
+        <rect x="40" y="27" width="32" height="5" rx="2.5" fill="#27272A" />
+        <rect x="40" y="36" width="22" height="4" rx="2" fill="#A1A1AA" />
+        <rect x="40" y="44" width="28" height="3.5" rx="1.75" fill="#D4D4D8" />
+      </g>
+    </svg>
+  ),
+  marigold: (
+    <svg className="art-3d" viewBox="0 0 120 110" fill="none" aria-hidden="true">
+      <g transform="translate(8,8)">
+        <rect x="34" y="42" width="60" height="38" rx="14" fill="url(#nexBub2)" />
+        <path d="M78 76L90 88L84 72Z" fill="#C2410C" />
+        <rect x="10" y="12" width="64" height="40" rx="14" fill="url(#nexBub1)" />
+        <path d="M24 48L14 60L32 50Z" fill="#EA580C" />
+        <rect x="24" y="25" width="34" height="5" rx="2.5" fill="rgba(255,255,255,0.72)" />
+        <rect x="24" y="34" width="22" height="4.5" rx="2.25" fill="rgba(255,255,255,0.48)" />
+      </g>
+      <defs>
+        <linearGradient id="nexBub1" x1="10" y1="12" x2="74" y2="52" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FDBA74" />
+          <stop offset="1" stopColor="#EA580C" />
+        </linearGradient>
+        <linearGradient id="nexBub2" x1="34" y1="42" x2="94" y2="80" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FB7185" />
+          <stop offset="1" stopColor="#BE123C" />
+        </linearGradient>
+      </defs>
+    </svg>
+  ),
+  cobalt: (
+    <svg className="art-3d" viewBox="0 0 120 110" fill="none" aria-hidden="true">
+      <g transform="translate(10,6)">
+        <circle cx="50" cy="48" r="40" stroke="rgba(255,255,255,0.22)" strokeWidth="4" />
+        <circle cx="50" cy="48" r="28" fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+        <rect x="42" y="28" width="16" height="28" rx="8" fill="#FFFFFF" />
+        <path d="M35 48c0 8.3 6.7 15 15 15s15-6.7 15-15" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
+        <line x1="50" y1="63" x2="50" y2="71" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
+        <line x1="42" y1="71" x2="58" y2="71" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
+      </g>
+    </svg>
+  )
+};
+
+function handleCardTilt(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width - 0.5;
+  const y = (e.clientY - r.top) / r.height - 0.5;
+  el.style.transform = `rotateY(${(x * 8).toFixed(2)}deg) rotateX(${(-y * 8).toFixed(2)}deg) translateY(-4px)`;
+}
+
+function resetCardTilt(e: React.MouseEvent<HTMLAnchorElement>) {
+  e.currentTarget.style.transform = "";
+}
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -72,37 +168,67 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setShowOnboarding(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-slate-300 text-xs font-medium transition"
+            className="tactile-pill hidden sm:inline-flex"
           >
-            <Compass className="w-3.5 h-3.5 text-violet-400" />
+            <Compass className="w-3.5 h-3.5" />
             <span>Tour</span>
           </button>
 
           <Link
             to="/lead-simulator"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-300 text-xs font-medium transition"
+            className="tactile-pill tactile-pill-sky hidden sm:inline-flex"
           >
-            <FlaskConical className="w-3.5 h-3.5 text-emerald-400" />
+            <FlaskConical className="w-3.5 h-3.5" />
             <span>Simulator ↗</span>
           </Link>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0e0e1a]/80 border border-white/[0.08] text-xs font-medium text-slate-300 shadow-sm">
+          <div className="tactile-pill cursor-default">
             <span>{currentDateFormatted}</span>
-            <Calendar className="w-3.5 h-3.5 text-violet-400" />
+            <Calendar className="w-3.5 h-3.5" />
           </div>
+
+          <Link
+            to="/phone-studio"
+            className="live-orb"
+            title="Launch AI Voice Agent"
+            aria-label="Launch live AI voice agent"
+          >
+            Live
+          </Link>
         </div>
       </div>
 
-      <section aria-label="Your tools" className="workspace-tools">
-        {[
-          {to:"/opportunities", title:"Find new leads", text:"Discover related businesses and websites", icon:Radar, color:"lilac", step:"01 / DISCOVER"},
-          {to:"/leads", title:"Your contacts", text:"Import a spreadsheet or manage saved leads", icon:Users, color:"indigo", step:"02 / ORGANISE"},
-          {to:"/conversations", title:"Your inbox", text:"Read replies and continue conversations", icon:MessageSquare, color:"pink", step:"03 / CONNECT"},
-          {to:"/phone-studio", title:"Try your voice agent", text:"Practise a browser call with your AI", icon:PhoneCall, color:"purple", step:"04 / PRACTISE"}
-        ].map(tool => <Link className={'workspace-tool '+tool.color} to={tool.to} key={tool.to}><div className="tool-art"><span>{tool.step}</span><tool.icon size={42}/><span className="tool-decoration" aria-hidden="true"/></div><div className="tool-caption"><h2>{tool.title}</h2><p>{tool.text}</p><ChevronRight size={18}/></div></Link>)}
+      <section aria-label="Your tools" className="workspace-tools-stage">
+        <div className="pipeline-ribbon" aria-hidden="true" />
+        <div className="workspace-tools">
+          {[
+            { to: "/opportunities", title: "Find new leads", text: "Discover related businesses and websites", color: "terracotta", step: "01 / DISCOVER" },
+            { to: "/leads", title: "Your contacts", text: "Import a spreadsheet or manage saved leads", color: "obsidian", step: "02 / ORGANISE" },
+            { to: "/conversations", title: "Your inbox", text: "Read replies and continue conversations", color: "marigold", step: "03 / CONNECT" },
+            { to: "/phone-studio", title: "Try your voice agent", text: "Practise a browser call with your AI", color: "cobalt", step: "04 / PRACTISE" }
+          ].map(tool => (
+            <Link
+              className={`workspace-tool ${tool.color}`}
+              to={tool.to}
+              key={tool.to}
+              onMouseMove={handleCardTilt}
+              onMouseLeave={resetCardTilt}
+            >
+              <div className="tool-art">
+                <span>{tool.step}</span>
+                {TOOL_ART[tool.color]}
+              </div>
+              <div className="tool-caption">
+                <h2>{tool.title}</h2>
+                <p>{tool.text}</p>
+                <ChevronRight size={18} />
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
       <nav aria-label="More tools" className="workspace-shortcuts">{[["/follow-ups","Follow-ups"],["/tasks","Appointments"],["/handoff","Human handoff"],["/analytics","Analytics"],["/lead-simulator","Lead simulator"],["/billing","Billing"]].map(([to,label]) => <Link key={to} to={to}>{label}<ChevronRight size={14}/></Link>)}</nav>
       {/* Escalation Alert Banner if enterprise handoff pending */}
@@ -133,9 +259,26 @@ export const DashboardPage: React.FC = () => {
         {[
           ["Leads contacted", metrics?.contactedCount, "/leads"],
           ["In conversation", metrics?.inConversationCount, "/conversations"],
-          ["Appointments", metrics?.appointmentsBooked, "/tasks"],
-          ["Response rate", metrics ? metrics.responseRatePct + "%" : null, "/analytics"]
-        ].map(([label, value, path]) => <Link key={label} to={path}><span>{label}</span><strong>{value ?? "—"}</strong></Link>)}
+          ["Appointments", metrics?.appointmentsBooked, "/tasks"]
+        ].map(([label, value, path]) => (
+          <Link key={label} to={path}>
+            <span>{label}</span>
+            <strong>{value ?? "—"}</strong>
+          </Link>
+        ))}
+        <Link to="/analytics" className="metric-with-ring">
+          <div>
+            <span>Response rate</span>
+            <strong>{metrics ? `${metrics.responseRatePct}%` : "—"}</strong>
+          </div>
+          <div
+            className="donut-3d"
+            aria-hidden="true"
+            style={{
+              background: `conic-gradient(#1d4ed8 0deg ${Math.round(Math.max(0, Math.min(100, Number(metrics?.responseRatePct ?? 0))) * 3.6)}deg, #e7e1d6 0deg 360deg)`
+            }}
+          />
+        </Link>
       </section>
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="atlas-sheet">
